@@ -89,3 +89,12 @@ The project follows a 10-milestone phased approach (see docs/IMPLEMENTATION.md):
 - Mapping syntax: `([ "key": value ])`
 - Call parent function with `::`
 - Lifecycle hooks: `create()`, `init()`, `dest()`
+
+## Development Guidelines
+
+### Commit Messages
+
+Use descriptive commit messages that explain what changed and why:
+- Start with a short summary line (imperative mood)
+- Add bullet points for specific changes if needed
+- Keep authentic to classic LPMud/LDMud behavior when implementing language features
