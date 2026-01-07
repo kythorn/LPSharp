@@ -160,6 +160,48 @@ void other() {
 | `++` | Increment | `x++` or `++x` |
 | `--` | Decrement | `x--` or `--x` |
 
+### Operator Precedence
+
+Operators listed from **highest precedence** (evaluated first) to **lowest**. Based on classic LDMud precedence rules.
+
+| Precedence | Operators | Description | Associativity |
+|------------|-----------|-------------|---------------|
+| 1 (highest) | `[]` `->` `::` | Indexing, arrow call, scope | Left to right |
+| 2 | `++` `--` (postfix) | Postfix increment/decrement | Left to right |
+| 3 | `++` `--` `-` `!` `~` (prefix) | Prefix unary operators | Right to left |
+| 4 | `*` `/` `%` | Multiplicative | Left to right |
+| 5 | `+` `-` | Additive | Left to right |
+| 6 | `<<` `>>` | Bitwise shifts | Left to right |
+| 7 | `<` `<=` `>` `>=` | Relational | Left to right |
+| 8 | `==` `!=` | Equality | Left to right |
+| 9 | `&` | Bitwise AND | Left to right |
+| 10 | `^` | Bitwise XOR | Left to right |
+| 11 | `\|` | Bitwise OR | Left to right |
+| 12 | `&&` | Logical AND | Left to right |
+| 13 | `\|\|` | Logical OR | Left to right |
+| 14 | `?:` | Ternary conditional | Right to left |
+| 15 | `=` `+=` `-=` `*=` `/=` etc. | Assignment | Right to left |
+| 16 (lowest) | `,` | Comma (sequence) | Left to right |
+
+**Important:** Unlike some modern languages, bitwise operators (`&`, `|`, `^`) have *lower* precedence than comparison operators. This means:
+
+```c
+// Bitwise AND after comparison - may surprise you!
+x & 1 == 0     // Parsed as: x & (1 == 0), NOT (x & 1) == 0
+x & 1 == 0     // Use parentheses: (x & 1) == 0
+
+// Standard arithmetic precedence
+5 + 3 * 2      // 11, not 16
+
+// Logical AND before OR
+a || b && c    // a || (b && c)
+
+// Ternary is right-associative
+a ? b : c ? d : e    // a ? b : (c ? d : e)
+```
+
+*Reference: [LDMud operator documentation](http://abathur.github.io/ldmud-doc/build/html/syntax/operators.html)*
+
 ## Control Flow
 
 ### If/Else
