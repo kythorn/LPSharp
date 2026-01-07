@@ -39,9 +39,13 @@ public class Lexer
         int startColumn = _column;
         char c = Advance();
 
-        if (c == '+')
+        switch (c)
         {
-            return new Token(TokenType.Plus, "+", _line, startColumn);
+            case '+': return new Token(TokenType.Plus, "+", _line, startColumn);
+            case '-': return new Token(TokenType.Minus, "-", _line, startColumn);
+            case '*': return new Token(TokenType.Star, "*", _line, startColumn);
+            case '/': return new Token(TokenType.Slash, "/", _line, startColumn);
+            case '%': return new Token(TokenType.Percent, "%", _line, startColumn);
         }
 
         if (char.IsDigit(c))

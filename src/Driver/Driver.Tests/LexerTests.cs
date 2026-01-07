@@ -119,4 +119,41 @@ public class LexerTests
         Assert.Contains("@", ex.Message);
         Assert.Contains("line 1", ex.Message);
     }
+
+    [Theory]
+    [InlineData("+", TokenType.Plus)]
+    [InlineData("-", TokenType.Minus)]
+    [InlineData("*", TokenType.Star)]
+    [InlineData("/", TokenType.Slash)]
+    [InlineData("%", TokenType.Percent)]
+    public void Tokenize_ArithmeticOperators_ReturnsCorrectType(string op, TokenType expected)
+    {
+        var lexer = new Lexer(op);
+        var tokens = lexer.Tokenize();
+
+        Assert.Equal(2, tokens.Count);
+        Assert.Equal(expected, tokens[0].Type);
+        Assert.Equal(op, tokens[0].Lexeme);
+    }
+
+    [Fact]
+    public void Tokenize_MixedArithmetic_ReturnsCorrectTokens()
+    {
+        var lexer = new Lexer("10 + 5 - 3 * 2 / 1 % 4");
+        var tokens = lexer.Tokenize();
+
+        Assert.Equal(12, tokens.Count); // 6 numbers + 5 operators + EOF
+        Assert.Equal(TokenType.Number, tokens[0].Type);
+        Assert.Equal(TokenType.Plus, tokens[1].Type);
+        Assert.Equal(TokenType.Number, tokens[2].Type);
+        Assert.Equal(TokenType.Minus, tokens[3].Type);
+        Assert.Equal(TokenType.Number, tokens[4].Type);
+        Assert.Equal(TokenType.Star, tokens[5].Type);
+        Assert.Equal(TokenType.Number, tokens[6].Type);
+        Assert.Equal(TokenType.Slash, tokens[7].Type);
+        Assert.Equal(TokenType.Number, tokens[8].Type);
+        Assert.Equal(TokenType.Percent, tokens[9].Type);
+        Assert.Equal(TokenType.Number, tokens[10].Type);
+        Assert.Equal(TokenType.Eof, tokens[11].Type);
+    }
 }

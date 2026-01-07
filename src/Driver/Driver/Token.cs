@@ -7,6 +7,10 @@ public enum TokenType
 
     // Operators
     Plus,
+    Minus,
+    Star,
+    Slash,
+    Percent,
 
     // Special
     Eof,
@@ -18,6 +22,10 @@ public record Token(TokenType Type, string Lexeme, int Line, int Column)
     {
         TokenType.Number => $"NUMBER({Lexeme})",
         TokenType.Plus => "PLUS",
+        TokenType.Minus => "MINUS",
+        TokenType.Star => "STAR",
+        TokenType.Slash => "SLASH",
+        TokenType.Percent => "PERCENT",
         TokenType.Eof => "EOF",
         _ => Type.ToString()
     };
