@@ -491,10 +491,10 @@ void run_tests() {
 
 | Milestone | Status |
 |-----------|--------|
-| 1. Lexer | Not Started |
-| 2. Parser | Not Started |
-| 3. Interpreter + REPL | Not Started |
-| 4. Functions & Variables | Not Started |
+| 1. Lexer | ✅ Complete |
+| 2. Parser | ✅ Complete (expressions) |
+| 3. Interpreter + REPL | ✅ Complete (expressions) |
+| 4. Functions & Variables | In Progress |
 | 5. Object Model | Not Started |
 | 6. Telnet Server | Not Started |
 | 7. Player & Commands | Not Started |

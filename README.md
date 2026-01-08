@@ -23,13 +23,16 @@ The driver exposes a set of **efuns** (external functions) that LPC code can cal
 
 ## Project Status
 
-**Phase**: Planning & Documentation
+**Phase**: Milestone 3 (Interpreter + REPL) - In Progress
+
+Completed:
+- Milestone 1: Lexer - Full LPC tokenization
+- Milestone 2: Parser - Expression parsing with authentic LPC operator precedence
+- Milestone 3: Interpreter + REPL - Expression evaluation and interactive REPL
 
 See [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) for the phased implementation plan.
 
 ## Quick Start
-
-*Coming after Milestone 1*
 
 ```bash
 # Server mode

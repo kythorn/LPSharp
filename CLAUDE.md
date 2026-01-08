@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-LPMud Revival is a modern reimplementation of the classic LPMud architecture in C#/.NET 8+. The project follows a two-layer architecture:
+LPMud Revival is a modern reimplementation of the classic LPMud architecture in C#/.NET 9. The project follows a two-layer architecture:
 
 - **Driver** (C#): Engine handling networking, object management, and LPC interpreter
 - **Mudlib** (LPC): Game content including rooms, items, NPCs, commands, combat
