@@ -98,3 +98,4 @@ Use descriptive commit messages that explain what changed and why:
 - Start with a short summary line (imperative mood)
 - Add bullet points for specific changes if needed
 - Keep authentic to classic LPMud/LDMud behavior when implementing language features
+- Do NOT add Co-Authored-By trailers - commits should be attributed to the user only
