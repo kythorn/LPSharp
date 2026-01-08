@@ -77,15 +77,56 @@ public class Parser
 
     private bool IsStatementStart()
     {
+        // Check for function definition: type identifier(
+        if (IsFunctionDefinitionStart())
+        {
+            return true;
+        }
+
         return Current().Type is TokenType.If or TokenType.While or TokenType.For
             or TokenType.Return or TokenType.Break or TokenType.Continue
             or TokenType.LeftBrace;
+    }
+
+    private bool IsFunctionDefinitionStart()
+    {
+        // Function definition pattern: type identifier(
+        // Type is either a keyword (int, string, void, etc.) or an identifier
+        if (!IsTypeName(Current().Type))
+        {
+            return false;
+        }
+
+        // Look ahead for identifier followed by (
+        if (_position + 2 >= _tokens.Count)
+        {
+            return false;
+        }
+
+        var second = _tokens[_position + 1];
+        var third = _tokens[_position + 2];
+
+        return second.Type == TokenType.Identifier && third.Type == TokenType.LeftParen;
+    }
+
+    private static bool IsTypeName(TokenType type)
+    {
+        // LPC type keywords
+        return type is TokenType.Int or TokenType.StringType or TokenType.Void
+            or TokenType.Object or TokenType.Mixed or TokenType.Mapping
+            or TokenType.Identifier; // for user-defined types
     }
 
     #region Statement Parsing
 
     private Statement ParseStatement()
     {
+        // Check for function definition before other statements
+        if (IsFunctionDefinitionStart())
+        {
+            return ParseFunctionDefinition();
+        }
+
         if (Match(TokenType.If)) return ParseIfStatement();
         if (Match(TokenType.While)) return ParseWhileStatement();
         if (Match(TokenType.For)) return ParseForStatement();
@@ -96,6 +137,65 @@ public class Parser
 
         // Expression statement
         return ParseExpressionStatement();
+    }
+
+    private FunctionDefinition ParseFunctionDefinition()
+    {
+        var startToken = Current();
+
+        // Skip return type (we don't enforce types yet)
+        Advance();
+
+        // Function name
+        if (!Match(TokenType.Identifier))
+        {
+            throw new ParserException("Expected function name", Current());
+        }
+        var name = Previous().Lexeme;
+
+        // Parameter list
+        if (!Match(TokenType.LeftParen))
+        {
+            throw new ParserException("Expected '(' after function name", Current());
+        }
+
+        var parameters = new List<string>();
+        if (!Check(TokenType.RightParen))
+        {
+            do
+            {
+                // Skip parameter type if present
+                if (IsTypeName(Current().Type) && _position + 1 < _tokens.Count
+                    && _tokens[_position + 1].Type == TokenType.Identifier)
+                {
+                    Advance(); // Skip type
+                }
+
+                if (!Match(TokenType.Identifier))
+                {
+                    throw new ParserException("Expected parameter name", Current());
+                }
+                parameters.Add(Previous().Lexeme);
+            } while (Match(TokenType.Comma));
+        }
+
+        if (!Match(TokenType.RightParen))
+        {
+            throw new ParserException("Expected ')' after parameters", Current());
+        }
+
+        // Function body
+        if (!Match(TokenType.LeftBrace))
+        {
+            throw new ParserException("Expected '{' before function body", Current());
+        }
+        var body = ParseBlockStatement();
+
+        return new FunctionDefinition(name, parameters, body)
+        {
+            Line = startToken.Line,
+            Column = startToken.Column
+        };
     }
 
     private BlockStatement ParseBlockStatement()

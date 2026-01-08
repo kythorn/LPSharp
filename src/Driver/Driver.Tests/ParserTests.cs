@@ -774,4 +774,95 @@ public class ParserTests
     }
 
     #endregion
+
+    #region Function Definition Parsing
+
+    [Fact]
+    public void Parse_FunctionDefinition_Simple()
+    {
+        var result = ParseStmtOrExpr("int double(int x) { return x * 2; }");
+
+        var funcDef = Assert.IsType<FunctionDefinition>(result);
+        Assert.Equal("double", funcDef.Name);
+        Assert.Single(funcDef.Parameters);
+        Assert.Equal("x", funcDef.Parameters[0]);
+        Assert.IsType<BlockStatement>(funcDef.Body);
+    }
+
+    [Fact]
+    public void Parse_FunctionDefinition_NoParams()
+    {
+        var result = ParseStmtOrExpr("int five() { return 5; }");
+
+        var funcDef = Assert.IsType<FunctionDefinition>(result);
+        Assert.Equal("five", funcDef.Name);
+        Assert.Empty(funcDef.Parameters);
+    }
+
+    [Fact]
+    public void Parse_FunctionDefinition_MultipleParams()
+    {
+        var result = ParseStmtOrExpr("int add(int a, int b, int c) { return a + b + c; }");
+
+        var funcDef = Assert.IsType<FunctionDefinition>(result);
+        Assert.Equal("add", funcDef.Name);
+        Assert.Equal(3, funcDef.Parameters.Count);
+        Assert.Equal("a", funcDef.Parameters[0]);
+        Assert.Equal("b", funcDef.Parameters[1]);
+        Assert.Equal("c", funcDef.Parameters[2]);
+    }
+
+    [Fact]
+    public void Parse_FunctionDefinition_VoidType()
+    {
+        var result = ParseStmtOrExpr("void greet() { write(\"hello\"); }");
+
+        var funcDef = Assert.IsType<FunctionDefinition>(result);
+        Assert.Equal("greet", funcDef.Name);
+    }
+
+    [Fact]
+    public void Parse_FunctionDefinition_StringType()
+    {
+        var result = ParseStmtOrExpr("string getName() { return \"test\"; }");
+
+        var funcDef = Assert.IsType<FunctionDefinition>(result);
+        Assert.Equal("getName", funcDef.Name);
+    }
+
+    [Fact]
+    public void Parse_FunctionDefinition_MixedParamTypes()
+    {
+        var result = ParseStmtOrExpr("int process(int a, string b) { return 1; }");
+
+        var funcDef = Assert.IsType<FunctionDefinition>(result);
+        Assert.Equal(2, funcDef.Parameters.Count);
+        Assert.Equal("a", funcDef.Parameters[0]);
+        Assert.Equal("b", funcDef.Parameters[1]);
+    }
+
+    [Fact]
+    public void Parse_FunctionDefinition_WithControlFlow()
+    {
+        var result = ParseStmtOrExpr("int abs(int x) { if (x < 0) return -x; return x; }");
+
+        var funcDef = Assert.IsType<FunctionDefinition>(result);
+        Assert.Equal("abs", funcDef.Name);
+        var body = Assert.IsType<BlockStatement>(funcDef.Body);
+        Assert.Equal(2, body.Statements.Count);
+    }
+
+    [Fact]
+    public void Parse_FunctionDefinition_ParamsWithoutTypes()
+    {
+        // LPC allows omitting types - parameters default to mixed
+        var result = ParseStmtOrExpr("int add(a, b) { return a + b; }");
+
+        var funcDef = Assert.IsType<FunctionDefinition>(result);
+        Assert.Equal(2, funcDef.Parameters.Count);
+        Assert.Equal("a", funcDef.Parameters[0]);
+        Assert.Equal("b", funcDef.Parameters[1]);
+    }
+
+    #endregion
 }

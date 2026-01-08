@@ -172,3 +172,9 @@ public record ContinueStatement : Statement;
 /// Return statement: return expr; or return;
 /// </summary>
 public record ReturnStatement(Expression? Value) : Statement;
+
+/// <summary>
+/// Function definition: type name(params) { body }
+/// For now, type is just stored as string and not enforced.
+/// </summary>
+public record FunctionDefinition(string Name, List<string> Parameters, Statement Body) : Statement;

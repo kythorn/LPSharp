@@ -7,6 +7,7 @@ namespace Driver;
 public class Interpreter
 {
     private readonly Dictionary<string, object> _variables = new();
+    private readonly Dictionary<string, FunctionDefinition> _functions = new();
     private readonly EfunRegistry _efuns;
 
     public Interpreter(TextWriter? output = null)
@@ -29,10 +30,18 @@ public class Interpreter
             WhileStatement whileStmt => ExecuteWhile(whileStmt),
             ForStatement forStmt => ExecuteFor(forStmt),
             ReturnStatement ret => ExecuteReturn(ret),
+            FunctionDefinition funcDef => ExecuteFunctionDefinition(funcDef),
             BreakStatement => throw new BreakException(),
             ContinueStatement => throw new ContinueException(),
             _ => throw new InterpreterException($"Unknown statement type: {stmt.GetType().Name}", stmt)
         };
+    }
+
+    private object? ExecuteFunctionDefinition(FunctionDefinition funcDef)
+    {
+        // Register the function for later calling
+        _functions[funcDef.Name] = funcDef;
+        return null; // Function definitions don't return a value
     }
 
     private object? ExecuteBlock(BlockStatement block)
@@ -220,23 +229,87 @@ public class Interpreter
 
     private object EvaluateFunctionCall(FunctionCall expr)
     {
-        // Look up the efun
-        if (!_efuns.TryGet(expr.Name, out var efun) || efun == null)
-        {
-            throw new InterpreterException($"Unknown function '{expr.Name}'", expr);
-        }
-
-        // Evaluate all arguments
+        // Evaluate all arguments first
         var args = expr.Arguments.Select(arg => Evaluate(arg)).ToList();
 
-        // Call the efun
+        // Check for user-defined function first
+        if (_functions.TryGetValue(expr.Name, out var funcDef))
+        {
+            return CallUserFunction(funcDef, args, expr);
+        }
+
+        // Check for efun
+        if (_efuns.TryGet(expr.Name, out var efun) && efun != null)
+        {
+            try
+            {
+                return efun(args);
+            }
+            catch (EfunException ex)
+            {
+                throw new InterpreterException(ex.Message, expr);
+            }
+        }
+
+        throw new InterpreterException($"Unknown function '{expr.Name}'", expr);
+    }
+
+    private object CallUserFunction(FunctionDefinition funcDef, List<object> args, FunctionCall callSite)
+    {
+        // Check argument count
+        if (args.Count != funcDef.Parameters.Count)
+        {
+            throw new InterpreterException(
+                $"Function '{funcDef.Name}' expects {funcDef.Parameters.Count} arguments, got {args.Count}",
+                callSite);
+        }
+
+        // Save only the parameter names that might shadow outer variables
+        var savedParams = new Dictionary<string, object?>();
+        foreach (var param in funcDef.Parameters)
+        {
+            if (_variables.TryGetValue(param, out var oldValue))
+            {
+                savedParams[param] = oldValue;
+            }
+            else
+            {
+                savedParams[param] = null; // Mark as didn't exist before
+            }
+        }
+
+        // Bind parameters to arguments
+        for (int i = 0; i < funcDef.Parameters.Count; i++)
+        {
+            _variables[funcDef.Parameters[i]] = args[i];
+        }
+
         try
         {
-            return efun(args);
+            // Execute function body
+            Execute(funcDef.Body);
+            return 0; // Functions that don't return explicitly return 0
         }
-        catch (EfunException ex)
+        catch (ReturnException ret)
         {
-            throw new InterpreterException(ex.Message, expr);
+            return ret.Value ?? 0; // Return the value, or 0 if no value
+        }
+        finally
+        {
+            // Restore only the parameter bindings (not other variables modified in function)
+            foreach (var kvp in savedParams)
+            {
+                if (kvp.Value == null)
+                {
+                    // Parameter didn't exist before - remove it
+                    _variables.Remove(kvp.Key);
+                }
+                else
+                {
+                    // Restore original value
+                    _variables[kvp.Key] = kvp.Value;
+                }
+            }
         }
     }
 

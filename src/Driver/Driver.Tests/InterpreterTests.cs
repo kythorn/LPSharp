@@ -951,4 +951,168 @@ public class InterpreterTests
     }
 
     #endregion
+
+    #region User-Defined Functions
+
+    [Fact]
+    public void Execute_FunctionDefinition_RegistersFunction()
+    {
+        var interpreter = new Interpreter();
+
+        // Define a function
+        ExecStmt(interpreter, "int double(int x) { return x * 2; }");
+
+        // Call it
+        Assert.Equal(10, Evaluate(interpreter, "double(5)"));
+    }
+
+    [Fact]
+    public void Execute_FunctionWithNoParams()
+    {
+        var interpreter = new Interpreter();
+
+        ExecStmt(interpreter, "int five() { return 5; }");
+
+        Assert.Equal(5, Evaluate(interpreter, "five()"));
+    }
+
+    [Fact]
+    public void Execute_FunctionWithMultipleParams()
+    {
+        var interpreter = new Interpreter();
+
+        ExecStmt(interpreter, "int add(int a, int b) { return a + b; }");
+
+        Assert.Equal(8, Evaluate(interpreter, "add(3, 5)"));
+    }
+
+    [Fact]
+    public void Execute_FunctionWithStringParam()
+    {
+        var interpreter = new Interpreter();
+
+        ExecStmt(interpreter, "string greet(string name) { return \"Hello \" + name; }");
+
+        Assert.Equal("Hello World", Evaluate(interpreter, "greet(\"World\")"));
+    }
+
+    [Fact]
+    public void Execute_RecursiveFunction()
+    {
+        var interpreter = new Interpreter();
+
+        ExecStmt(interpreter, "int fact(int n) { if (n <= 1) { return 1; } return n * fact(n - 1); }");
+
+        Assert.Equal(120, Evaluate(interpreter, "fact(5)"));
+        Assert.Equal(1, Evaluate(interpreter, "fact(0)"));
+        Assert.Equal(1, Evaluate(interpreter, "fact(1)"));
+    }
+
+    [Fact]
+    public void Execute_FunctionNoReturn_ReturnsZero()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "result = 99");
+
+        ExecStmt(interpreter, "void setResult(int x) { result = x; }");
+        Evaluate(interpreter, "setResult(42)");
+
+        Assert.Equal(42, Evaluate(interpreter, "result"));
+    }
+
+    [Fact]
+    public void Execute_FunctionVoidReturn_ReturnsZero()
+    {
+        var interpreter = new Interpreter();
+
+        ExecStmt(interpreter, "void doNothing() { return; }");
+
+        Assert.Equal(0, Evaluate(interpreter, "doNothing()"));
+    }
+
+    [Fact]
+    public void Execute_FunctionScopesParameters()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 100");
+
+        ExecStmt(interpreter, "int addOne(int x) { return x + 1; }");
+
+        // Call with different value
+        Assert.Equal(6, Evaluate(interpreter, "addOne(5)"));
+        // Original x should be unchanged
+        Assert.Equal(100, Evaluate(interpreter, "x"));
+    }
+
+    [Fact]
+    public void Execute_FunctionCanAccessOuterVariables()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "multiplier = 10");
+
+        // Note: This tests that functions can read outer scope variables
+        // The function parameter shadows outer x, but multiplier is accessible
+        ExecStmt(interpreter, "int mult(int x) { return x * multiplier; }");
+
+        Assert.Equal(50, Evaluate(interpreter, "mult(5)"));
+    }
+
+    [Fact]
+    public void Execute_FunctionWrongArgCount_ThrowsError()
+    {
+        var interpreter = new Interpreter();
+
+        ExecStmt(interpreter, "int double(int x) { return x * 2; }");
+
+        var ex = Assert.Throws<InterpreterException>(() => Evaluate(interpreter, "double(1, 2)"));
+        Assert.Contains("1 arguments", ex.Message);
+    }
+
+    [Fact]
+    public void Execute_FunctionWithLoop()
+    {
+        var interpreter = new Interpreter();
+
+        ExecStmt(interpreter, "int sumTo(int n) { sum = 0; for (i = 1; i <= n; i = i + 1) sum = sum + i; return sum; }");
+
+        Assert.Equal(55, Evaluate(interpreter, "sumTo(10)")); // 1+2+...+10 = 55
+    }
+
+    [Fact]
+    public void Execute_FunctionEarlyReturn()
+    {
+        var interpreter = new Interpreter();
+
+        ExecStmt(interpreter, "int isPositive(int x) { if (x > 0) return 1; return 0; }");
+
+        Assert.Equal(1, Evaluate(interpreter, "isPositive(5)"));
+        Assert.Equal(0, Evaluate(interpreter, "isPositive(-5)"));
+        Assert.Equal(0, Evaluate(interpreter, "isPositive(0)"));
+    }
+
+    [Fact]
+    public void Execute_MultipleFunctions()
+    {
+        var interpreter = new Interpreter();
+
+        ExecStmt(interpreter, "int double(int x) { return x * 2; }");
+        ExecStmt(interpreter, "int triple(int x) { return x * 3; }");
+        ExecStmt(interpreter, "int addDoubleTriple(int x) { return double(x) + triple(x); }");
+
+        Assert.Equal(25, Evaluate(interpreter, "addDoubleTriple(5)")); // 10 + 15 = 25
+    }
+
+    [Fact]
+    public void Execute_FunctionOverridesEarlierDefinition()
+    {
+        var interpreter = new Interpreter();
+
+        ExecStmt(interpreter, "int getValue() { return 1; }");
+        Assert.Equal(1, Evaluate(interpreter, "getValue()"));
+
+        ExecStmt(interpreter, "int getValue() { return 2; }");
+        Assert.Equal(2, Evaluate(interpreter, "getValue()"));
+    }
+
+    #endregion
 }
