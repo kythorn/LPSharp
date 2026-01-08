@@ -50,6 +50,11 @@ public record Identifier(string Name) : Expression;
 public record Assignment(string Name, Expression Value) : Expression;
 
 /// <summary>
+/// Compound assignment: name op= value (e.g., x += 5)
+/// </summary>
+public record CompoundAssignment(string Name, BinaryOperator Operator, Expression Value) : Expression;
+
+/// <summary>
 /// Binary operators with their precedence levels (higher = binds tighter).
 /// Follows authentic LDMud precedence where bitwise ops are below comparison.
 /// </summary>

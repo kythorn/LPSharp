@@ -401,4 +401,136 @@ public class InterpreterTests
     }
 
     #endregion
+
+    #region Compound Assignment
+
+    [Fact]
+    public void Evaluate_PlusEquals()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 10");
+        var result = Evaluate(interpreter, "x += 5");
+        Assert.Equal(15, result);
+        Assert.Equal(15, Evaluate(interpreter, "x"));
+    }
+
+    [Fact]
+    public void Evaluate_MinusEquals()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 10");
+        var result = Evaluate(interpreter, "x -= 3");
+        Assert.Equal(7, result);
+        Assert.Equal(7, Evaluate(interpreter, "x"));
+    }
+
+    [Fact]
+    public void Evaluate_StarEquals()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 5");
+        var result = Evaluate(interpreter, "x *= 4");
+        Assert.Equal(20, result);
+    }
+
+    [Fact]
+    public void Evaluate_SlashEquals()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 20");
+        var result = Evaluate(interpreter, "x /= 4");
+        Assert.Equal(5, result);
+    }
+
+    [Fact]
+    public void Evaluate_PercentEquals()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 17");
+        var result = Evaluate(interpreter, "x %= 5");
+        Assert.Equal(2, result);
+    }
+
+    [Fact]
+    public void Evaluate_BitwiseAndEquals()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 7");    // 0111
+        var result = Evaluate(interpreter, "x &= 3");  // 0011
+        Assert.Equal(3, result);           // 0011
+    }
+
+    [Fact]
+    public void Evaluate_BitwiseOrEquals()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 5");    // 0101
+        var result = Evaluate(interpreter, "x |= 3");  // 0011
+        Assert.Equal(7, result);           // 0111
+    }
+
+    [Fact]
+    public void Evaluate_BitwiseXorEquals()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 5");    // 0101
+        var result = Evaluate(interpreter, "x ^= 3");  // 0011
+        Assert.Equal(6, result);           // 0110
+    }
+
+    [Fact]
+    public void Evaluate_LeftShiftEquals()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 4");
+        var result = Evaluate(interpreter, "x <<= 2");
+        Assert.Equal(16, result);
+    }
+
+    [Fact]
+    public void Evaluate_RightShiftEquals()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 16");
+        var result = Evaluate(interpreter, "x >>= 2");
+        Assert.Equal(4, result);
+    }
+
+    [Fact]
+    public void Evaluate_StringPlusEquals()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "s = \"Hello\"");
+        var result = Evaluate(interpreter, "s += \" World\"");
+        Assert.Equal("Hello World", result);
+        Assert.Equal("Hello World", Evaluate(interpreter, "s"));
+    }
+
+    [Fact]
+    public void Evaluate_CompoundAssignmentWithExpression()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 10");
+        var result = Evaluate(interpreter, "x += 2 * 3");  // x += 6
+        Assert.Equal(16, result);
+    }
+
+    [Fact]
+    public void Evaluate_CompoundAssignmentDivisionByZero_ThrowsInterpreterException()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 10");
+        var ex = Assert.Throws<InterpreterException>(() => Evaluate(interpreter, "x /= 0"));
+        Assert.Contains("Division by zero", ex.Message);
+    }
+
+    [Fact]
+    public void Evaluate_CompoundAssignmentUndefinedVariable_ThrowsInterpreterException()
+    {
+        var interpreter = new Interpreter();
+        var ex = Assert.Throws<InterpreterException>(() => Evaluate(interpreter, "undefined += 5"));
+        Assert.Contains("Undefined variable", ex.Message);
+    }
+
+    #endregion
 }

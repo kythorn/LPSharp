@@ -369,6 +369,48 @@ public class ParserTests
 
     #endregion
 
+    #region Compound Assignment
+
+    [Theory]
+    [InlineData("x += 5", BinaryOperator.Add)]
+    [InlineData("x -= 5", BinaryOperator.Subtract)]
+    [InlineData("x *= 5", BinaryOperator.Multiply)]
+    [InlineData("x /= 5", BinaryOperator.Divide)]
+    [InlineData("x %= 5", BinaryOperator.Modulo)]
+    [InlineData("x &= 5", BinaryOperator.BitwiseAnd)]
+    [InlineData("x |= 5", BinaryOperator.BitwiseOr)]
+    [InlineData("x ^= 5", BinaryOperator.BitwiseXor)]
+    [InlineData("x <<= 2", BinaryOperator.LeftShift)]
+    [InlineData("x >>= 2", BinaryOperator.RightShift)]
+    public void Parse_CompoundAssignment_ReturnsCorrectOperator(string source, BinaryOperator expected)
+    {
+        var expr = Parse(source);
+
+        var assign = Assert.IsType<CompoundAssignment>(expr);
+        Assert.Equal("x", assign.Name);
+        Assert.Equal(expected, assign.Operator);
+    }
+
+    [Fact]
+    public void Parse_CompoundAssignmentWithExpression_Works()
+    {
+        var expr = Parse("x += 2 * 3");
+
+        var assign = Assert.IsType<CompoundAssignment>(expr);
+        Assert.Equal("x", assign.Name);
+        Assert.Equal(BinaryOperator.Add, assign.Operator);
+        Assert.IsType<BinaryOp>(assign.Value);
+    }
+
+    [Fact]
+    public void Parse_InvalidCompoundAssignmentTarget_ThrowsParserException()
+    {
+        var ex = Assert.Throws<ParserException>(() => Parse("5 += 3"));
+        Assert.Contains("Invalid assignment target", ex.Message);
+    }
+
+    #endregion
+
     #region Error Cases
 
     [Fact]

@@ -24,6 +24,7 @@ public class Interpreter
             TernaryOp t => EvaluateTernary(t),
             Identifier id => EvaluateIdentifier(id),
             Assignment a => EvaluateAssignment(a),
+            CompoundAssignment ca => EvaluateCompoundAssignment(ca),
             _ => throw new InterpreterException($"Unknown expression type: {expr.GetType().Name}", expr)
         };
     }
@@ -42,6 +43,52 @@ public class Interpreter
         var value = Evaluate(expr.Value);
         _variables[expr.Name] = value;
         return value;
+    }
+
+    private object EvaluateCompoundAssignment(CompoundAssignment expr)
+    {
+        // Get current value (must exist)
+        if (!_variables.TryGetValue(expr.Name, out var currentValue))
+        {
+            throw new InterpreterException($"Undefined variable '{expr.Name}'", expr);
+        }
+
+        // Evaluate the right-hand side
+        var rightValue = Evaluate(expr.Value);
+
+        // Handle string concatenation for +=
+        if (expr.Operator == BinaryOperator.Add && (currentValue is string || rightValue is string))
+        {
+            var result = ToString(currentValue) + ToString(rightValue);
+            _variables[expr.Name] = result;
+            return result;
+        }
+
+        // Integer operations
+        var left_i = ToInt(currentValue, expr);
+        var right_i = ToInt(rightValue, expr);
+
+        var newValue = expr.Operator switch
+        {
+            BinaryOperator.Add => left_i + right_i,
+            BinaryOperator.Subtract => left_i - right_i,
+            BinaryOperator.Multiply => left_i * right_i,
+            BinaryOperator.Divide => right_i != 0
+                ? left_i / right_i
+                : throw new InterpreterException("Division by zero", expr),
+            BinaryOperator.Modulo => right_i != 0
+                ? left_i % right_i
+                : throw new InterpreterException("Modulo by zero", expr),
+            BinaryOperator.BitwiseAnd => left_i & right_i,
+            BinaryOperator.BitwiseOr => left_i | right_i,
+            BinaryOperator.BitwiseXor => left_i ^ right_i,
+            BinaryOperator.LeftShift => left_i << right_i,
+            BinaryOperator.RightShift => left_i >> right_i,
+            _ => throw new InterpreterException($"Unsupported compound assignment operator: {expr.Operator}", expr)
+        };
+
+        _variables[expr.Name] = newValue;
+        return newValue;
     }
 
     private object EvaluateUnary(UnaryOp expr)

@@ -36,6 +36,7 @@ public class Parser
     {
         var expr = ParseTernary();
 
+        // Simple assignment
         if (Match(TokenType.Equal))
         {
             var equals = Previous();
@@ -52,6 +53,42 @@ public class Parser
             }
 
             throw new ParserException("Invalid assignment target", equals);
+        }
+
+        // Compound assignment operators
+        if (Match(TokenType.PlusEqual, TokenType.MinusEqual, TokenType.StarEqual,
+                  TokenType.SlashEqual, TokenType.PercentEqual, TokenType.AmpEqual,
+                  TokenType.PipeEqual, TokenType.CaretEqual, TokenType.LessLessEqual,
+                  TokenType.GreaterGreaterEqual))
+        {
+            var op = Previous();
+
+            if (expr is Identifier id)
+            {
+                var binOp = op.Type switch
+                {
+                    TokenType.PlusEqual => BinaryOperator.Add,
+                    TokenType.MinusEqual => BinaryOperator.Subtract,
+                    TokenType.StarEqual => BinaryOperator.Multiply,
+                    TokenType.SlashEqual => BinaryOperator.Divide,
+                    TokenType.PercentEqual => BinaryOperator.Modulo,
+                    TokenType.AmpEqual => BinaryOperator.BitwiseAnd,
+                    TokenType.PipeEqual => BinaryOperator.BitwiseOr,
+                    TokenType.CaretEqual => BinaryOperator.BitwiseXor,
+                    TokenType.LessLessEqual => BinaryOperator.LeftShift,
+                    TokenType.GreaterGreaterEqual => BinaryOperator.RightShift,
+                    _ => throw new ParserException($"Unexpected compound assignment operator", op)
+                };
+
+                var value = ParseAssignment(); // Right-to-left associativity
+                return new CompoundAssignment(id.Name, binOp, value)
+                {
+                    Line = op.Line,
+                    Column = op.Column
+                };
+            }
+
+            throw new ParserException("Invalid assignment target", op);
         }
 
         return expr;
