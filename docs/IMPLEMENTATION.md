@@ -494,10 +494,61 @@ void run_tests() {
 | 1. Lexer | ✅ Complete |
 | 2. Parser | ✅ Complete (expressions) |
 | 3. Interpreter + REPL | ✅ Complete |
-| 4. Functions & Variables | 🔄 In Progress (variables done) |
+| 4. Functions & Variables | 🔄 In Progress (variables, compound assignment, ++/-- done) |
 | 5. Object Model | Not Started |
-| 6. Telnet Server | Not Started |
+| 6. Telnet Server | 🔄 Partial (basic networking, see notes below) |
 | 7. Player & Commands | Not Started |
 | 8. Rooms & Movement | Not Started |
 | 9. Heartbeats & Callouts | Not Started |
 | 10. Combat | Not Started |
+
+---
+
+## Current State Notes
+
+### What's Working (as of Milestone 6 partial)
+
+**Interpreter/REPL:**
+- Full expression evaluation with correct operator precedence
+- Variables: assignment (`x = 5`), compound (`x += 3`), increment/decrement (`++x`, `x--`)
+- All operators: arithmetic, comparison, logical, bitwise, ternary
+- String concatenation and comparison
+- Efuns: `write()`, `typeof()`, `strlen()`, `to_string()`, `to_int()`
+- 274 unit tests passing
+
+**Networking:**
+- Telnet server accepts multiple concurrent connections (`--server [port]`)
+- Each connection has isolated REPL context (variables don't cross sessions)
+- `write()` output goes only to the calling connection
+- Line buffering with basic telnet protocol handling
+- Graceful quit/exit and Ctrl+C shutdown
+
+### What's NOT Working Yet
+
+**Networking gaps (needed for real players):**
+- No login system - connections drop directly into REPL
+- No player objects - just raw interpreter sessions
+- No `this_player()` / `this_interactive()` context tracking
+- No `exec()` to transfer connections between objects
+- `write()` uses constructor-injected TextWriter, not `this_player()` lookup
+- No `tell_object()`, `tell_room()`, `say()` message routing
+
+**Interpreter gaps:**
+- No statements (if/else, while, for, return)
+- No user-defined functions
+- No arrays or mappings
+- No object model (load, clone, inherit)
+
+### Architecture Decision Pending
+
+The current `write()` implementation sends to a `TextWriter` injected at interpreter construction:
+```csharp
+var interpreter = new Interpreter(connectionOutputStream);
+```
+
+For real player support, `write()` needs to:
+1. Look up `this_player()` from execution context
+2. Find that object's attached connection
+3. Send to that connection's output stream
+
+This requires the object model (Milestone 5) and player/command system (Milestone 7) to be in place first.
