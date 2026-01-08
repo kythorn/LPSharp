@@ -93,6 +93,13 @@ public class Interpreter
 
     private object EvaluateUnary(UnaryOp expr)
     {
+        // Handle increment/decrement specially since they modify variables
+        if (expr.Operator is UnaryOperator.PreIncrement or UnaryOperator.PreDecrement
+            or UnaryOperator.PostIncrement or UnaryOperator.PostDecrement)
+        {
+            return EvaluateIncrementDecrement(expr);
+        }
+
         var operand = Evaluate(expr.Operand);
 
         return expr.Operator switch
@@ -101,6 +108,40 @@ public class Interpreter
             UnaryOperator.LogicalNot => IsTrue(operand) ? 0 : 1,
             UnaryOperator.BitwiseNot => ~ToInt(operand, expr),
             _ => throw new InterpreterException($"Unknown unary operator: {expr.Operator}", expr)
+        };
+    }
+
+    private object EvaluateIncrementDecrement(UnaryOp expr)
+    {
+        // Operand must be an identifier
+        if (expr.Operand is not Identifier id)
+        {
+            throw new InterpreterException("Increment/decrement requires a variable", expr);
+        }
+
+        // Get current value
+        if (!_variables.TryGetValue(id.Name, out var currentValue))
+        {
+            throw new InterpreterException($"Undefined variable '{id.Name}'", expr);
+        }
+
+        var currentInt = ToInt(currentValue, expr);
+        var newValue = expr.Operator switch
+        {
+            UnaryOperator.PreIncrement or UnaryOperator.PostIncrement => currentInt + 1,
+            UnaryOperator.PreDecrement or UnaryOperator.PostDecrement => currentInt - 1,
+            _ => throw new InterpreterException($"Unexpected operator: {expr.Operator}", expr)
+        };
+
+        // Store the new value
+        _variables[id.Name] = newValue;
+
+        // Return based on prefix vs postfix
+        return expr.Operator switch
+        {
+            UnaryOperator.PreIncrement or UnaryOperator.PreDecrement => newValue,
+            UnaryOperator.PostIncrement or UnaryOperator.PostDecrement => currentInt,
+            _ => throw new InterpreterException($"Unexpected operator: {expr.Operator}", expr)
         };
     }
 

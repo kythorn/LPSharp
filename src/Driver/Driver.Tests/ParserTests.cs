@@ -411,6 +411,79 @@ public class ParserTests
 
     #endregion
 
+    #region Increment/Decrement
+
+    [Fact]
+    public void Parse_PrefixIncrement_ReturnsUnaryOp()
+    {
+        var expr = Parse("++x");
+
+        var unary = Assert.IsType<UnaryOp>(expr);
+        Assert.Equal(UnaryOperator.PreIncrement, unary.Operator);
+        Assert.True(unary.IsPrefix);
+        var id = Assert.IsType<Identifier>(unary.Operand);
+        Assert.Equal("x", id.Name);
+    }
+
+    [Fact]
+    public void Parse_PrefixDecrement_ReturnsUnaryOp()
+    {
+        var expr = Parse("--x");
+
+        var unary = Assert.IsType<UnaryOp>(expr);
+        Assert.Equal(UnaryOperator.PreDecrement, unary.Operator);
+        Assert.True(unary.IsPrefix);
+    }
+
+    [Fact]
+    public void Parse_PostfixIncrement_ReturnsUnaryOp()
+    {
+        var expr = Parse("x++");
+
+        var unary = Assert.IsType<UnaryOp>(expr);
+        Assert.Equal(UnaryOperator.PostIncrement, unary.Operator);
+        Assert.False(unary.IsPrefix);
+        var id = Assert.IsType<Identifier>(unary.Operand);
+        Assert.Equal("x", id.Name);
+    }
+
+    [Fact]
+    public void Parse_PostfixDecrement_ReturnsUnaryOp()
+    {
+        var expr = Parse("x--");
+
+        var unary = Assert.IsType<UnaryOp>(expr);
+        Assert.Equal(UnaryOperator.PostDecrement, unary.Operator);
+        Assert.False(unary.IsPrefix);
+    }
+
+    [Fact]
+    public void Parse_IncrementInExpression_Works()
+    {
+        // x++ + 1 should parse as (x++) + 1
+        var expr = Parse("x++ + 1");
+
+        var add = Assert.IsType<BinaryOp>(expr);
+        Assert.IsType<UnaryOp>(add.Left);
+        Assert.IsType<NumberLiteral>(add.Right);
+    }
+
+    [Fact]
+    public void Parse_PrefixIncrementOnLiteral_ThrowsParserException()
+    {
+        var ex = Assert.Throws<ParserException>(() => Parse("++5"));
+        Assert.Contains("requires a variable", ex.Message);
+    }
+
+    [Fact]
+    public void Parse_PostfixIncrementOnLiteral_ThrowsParserException()
+    {
+        var ex = Assert.Throws<ParserException>(() => Parse("5++"));
+        Assert.Contains("requires a variable", ex.Message);
+    }
+
+    #endregion
+
     #region Error Cases
 
     [Fact]

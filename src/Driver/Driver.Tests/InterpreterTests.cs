@@ -533,4 +533,76 @@ public class InterpreterTests
     }
 
     #endregion
+
+    #region Increment/Decrement
+
+    [Fact]
+    public void Evaluate_PrefixIncrement_ReturnsNewValue()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 5");
+        var result = Evaluate(interpreter, "++x");
+        Assert.Equal(6, result);
+        Assert.Equal(6, Evaluate(interpreter, "x"));
+    }
+
+    [Fact]
+    public void Evaluate_PrefixDecrement_ReturnsNewValue()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 5");
+        var result = Evaluate(interpreter, "--x");
+        Assert.Equal(4, result);
+        Assert.Equal(4, Evaluate(interpreter, "x"));
+    }
+
+    [Fact]
+    public void Evaluate_PostfixIncrement_ReturnsOldValue()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 5");
+        var result = Evaluate(interpreter, "x++");
+        Assert.Equal(5, result);  // Returns old value
+        Assert.Equal(6, Evaluate(interpreter, "x"));  // But variable is incremented
+    }
+
+    [Fact]
+    public void Evaluate_PostfixDecrement_ReturnsOldValue()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 5");
+        var result = Evaluate(interpreter, "x--");
+        Assert.Equal(5, result);  // Returns old value
+        Assert.Equal(4, Evaluate(interpreter, "x"));  // But variable is decremented
+    }
+
+    [Fact]
+    public void Evaluate_IncrementInExpression()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 5");
+        var result = Evaluate(interpreter, "x++ + 10");  // 5 + 10 = 15, then x becomes 6
+        Assert.Equal(15, result);
+        Assert.Equal(6, Evaluate(interpreter, "x"));
+    }
+
+    [Fact]
+    public void Evaluate_PrefixIncrementInExpression()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 5");
+        var result = Evaluate(interpreter, "++x + 10");  // x becomes 6, then 6 + 10 = 16
+        Assert.Equal(16, result);
+        Assert.Equal(6, Evaluate(interpreter, "x"));
+    }
+
+    [Fact]
+    public void Evaluate_IncrementUndefinedVariable_ThrowsInterpreterException()
+    {
+        var interpreter = new Interpreter();
+        var ex = Assert.Throws<InterpreterException>(() => Evaluate(interpreter, "++undefined"));
+        Assert.Contains("Undefined variable", ex.Message);
+    }
+
+    #endregion
 }

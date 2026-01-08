@@ -108,8 +108,8 @@ public enum UnaryOperator
     Negate,         // -x
     LogicalNot,     // !x
     BitwiseNot,     // ~x
-
-    // Pre/post increment/decrement (for future use with variables)
-    // Increment,   // ++x or x++
-    // Decrement,   // --x or x--
+    PreIncrement,   // ++x
+    PreDecrement,   // --x
+    PostIncrement,  // x++
+    PostDecrement,  // x--
 }

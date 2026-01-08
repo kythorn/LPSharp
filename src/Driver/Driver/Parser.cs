@@ -329,9 +329,10 @@ public class Parser
         return left;
     }
 
-    // Precedence 3: Unary prefix operators: - ! ~
+    // Precedence 3: Unary prefix operators: - ! ~ ++ --
     private Expression ParseUnary()
     {
+        // Standard unary operators
         if (Match(TokenType.Minus, TokenType.Bang, TokenType.Tilde))
         {
             var op = Previous();
@@ -350,7 +351,59 @@ public class Parser
             };
         }
 
-        return ParsePrimary();
+        // Prefix increment/decrement
+        if (Match(TokenType.PlusPlus, TokenType.MinusMinus))
+        {
+            var op = Previous();
+            var unaryOp = op.Type == TokenType.PlusPlus
+                ? UnaryOperator.PreIncrement
+                : UnaryOperator.PreDecrement;
+            var operand = ParseUnary(); // Right-to-left associativity
+
+            // Operand must be an identifier
+            if (operand is not Identifier)
+            {
+                throw new ParserException("Increment/decrement requires a variable", op);
+            }
+
+            return new UnaryOp(unaryOp, operand)
+            {
+                Line = op.Line,
+                Column = op.Column
+            };
+        }
+
+        return ParsePostfix();
+    }
+
+    // Precedence 2: Postfix operators: ++ --
+    private Expression ParsePostfix()
+    {
+        var expr = ParsePrimary();
+
+        // Check for postfix ++/--
+        if (Match(TokenType.PlusPlus, TokenType.MinusMinus))
+        {
+            var op = Previous();
+
+            // Operand must be an identifier
+            if (expr is not Identifier)
+            {
+                throw new ParserException("Increment/decrement requires a variable", op);
+            }
+
+            var unaryOp = op.Type == TokenType.PlusPlus
+                ? UnaryOperator.PostIncrement
+                : UnaryOperator.PostDecrement;
+
+            return new UnaryOp(unaryOp, expr, IsPrefix: false)
+            {
+                Line = op.Line,
+                Column = op.Column
+            };
+        }
+
+        return expr;
     }
 
     // Precedence 1: Primary expressions (literals, grouping)
