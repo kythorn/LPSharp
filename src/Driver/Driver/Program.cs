@@ -21,6 +21,16 @@ catch (LexerException ex)
     Console.Error.WriteLine($"Lexer error: {ex.Message}");
     return 1;
 }
+catch (ParserException ex)
+{
+    Console.Error.WriteLine($"Parse error: {ex.Message}");
+    return 1;
+}
+catch (InterpreterException ex)
+{
+    Console.Error.WriteLine($"Runtime error: {ex.Message}");
+    return 1;
+}
 catch (Exception ex)
 {
     Console.Error.WriteLine($"Error: {ex.Message}");
@@ -83,17 +93,12 @@ int Eval(string[] args)
     string expression = args[1];
     var lexer = new Lexer(expression);
     var tokens = lexer.Tokenize();
+    var parser = new Parser(tokens);
+    var ast = parser.Parse();
+    var interpreter = new Interpreter();
+    var result = interpreter.Evaluate(ast);
 
-    // For now, just show tokens until we have a parser/interpreter
-    Console.WriteLine("Tokens:");
-    foreach (var token in tokens.Where(t => t.Type != TokenType.Eof))
-    {
-        Console.Write($"{token} ");
-    }
-    Console.WriteLine();
-
-    // TODO: Parse and evaluate once we have interpreter
-    Console.WriteLine("\n(Evaluation not yet implemented - parser/interpreter coming next)");
+    Console.WriteLine(result);
     return 0;
 }
 
