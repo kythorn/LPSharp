@@ -1,7 +1,7 @@
 namespace Driver;
 
 /// <summary>
-/// Recursive descent parser for LPC expressions.
+/// Recursive descent parser for LPC expressions and statements.
 /// Implements authentic LDMud operator precedence.
 /// </summary>
 public class Parser
@@ -14,6 +14,9 @@ public class Parser
         _tokens = tokens;
     }
 
+    /// <summary>
+    /// Parse a single expression (original behavior for REPL).
+    /// </summary>
     public Expression Parse()
     {
         var expr = ParseExpression();
@@ -25,6 +28,278 @@ public class Parser
 
         return expr;
     }
+
+    /// <summary>
+    /// Parse input as either a statement or expression.
+    /// If it looks like a statement (starts with keyword or {), parse as statement.
+    /// Otherwise parse as expression.
+    /// </summary>
+    public object ParseStatementOrExpression()
+    {
+        // Check if this looks like a statement
+        if (IsStatementStart())
+        {
+            var stmt = ParseStatement();
+
+            if (!IsAtEnd() && Current().Type != TokenType.Eof)
+            {
+                throw new ParserException($"Unexpected token '{Current().Lexeme}'", Current());
+            }
+
+            return stmt;
+        }
+
+        // Parse as expression
+        var expr = ParseExpression();
+
+        // If followed by semicolon, it's an expression statement
+        if (Match(TokenType.Semicolon))
+        {
+            if (!IsAtEnd() && Current().Type != TokenType.Eof)
+            {
+                throw new ParserException($"Unexpected token '{Current().Lexeme}'", Current());
+            }
+
+            return new ExpressionStatement(expr)
+            {
+                Line = expr.Line,
+                Column = expr.Column
+            };
+        }
+
+        if (!IsAtEnd() && Current().Type != TokenType.Eof)
+        {
+            throw new ParserException($"Unexpected token '{Current().Lexeme}'", Current());
+        }
+
+        return expr;
+    }
+
+    private bool IsStatementStart()
+    {
+        return Current().Type is TokenType.If or TokenType.While or TokenType.For
+            or TokenType.Return or TokenType.Break or TokenType.Continue
+            or TokenType.LeftBrace;
+    }
+
+    #region Statement Parsing
+
+    private Statement ParseStatement()
+    {
+        if (Match(TokenType.If)) return ParseIfStatement();
+        if (Match(TokenType.While)) return ParseWhileStatement();
+        if (Match(TokenType.For)) return ParseForStatement();
+        if (Match(TokenType.Return)) return ParseReturnStatement();
+        if (Match(TokenType.Break)) return ParseBreakStatement();
+        if (Match(TokenType.Continue)) return ParseContinueStatement();
+        if (Match(TokenType.LeftBrace)) return ParseBlockStatement();
+
+        // Expression statement
+        return ParseExpressionStatement();
+    }
+
+    private BlockStatement ParseBlockStatement()
+    {
+        var openBrace = Previous();
+        var statements = new List<Statement>();
+
+        while (!Check(TokenType.RightBrace) && !IsAtEnd())
+        {
+            statements.Add(ParseStatement());
+        }
+
+        if (!Match(TokenType.RightBrace))
+        {
+            throw new ParserException("Expected '}' after block", Current());
+        }
+
+        return new BlockStatement(statements)
+        {
+            Line = openBrace.Line,
+            Column = openBrace.Column
+        };
+    }
+
+    private IfStatement ParseIfStatement()
+    {
+        var ifToken = Previous();
+
+        if (!Match(TokenType.LeftParen))
+        {
+            throw new ParserException("Expected '(' after 'if'", Current());
+        }
+
+        var condition = ParseExpression();
+
+        if (!Match(TokenType.RightParen))
+        {
+            throw new ParserException("Expected ')' after if condition", Current());
+        }
+
+        var thenBranch = ParseStatement();
+        Statement? elseBranch = null;
+
+        if (Match(TokenType.Else))
+        {
+            elseBranch = ParseStatement();
+        }
+
+        return new IfStatement(condition, thenBranch, elseBranch)
+        {
+            Line = ifToken.Line,
+            Column = ifToken.Column
+        };
+    }
+
+    private WhileStatement ParseWhileStatement()
+    {
+        var whileToken = Previous();
+
+        if (!Match(TokenType.LeftParen))
+        {
+            throw new ParserException("Expected '(' after 'while'", Current());
+        }
+
+        var condition = ParseExpression();
+
+        if (!Match(TokenType.RightParen))
+        {
+            throw new ParserException("Expected ')' after while condition", Current());
+        }
+
+        var body = ParseStatement();
+
+        return new WhileStatement(condition, body)
+        {
+            Line = whileToken.Line,
+            Column = whileToken.Column
+        };
+    }
+
+    private ForStatement ParseForStatement()
+    {
+        var forToken = Previous();
+
+        if (!Match(TokenType.LeftParen))
+        {
+            throw new ParserException("Expected '(' after 'for'", Current());
+        }
+
+        // Init expression (optional)
+        Expression? init = null;
+        if (!Check(TokenType.Semicolon))
+        {
+            init = ParseExpression();
+        }
+        if (!Match(TokenType.Semicolon))
+        {
+            throw new ParserException("Expected ';' after for initializer", Current());
+        }
+
+        // Condition expression (optional)
+        Expression? condition = null;
+        if (!Check(TokenType.Semicolon))
+        {
+            condition = ParseExpression();
+        }
+        if (!Match(TokenType.Semicolon))
+        {
+            throw new ParserException("Expected ';' after for condition", Current());
+        }
+
+        // Increment expression (optional)
+        Expression? increment = null;
+        if (!Check(TokenType.RightParen))
+        {
+            increment = ParseExpression();
+        }
+        if (!Match(TokenType.RightParen))
+        {
+            throw new ParserException("Expected ')' after for clauses", Current());
+        }
+
+        var body = ParseStatement();
+
+        return new ForStatement(init, condition, increment, body)
+        {
+            Line = forToken.Line,
+            Column = forToken.Column
+        };
+    }
+
+    private ReturnStatement ParseReturnStatement()
+    {
+        var returnToken = Previous();
+        Expression? value = null;
+
+        if (!Check(TokenType.Semicolon))
+        {
+            value = ParseExpression();
+        }
+
+        if (!Match(TokenType.Semicolon))
+        {
+            throw new ParserException("Expected ';' after return statement", Current());
+        }
+
+        return new ReturnStatement(value)
+        {
+            Line = returnToken.Line,
+            Column = returnToken.Column
+        };
+    }
+
+    private BreakStatement ParseBreakStatement()
+    {
+        var breakToken = Previous();
+
+        if (!Match(TokenType.Semicolon))
+        {
+            throw new ParserException("Expected ';' after 'break'", Current());
+        }
+
+        return new BreakStatement
+        {
+            Line = breakToken.Line,
+            Column = breakToken.Column
+        };
+    }
+
+    private ContinueStatement ParseContinueStatement()
+    {
+        var continueToken = Previous();
+
+        if (!Match(TokenType.Semicolon))
+        {
+            throw new ParserException("Expected ';' after 'continue'", Current());
+        }
+
+        return new ContinueStatement
+        {
+            Line = continueToken.Line,
+            Column = continueToken.Column
+        };
+    }
+
+    private ExpressionStatement ParseExpressionStatement()
+    {
+        var expr = ParseExpression();
+
+        if (!Match(TokenType.Semicolon))
+        {
+            throw new ParserException("Expected ';' after expression", Current());
+        }
+
+        return new ExpressionStatement(expr)
+        {
+            Line = expr.Line,
+            Column = expr.Column
+        };
+    }
+
+    #endregion
+
+    #region Expression Parsing
 
     private Expression ParseExpression()
     {
@@ -493,6 +768,8 @@ public class Parser
 
         throw new ParserException($"Expected expression, got '{Current().Lexeme}'", Current());
     }
+
+    #endregion
 
     #region Helper Methods
 

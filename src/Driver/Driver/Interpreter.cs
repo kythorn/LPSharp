@@ -1,7 +1,7 @@
 namespace Driver;
 
 /// <summary>
-/// Tree-walking interpreter for LPC expressions.
+/// Tree-walking interpreter for LPC expressions and statements.
 /// Evaluates AST nodes and returns results.
 /// </summary>
 public class Interpreter
@@ -13,6 +13,126 @@ public class Interpreter
     {
         _efuns = new EfunRegistry(output);
     }
+
+    #region Statement Execution
+
+    /// <summary>
+    /// Execute a statement. Returns the last expression value if any.
+    /// </summary>
+    public object? Execute(Statement stmt)
+    {
+        return stmt switch
+        {
+            BlockStatement block => ExecuteBlock(block),
+            ExpressionStatement exprStmt => Evaluate(exprStmt.Expression),
+            IfStatement ifStmt => ExecuteIf(ifStmt),
+            WhileStatement whileStmt => ExecuteWhile(whileStmt),
+            ForStatement forStmt => ExecuteFor(forStmt),
+            ReturnStatement ret => ExecuteReturn(ret),
+            BreakStatement => throw new BreakException(),
+            ContinueStatement => throw new ContinueException(),
+            _ => throw new InterpreterException($"Unknown statement type: {stmt.GetType().Name}", stmt)
+        };
+    }
+
+    private object? ExecuteBlock(BlockStatement block)
+    {
+        object? lastValue = null;
+        foreach (var stmt in block.Statements)
+        {
+            lastValue = Execute(stmt);
+        }
+        return lastValue;
+    }
+
+    private object? ExecuteIf(IfStatement stmt)
+    {
+        var condition = Evaluate(stmt.Condition);
+
+        if (IsTrue(condition))
+        {
+            return Execute(stmt.ThenBranch);
+        }
+        else if (stmt.ElseBranch != null)
+        {
+            return Execute(stmt.ElseBranch);
+        }
+
+        return null;
+    }
+
+    private object? ExecuteWhile(WhileStatement stmt)
+    {
+        object? lastValue = null;
+
+        while (IsTrue(Evaluate(stmt.Condition)))
+        {
+            try
+            {
+                lastValue = Execute(stmt.Body);
+            }
+            catch (BreakException)
+            {
+                break;
+            }
+            catch (ContinueException)
+            {
+                continue;
+            }
+        }
+
+        return lastValue;
+    }
+
+    private object? ExecuteFor(ForStatement stmt)
+    {
+        object? lastValue = null;
+
+        // Initialize
+        if (stmt.Init != null)
+        {
+            Evaluate(stmt.Init);
+        }
+
+        // Loop
+        while (stmt.Condition == null || IsTrue(Evaluate(stmt.Condition)))
+        {
+            try
+            {
+                lastValue = Execute(stmt.Body);
+            }
+            catch (BreakException)
+            {
+                break;
+            }
+            catch (ContinueException)
+            {
+                // Fall through to increment
+            }
+
+            // Increment
+            if (stmt.Increment != null)
+            {
+                Evaluate(stmt.Increment);
+            }
+        }
+
+        return lastValue;
+    }
+
+    private object? ExecuteReturn(ReturnStatement stmt)
+    {
+        object? value = null;
+        if (stmt.Value != null)
+        {
+            value = Evaluate(stmt.Value);
+        }
+        throw new ReturnException(value);
+    }
+
+    #endregion
+
+    #region Expression Evaluation
 
     /// <summary>
     /// Evaluate an expression and return the result.
@@ -258,6 +378,8 @@ public class Interpreter
             : Evaluate(expr.ElseBranch);
     }
 
+    #endregion
+
     #region Helper Methods
 
     /// <summary>
@@ -312,5 +434,35 @@ public class InterpreterException : Exception
     {
         Line = expr.Line;
         Column = expr.Column;
+    }
+
+    public InterpreterException(string message, Statement stmt)
+        : base($"{message} at line {stmt.Line}, column {stmt.Column}")
+    {
+        Line = stmt.Line;
+        Column = stmt.Column;
+    }
+}
+
+/// <summary>
+/// Thrown when a break statement is executed.
+/// </summary>
+public class BreakException : Exception { }
+
+/// <summary>
+/// Thrown when a continue statement is executed.
+/// </summary>
+public class ContinueException : Exception { }
+
+/// <summary>
+/// Thrown when a return statement is executed.
+/// </summary>
+public class ReturnException : Exception
+{
+    public object? Value { get; }
+
+    public ReturnException(object? value)
+    {
+        Value = value;
     }
 }

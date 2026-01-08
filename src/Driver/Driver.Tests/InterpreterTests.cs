@@ -712,4 +712,243 @@ public class InterpreterTests
     }
 
     #endregion
+
+    #region Statements
+
+    private static object? ExecStmt(Interpreter interpreter, string source)
+    {
+        var lexer = new Lexer(source);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser(tokens);
+        var parsed = parser.ParseStatementOrExpression();
+
+        if (parsed is Statement stmt)
+        {
+            return interpreter.Execute(stmt);
+        }
+        else if (parsed is Expression expr)
+        {
+            return interpreter.Evaluate(expr);
+        }
+        return null;
+    }
+
+    [Fact]
+    public void Execute_IfTrue_ExecutesThenBranch()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 0");
+
+        ExecStmt(interpreter, "if (1) x = 42;");
+
+        Assert.Equal(42, Evaluate(interpreter, "x"));
+    }
+
+    [Fact]
+    public void Execute_IfFalse_SkipsThenBranch()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 0");
+
+        ExecStmt(interpreter, "if (0) x = 42;");
+
+        Assert.Equal(0, Evaluate(interpreter, "x"));
+    }
+
+    [Fact]
+    public void Execute_IfElse_ExecutesElseBranch()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 0");
+
+        ExecStmt(interpreter, "if (0) x = 1; else x = 2;");
+
+        Assert.Equal(2, Evaluate(interpreter, "x"));
+    }
+
+    [Fact]
+    public void Execute_IfWithCondition()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 5");
+
+        ExecStmt(interpreter, "if (x > 3) x = 100;");
+
+        Assert.Equal(100, Evaluate(interpreter, "x"));
+    }
+
+    [Fact]
+    public void Execute_While_LoopsCorrectly()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 0");
+        Evaluate(interpreter, "sum = 0");
+
+        ExecStmt(interpreter, "while (x < 5) { sum = sum + x; x = x + 1; }");
+
+        Assert.Equal(5, Evaluate(interpreter, "x"));
+        Assert.Equal(10, Evaluate(interpreter, "sum")); // 0+1+2+3+4 = 10
+    }
+
+    [Fact]
+    public void Execute_While_FalseCondition_NeverExecutes()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 0");
+
+        ExecStmt(interpreter, "while (0) x = 42;");
+
+        Assert.Equal(0, Evaluate(interpreter, "x"));
+    }
+
+    [Fact]
+    public void Execute_For_LoopsCorrectly()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "sum = 0");
+
+        ExecStmt(interpreter, "for (i = 0; i < 5; i = i + 1) sum = sum + i;");
+
+        Assert.Equal(10, Evaluate(interpreter, "sum")); // 0+1+2+3+4 = 10
+        Assert.Equal(5, Evaluate(interpreter, "i"));
+    }
+
+    [Fact]
+    public void Execute_For_WithIncrement()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "sum = 0");
+
+        ExecStmt(interpreter, "for (i = 1; i <= 5; ++i) sum = sum + i;");
+
+        Assert.Equal(15, Evaluate(interpreter, "sum")); // 1+2+3+4+5 = 15
+    }
+
+    [Fact]
+    public void Execute_For_EmptyCondition_RunsForever()
+    {
+        // We can't actually test infinite loop, so test with break
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 0");
+
+        ExecStmt(interpreter, "for (;;) { x = x + 1; if (x >= 3) break; }");
+
+        Assert.Equal(3, Evaluate(interpreter, "x"));
+    }
+
+    [Fact]
+    public void Execute_Break_ExitsWhileLoop()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 0");
+
+        ExecStmt(interpreter, "while (1) { x = x + 1; if (x == 3) break; }");
+
+        Assert.Equal(3, Evaluate(interpreter, "x"));
+    }
+
+    [Fact]
+    public void Execute_Break_ExitsForLoop()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "last = 0");
+
+        ExecStmt(interpreter, "for (i = 0; i < 100; i = i + 1) { last = i; if (i == 5) break; }");
+
+        Assert.Equal(5, Evaluate(interpreter, "last"));
+    }
+
+    [Fact]
+    public void Execute_Continue_SkipsRestOfLoop()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "sum = 0");
+
+        // Sum only even numbers
+        ExecStmt(interpreter, "for (i = 0; i < 6; i = i + 1) { if (i % 2) continue; sum = sum + i; }");
+
+        Assert.Equal(6, Evaluate(interpreter, "sum")); // 0+2+4 = 6
+    }
+
+    [Fact]
+    public void Execute_Continue_InWhile()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 0");
+        Evaluate(interpreter, "sum = 0");
+
+        ExecStmt(interpreter, "while (x < 5) { x = x + 1; if (x == 3) continue; sum = sum + x; }");
+
+        Assert.Equal(12, Evaluate(interpreter, "sum")); // 1+2+4+5 = 12 (skipped 3)
+    }
+
+    [Fact]
+    public void Execute_Return_ThrowsReturnException()
+    {
+        var interpreter = new Interpreter();
+
+        var ex = Assert.Throws<ReturnException>(() => ExecStmt(interpreter, "return 42;"));
+        Assert.Equal(42, ex.Value);
+    }
+
+    [Fact]
+    public void Execute_ReturnVoid_ThrowsReturnExceptionWithNull()
+    {
+        var interpreter = new Interpreter();
+
+        var ex = Assert.Throws<ReturnException>(() => ExecStmt(interpreter, "return;"));
+        Assert.Null(ex.Value);
+    }
+
+    [Fact]
+    public void Execute_Break_OutsideLoop_ThrowsBreakException()
+    {
+        var interpreter = new Interpreter();
+
+        Assert.Throws<BreakException>(() => ExecStmt(interpreter, "break;"));
+    }
+
+    [Fact]
+    public void Execute_Continue_OutsideLoop_ThrowsContinueException()
+    {
+        var interpreter = new Interpreter();
+
+        Assert.Throws<ContinueException>(() => ExecStmt(interpreter, "continue;"));
+    }
+
+    [Fact]
+    public void Execute_Block_ExecutesAllStatements()
+    {
+        var interpreter = new Interpreter();
+
+        ExecStmt(interpreter, "{ x = 1; y = 2; z = x + y; }");
+
+        Assert.Equal(3, Evaluate(interpreter, "z"));
+    }
+
+    [Fact]
+    public void Execute_NestedIf()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "x = 5");
+        Evaluate(interpreter, "y = 10");
+        Evaluate(interpreter, "result = 0");
+
+        ExecStmt(interpreter, "if (x > 0) { if (y > 5) result = 1; }");
+
+        Assert.Equal(1, Evaluate(interpreter, "result"));
+    }
+
+    [Fact]
+    public void Execute_NestedLoops()
+    {
+        var interpreter = new Interpreter();
+        Evaluate(interpreter, "count = 0");
+
+        ExecStmt(interpreter, "for (i = 0; i < 3; i = i + 1) for (j = 0; j < 3; j = j + 1) count = count + 1;");
+
+        Assert.Equal(9, Evaluate(interpreter, "count"));
+    }
+
+    #endregion
 }

@@ -159,11 +159,43 @@ public class Connection : IDisposable
             var lexer = new Lexer(line);
             var tokens = lexer.Tokenize();
             var parser = new Parser(tokens);
-            var ast = parser.Parse();
-            var result = _interpreter.Evaluate(ast);
+            var parsed = parser.ParseStatementOrExpression();
 
-            // Show result (write() already outputs, so only show non-1 results or non-write calls)
-            SendLine($"=> {FormatResult(result)}");
+            object? result;
+            if (parsed is Statement stmt)
+            {
+                result = _interpreter.Execute(stmt);
+            }
+            else if (parsed is Expression expr)
+            {
+                result = _interpreter.Evaluate(expr);
+            }
+            else
+            {
+                result = null;
+            }
+
+            // Show result if we have one
+            if (result != null)
+            {
+                SendLine($"=> {FormatResult(result)}");
+            }
+        }
+        catch (ReturnException ret)
+        {
+            // Return outside of function - show the value
+            if (ret.Value != null)
+            {
+                SendLine($"=> {FormatResult(ret.Value)}");
+            }
+        }
+        catch (BreakException)
+        {
+            SendLine("Error: break outside of loop");
+        }
+        catch (ContinueException)
+        {
+            SendLine("Error: continue outside of loop");
         }
         catch (LexerException ex)
         {

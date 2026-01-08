@@ -15,6 +15,8 @@ public enum TokenType
     While,
     For,
     Return,
+    Break,
+    Continue,
     Inherit,
     Int,
     StringType,

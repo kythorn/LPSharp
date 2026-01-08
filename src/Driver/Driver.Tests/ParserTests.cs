@@ -617,4 +617,161 @@ public class ParserTests
     }
 
     #endregion
+
+    #region Statement Parsing
+
+    private static object ParseStmtOrExpr(string source)
+    {
+        var lexer = new Lexer(source);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser(tokens);
+        return parser.ParseStatementOrExpression();
+    }
+
+    [Fact]
+    public void Parse_IfStatement_Simple()
+    {
+        var result = ParseStmtOrExpr("if (x) y = 1;");
+
+        var ifStmt = Assert.IsType<IfStatement>(result);
+        Assert.IsType<Identifier>(ifStmt.Condition);
+        Assert.IsType<ExpressionStatement>(ifStmt.ThenBranch);
+        Assert.Null(ifStmt.ElseBranch);
+    }
+
+    [Fact]
+    public void Parse_IfElseStatement()
+    {
+        var result = ParseStmtOrExpr("if (x) y = 1; else y = 2;");
+
+        var ifStmt = Assert.IsType<IfStatement>(result);
+        Assert.NotNull(ifStmt.ElseBranch);
+    }
+
+    [Fact]
+    public void Parse_IfWithBlock()
+    {
+        var result = ParseStmtOrExpr("if (x > 0) { y = 1; z = 2; }");
+
+        var ifStmt = Assert.IsType<IfStatement>(result);
+        var block = Assert.IsType<BlockStatement>(ifStmt.ThenBranch);
+        Assert.Equal(2, block.Statements.Count);
+    }
+
+    [Fact]
+    public void Parse_WhileStatement()
+    {
+        var result = ParseStmtOrExpr("while (x > 0) x = x - 1;");
+
+        var whileStmt = Assert.IsType<WhileStatement>(result);
+        Assert.IsType<BinaryOp>(whileStmt.Condition);
+        Assert.IsType<ExpressionStatement>(whileStmt.Body);
+    }
+
+    [Fact]
+    public void Parse_WhileWithBlock()
+    {
+        var result = ParseStmtOrExpr("while (i < 10) { i = i + 1; }");
+
+        var whileStmt = Assert.IsType<WhileStatement>(result);
+        Assert.IsType<BlockStatement>(whileStmt.Body);
+    }
+
+    [Fact]
+    public void Parse_ForStatement()
+    {
+        var result = ParseStmtOrExpr("for (i = 0; i < 10; i = i + 1) x = x + i;");
+
+        var forStmt = Assert.IsType<ForStatement>(result);
+        Assert.NotNull(forStmt.Init);
+        Assert.NotNull(forStmt.Condition);
+        Assert.NotNull(forStmt.Increment);
+        Assert.IsType<ExpressionStatement>(forStmt.Body);
+    }
+
+    [Fact]
+    public void Parse_ForWithEmptyClauses()
+    {
+        var result = ParseStmtOrExpr("for (;;) x = 1;");
+
+        var forStmt = Assert.IsType<ForStatement>(result);
+        Assert.Null(forStmt.Init);
+        Assert.Null(forStmt.Condition);
+        Assert.Null(forStmt.Increment);
+    }
+
+    [Fact]
+    public void Parse_ReturnStatement()
+    {
+        var result = ParseStmtOrExpr("return 42;");
+
+        var ret = Assert.IsType<ReturnStatement>(result);
+        Assert.NotNull(ret.Value);
+        var num = Assert.IsType<NumberLiteral>(ret.Value);
+        Assert.Equal(42, num.Value);
+    }
+
+    [Fact]
+    public void Parse_ReturnVoid()
+    {
+        var result = ParseStmtOrExpr("return;");
+
+        var ret = Assert.IsType<ReturnStatement>(result);
+        Assert.Null(ret.Value);
+    }
+
+    [Fact]
+    public void Parse_BreakStatement()
+    {
+        var result = ParseStmtOrExpr("break;");
+
+        Assert.IsType<BreakStatement>(result);
+    }
+
+    [Fact]
+    public void Parse_ContinueStatement()
+    {
+        var result = ParseStmtOrExpr("continue;");
+
+        Assert.IsType<ContinueStatement>(result);
+    }
+
+    [Fact]
+    public void Parse_BlockStatement()
+    {
+        var result = ParseStmtOrExpr("{ x = 1; y = 2; z = 3; }");
+
+        var block = Assert.IsType<BlockStatement>(result);
+        Assert.Equal(3, block.Statements.Count);
+    }
+
+    [Fact]
+    public void Parse_ExpressionWithSemicolon_IsStatement()
+    {
+        var result = ParseStmtOrExpr("x = 5;");
+
+        Assert.IsType<ExpressionStatement>(result);
+    }
+
+    [Fact]
+    public void Parse_ExpressionWithoutSemicolon_IsExpression()
+    {
+        var result = ParseStmtOrExpr("x = 5");
+
+        Assert.IsType<Assignment>(result);
+    }
+
+    [Fact]
+    public void Parse_NestedIfElse()
+    {
+        // Tests dangling else - else binds to nearest if
+        var result = ParseStmtOrExpr("if (a) if (b) x = 1; else x = 2;");
+
+        var outer = Assert.IsType<IfStatement>(result);
+        Assert.Null(outer.ElseBranch); // Outer if has no else
+        var inner = Assert.IsType<IfStatement>(outer.ThenBranch);
+        Assert.NotNull(inner.ElseBranch); // Inner if has the else
+    }
+
+    #endregion
 }

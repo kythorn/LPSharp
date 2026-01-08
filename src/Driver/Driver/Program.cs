@@ -91,25 +91,48 @@ int Eval(string[] args)
 {
     if (args.Length < 2)
     {
-        Console.Error.WriteLine("Error: --eval requires an expression");
+        Console.Error.WriteLine("Error: --eval requires an expression or statement");
         return 1;
     }
 
-    string expression = args[1];
-    var lexer = new Lexer(expression);
+    string input = args[1];
+    var lexer = new Lexer(input);
     var tokens = lexer.Tokenize();
     var parser = new Parser(tokens);
-    var ast = parser.Parse();
+    var parsed = parser.ParseStatementOrExpression();
     var interpreter = new Interpreter();
-    var result = interpreter.Evaluate(ast);
 
-    Console.WriteLine(result);
+    object? result;
+    if (parsed is Statement stmt)
+    {
+        try
+        {
+            result = interpreter.Execute(stmt);
+        }
+        catch (ReturnException ret)
+        {
+            result = ret.Value;
+        }
+    }
+    else if (parsed is Expression expr)
+    {
+        result = interpreter.Evaluate(expr);
+    }
+    else
+    {
+        result = null;
+    }
+
+    if (result != null)
+    {
+        Console.WriteLine(result);
+    }
     return 0;
 }
 
 int Repl()
 {
-    Console.WriteLine("LPSharp REPL - Type expressions to evaluate, 'quit' to exit");
+    Console.WriteLine("LPSharp REPL - Type expressions or statements, 'quit' to exit");
     var interpreter = new Interpreter();
 
     while (true)
@@ -132,9 +155,41 @@ int Repl()
             var lexer = new Lexer(line);
             var tokens = lexer.Tokenize();
             var parser = new Parser(tokens);
-            var ast = parser.Parse();
-            var result = interpreter.Evaluate(ast);
-            Console.WriteLine(result);
+            var parsed = parser.ParseStatementOrExpression();
+
+            object? result;
+            if (parsed is Statement stmt)
+            {
+                result = interpreter.Execute(stmt);
+            }
+            else if (parsed is Expression expr)
+            {
+                result = interpreter.Evaluate(expr);
+            }
+            else
+            {
+                result = null;
+            }
+
+            if (result != null)
+            {
+                Console.WriteLine(result);
+            }
+        }
+        catch (ReturnException ret)
+        {
+            if (ret.Value != null)
+            {
+                Console.WriteLine(ret.Value);
+            }
+        }
+        catch (BreakException)
+        {
+            Console.Error.WriteLine("Error: break outside of loop");
+        }
+        catch (ContinueException)
+        {
+            Console.Error.WriteLine("Error: continue outside of loop");
         }
         catch (LexerException ex)
         {

@@ -118,3 +118,57 @@ public enum UnaryOperator
     PostIncrement,  // x++
     PostDecrement,  // x--
 }
+
+// ============================================================================
+// STATEMENTS
+// ============================================================================
+
+/// <summary>
+/// Base class for all AST statement nodes.
+/// </summary>
+public abstract record Statement
+{
+    public int Line { get; init; }
+    public int Column { get; init; }
+}
+
+/// <summary>
+/// Block statement: { stmt1; stmt2; ... }
+/// </summary>
+public record BlockStatement(List<Statement> Statements) : Statement;
+
+/// <summary>
+/// Expression statement: expr;
+/// Wraps an expression to be executed as a statement.
+/// </summary>
+public record ExpressionStatement(Expression Expression) : Statement;
+
+/// <summary>
+/// If statement: if (condition) thenBranch else elseBranch
+/// </summary>
+public record IfStatement(Expression Condition, Statement ThenBranch, Statement? ElseBranch) : Statement;
+
+/// <summary>
+/// While statement: while (condition) body
+/// </summary>
+public record WhileStatement(Expression Condition, Statement Body) : Statement;
+
+/// <summary>
+/// For statement: for (init; condition; increment) body
+/// </summary>
+public record ForStatement(Expression? Init, Expression? Condition, Expression? Increment, Statement Body) : Statement;
+
+/// <summary>
+/// Break statement: break;
+/// </summary>
+public record BreakStatement : Statement;
+
+/// <summary>
+/// Continue statement: continue;
+/// </summary>
+public record ContinueStatement : Statement;
+
+/// <summary>
+/// Return statement: return expr; or return;
+/// </summary>
+public record ReturnStatement(Expression? Value) : Statement;
