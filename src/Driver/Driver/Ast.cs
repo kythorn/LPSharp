@@ -55,6 +55,11 @@ public record Assignment(string Name, Expression Value) : Expression;
 public record CompoundAssignment(string Name, BinaryOperator Operator, Expression Value) : Expression;
 
 /// <summary>
+/// Function call: name(arg1, arg2, ...)
+/// </summary>
+public record FunctionCall(string Name, List<Expression> Arguments) : Expression;
+
+/// <summary>
 /// Binary operators with their precedence levels (higher = binds tighter).
 /// Follows authentic LDMud precedence where bitwise ops are below comparison.
 /// </summary>

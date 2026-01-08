@@ -605,4 +605,111 @@ public class InterpreterTests
     }
 
     #endregion
+
+    #region Efuns
+
+    [Fact]
+    public void Evaluate_Write_OutputsValue()
+    {
+        var output = new StringWriter();
+        var interpreter = new Interpreter(output);
+        var result = Evaluate(interpreter, "write(42)");
+
+        Assert.Equal(1, result);  // write() returns 1
+        Assert.Equal("42" + Environment.NewLine, output.ToString());
+    }
+
+    [Fact]
+    public void Evaluate_Write_OutputsString()
+    {
+        var output = new StringWriter();
+        var interpreter = new Interpreter(output);
+        Evaluate(interpreter, "write(\"hello\")");
+
+        Assert.Equal("hello" + Environment.NewLine, output.ToString());
+    }
+
+    [Fact]
+    public void Evaluate_TypeOf_Int()
+    {
+        Assert.Equal("int", Eval("typeof(42)"));
+    }
+
+    [Fact]
+    public void Evaluate_TypeOf_String()
+    {
+        Assert.Equal("string", Eval("typeof(\"hello\")"));
+    }
+
+    [Fact]
+    public void Evaluate_Strlen_ReturnsLength()
+    {
+        Assert.Equal(5, Eval("strlen(\"hello\")"));
+        Assert.Equal(0, Eval("strlen(\"\")"));
+    }
+
+    [Fact]
+    public void Evaluate_ToString_Int()
+    {
+        Assert.Equal("42", Eval("to_string(42)"));
+    }
+
+    [Fact]
+    public void Evaluate_ToString_String()
+    {
+        Assert.Equal("hello", Eval("to_string(\"hello\")"));
+    }
+
+    [Fact]
+    public void Evaluate_ToInt_String()
+    {
+        Assert.Equal(42, Eval("to_int(\"42\")"));
+    }
+
+    [Fact]
+    public void Evaluate_ToInt_NonNumericString()
+    {
+        Assert.Equal(0, Eval("to_int(\"hello\")"));  // LPC returns 0
+    }
+
+    [Fact]
+    public void Evaluate_ToInt_Int()
+    {
+        Assert.Equal(42, Eval("to_int(42)"));
+    }
+
+    [Fact]
+    public void Evaluate_EfunInExpression()
+    {
+        Assert.Equal(10, Eval("strlen(\"hello\") * 2"));
+    }
+
+    [Fact]
+    public void Evaluate_NestedEfunCalls()
+    {
+        Assert.Equal("5", Eval("to_string(strlen(\"hello\"))"));
+    }
+
+    [Fact]
+    public void Evaluate_UnknownFunction_ThrowsInterpreterException()
+    {
+        var ex = Assert.Throws<InterpreterException>(() => Eval("unknown_func()"));
+        Assert.Contains("Unknown function", ex.Message);
+    }
+
+    [Fact]
+    public void Evaluate_Strlen_WrongArgType_ThrowsInterpreterException()
+    {
+        var ex = Assert.Throws<InterpreterException>(() => Eval("strlen(42)"));
+        Assert.Contains("string argument", ex.Message);
+    }
+
+    [Fact]
+    public void Evaluate_Write_WrongArgCount_ThrowsInterpreterException()
+    {
+        var ex = Assert.Throws<InterpreterException>(() => Eval("write()"));
+        Assert.Contains("1 argument", ex.Message);
+    }
+
+    #endregion
 }

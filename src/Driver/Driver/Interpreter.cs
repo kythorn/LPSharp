@@ -7,6 +7,12 @@ namespace Driver;
 public class Interpreter
 {
     private readonly Dictionary<string, object> _variables = new();
+    private readonly EfunRegistry _efuns;
+
+    public Interpreter(TextWriter? output = null)
+    {
+        _efuns = new EfunRegistry(output);
+    }
 
     /// <summary>
     /// Evaluate an expression and return the result.
@@ -25,6 +31,7 @@ public class Interpreter
             Identifier id => EvaluateIdentifier(id),
             Assignment a => EvaluateAssignment(a),
             CompoundAssignment ca => EvaluateCompoundAssignment(ca),
+            FunctionCall fc => EvaluateFunctionCall(fc),
             _ => throw new InterpreterException($"Unknown expression type: {expr.GetType().Name}", expr)
         };
     }
@@ -89,6 +96,28 @@ public class Interpreter
 
         _variables[expr.Name] = newValue;
         return newValue;
+    }
+
+    private object EvaluateFunctionCall(FunctionCall expr)
+    {
+        // Look up the efun
+        if (!_efuns.TryGet(expr.Name, out var efun) || efun == null)
+        {
+            throw new InterpreterException($"Unknown function '{expr.Name}'", expr);
+        }
+
+        // Evaluate all arguments
+        var args = expr.Arguments.Select(arg => Evaluate(arg)).ToList();
+
+        // Call the efun
+        try
+        {
+            return efun(args);
+        }
+        catch (EfunException ex)
+        {
+            throw new InterpreterException(ex.Message, expr);
+        }
     }
 
     private object EvaluateUnary(UnaryOp expr)

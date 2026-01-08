@@ -376,10 +376,37 @@ public class Parser
         return ParsePostfix();
     }
 
-    // Precedence 2: Postfix operators: ++ --
+    // Precedence 2: Postfix operators: ++ -- and function calls
     private Expression ParsePostfix()
     {
         var expr = ParsePrimary();
+
+        // Check for function call: identifier followed by (
+        if (expr is Identifier id && Match(TokenType.LeftParen))
+        {
+            var openParen = Previous();
+            var arguments = new List<Expression>();
+
+            // Parse arguments (comma-separated)
+            if (!Check(TokenType.RightParen))
+            {
+                do
+                {
+                    arguments.Add(ParseExpression());
+                } while (Match(TokenType.Comma));
+            }
+
+            if (!Match(TokenType.RightParen))
+            {
+                throw new ParserException("Expected ')' after function arguments", Current());
+            }
+
+            return new FunctionCall(id.Name, arguments)
+            {
+                Line = openParen.Line,
+                Column = openParen.Column
+            };
+        }
 
         // Check for postfix ++/--
         if (Match(TokenType.PlusPlus, TokenType.MinusMinus))

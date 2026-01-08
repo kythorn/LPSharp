@@ -484,6 +484,94 @@ public class ParserTests
 
     #endregion
 
+    #region Function Calls
+
+    [Fact]
+    public void Parse_FunctionCallNoArgs_ReturnsFunctionCall()
+    {
+        var expr = Parse("foo()");
+
+        var call = Assert.IsType<FunctionCall>(expr);
+        Assert.Equal("foo", call.Name);
+        Assert.Empty(call.Arguments);
+    }
+
+    [Fact]
+    public void Parse_FunctionCallOneArg_ReturnsFunctionCall()
+    {
+        var expr = Parse("write(42)");
+
+        var call = Assert.IsType<FunctionCall>(expr);
+        Assert.Equal("write", call.Name);
+        Assert.Single(call.Arguments);
+        var arg = Assert.IsType<NumberLiteral>(call.Arguments[0]);
+        Assert.Equal(42, arg.Value);
+    }
+
+    [Fact]
+    public void Parse_FunctionCallMultipleArgs_ReturnsFunctionCall()
+    {
+        var expr = Parse("add(1, 2, 3)");
+
+        var call = Assert.IsType<FunctionCall>(expr);
+        Assert.Equal("add", call.Name);
+        Assert.Equal(3, call.Arguments.Count);
+    }
+
+    [Fact]
+    public void Parse_FunctionCallWithExpression_ReturnsFunctionCall()
+    {
+        var expr = Parse("calc(5 + 3)");
+
+        var call = Assert.IsType<FunctionCall>(expr);
+        Assert.Equal("calc", call.Name);
+        Assert.Single(call.Arguments);
+        Assert.IsType<BinaryOp>(call.Arguments[0]);
+    }
+
+    [Fact]
+    public void Parse_FunctionCallWithString_ReturnsFunctionCall()
+    {
+        var expr = Parse("write(\"hello\")");
+
+        var call = Assert.IsType<FunctionCall>(expr);
+        Assert.Equal("write", call.Name);
+        Assert.Single(call.Arguments);
+        var arg = Assert.IsType<StringLiteral>(call.Arguments[0]);
+        Assert.Equal("hello", arg.Value);
+    }
+
+    [Fact]
+    public void Parse_NestedFunctionCall_ReturnsFunctionCall()
+    {
+        var expr = Parse("foo(bar())");
+
+        var outer = Assert.IsType<FunctionCall>(expr);
+        Assert.Equal("foo", outer.Name);
+        Assert.Single(outer.Arguments);
+        var inner = Assert.IsType<FunctionCall>(outer.Arguments[0]);
+        Assert.Equal("bar", inner.Name);
+    }
+
+    [Fact]
+    public void Parse_FunctionCallInExpression_Works()
+    {
+        var expr = Parse("1 + foo(2)");
+
+        var add = Assert.IsType<BinaryOp>(expr);
+        Assert.IsType<NumberLiteral>(add.Left);
+        Assert.IsType<FunctionCall>(add.Right);
+    }
+
+    [Fact]
+    public void Parse_FunctionCallUnclosed_ThrowsParserException()
+    {
+        var ex = Assert.Throws<ParserException>(() => Parse("foo(1, 2"));
+        Assert.Contains("')'", ex.Message);
+    }
+
+    #endregion
+
     #region Error Cases
 
     [Fact]
