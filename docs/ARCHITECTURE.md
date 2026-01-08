@@ -427,6 +427,319 @@ The driver provides a natural sandbox through the efun interface:
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
+## Connection and Session Management (Detailed)
+
+This section provides detailed flows for how connections, login, and player sessions work.
+
+### Key Concepts
+
+**Interactive Object**: An LPC object that has a network connection attached to it. The player object becomes "interactive" when a connection is attached.
+
+**Connection**: A C# object wrapping a TCP socket. Has input/output queues. Attached to exactly one interactive object at a time.
+
+**Execution Context**: When LPC code runs, the driver tracks:
+- `this_object()` - The object whose code is executing
+- `this_player()` - Who initiated the current action (can change during call chain)
+- `this_interactive()` - The object with the actual connection (stable)
+
+### Connection Lifecycle
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                       CONNECTION LIFECYCLE                                  │
+│                                                                            │
+│  Phase 1: TCP Connect                                                      │
+│  ─────────────────────                                                     │
+│                                                                            │
+│    Client                 Driver                          Mudlib           │
+│      │                      │                               │              │
+│      │───TCP connect───────►│                               │              │
+│      │                      │                               │              │
+│      │                      │──create Connection obj        │              │
+│      │                      │                               │              │
+│      │                      │──load "/secure/login.c"──────►│              │
+│      │                      │                               │              │
+│      │                      │◄─────────login object─────────│              │
+│      │                      │                               │              │
+│      │                      │──attach connection to login   │              │
+│      │                      │                               │              │
+│      │◄─────"Welcome! Enter name:"──────────────────────────│              │
+│      │                                                      │              │
+│                                                                            │
+│  Phase 2: Authentication                                                   │
+│  ───────────────────────                                                   │
+│                                                                            │
+│      │                      │                               │              │
+│      │───"Bob"─────────────►│                               │              │
+│      │                      │──set this_player=login        │              │
+│      │                      │──call login->receive("Bob")──►│              │
+│      │                      │                               │──lookup Bob  │
+│      │◄─────"Password:"─────────────────────────────────────│              │
+│      │                                                      │              │
+│      │───"secret123"───────►│                               │              │
+│      │                      │──call login->receive()───────►│              │
+│      │                      │                               │──verify pwd  │
+│      │                      │                               │              │
+│                                                                            │
+│  Phase 3: Session Transfer                                                 │
+│  ─────────────────────────                                                 │
+│                                                                            │
+│      │                      │                               │              │
+│      │                      │                   login calls:│              │
+│      │                      │◄──load_object("/save/Bob")────│              │
+│      │                      │                               │              │
+│      │                      │───────player object──────────►│              │
+│      │                      │                               │              │
+│      │                      │◄──exec(player, login)─────────│              │
+│      │                      │  (transfer connection)        │              │
+│      │                      │                               │              │
+│      │                      │──detach connection from login │              │
+│      │                      │──attach connection to player  │              │
+│      │                      │                               │              │
+│      │                      │◄──destruct(login)─────────────│              │
+│      │                      │                               │              │
+│      │                      │──move player to start room    │              │
+│      │                      │                               │              │
+│      │◄─────"Welcome back, Bob! You are in Town Square."────│              │
+│      │                                                      │              │
+│                                                                            │
+│  Phase 4: Normal Operation                                                 │
+│  ─────────────────────────                                                 │
+│                                                                            │
+│      │                      │                               │              │
+│      │───"look"────────────►│                               │              │
+│      │                      │──set this_player=Bob          │              │
+│      │                      │──call player->process_input()►│              │
+│      │                      │                               │──parse cmd   │
+│      │                      │                               │──find room   │
+│      │                      │                               │──call look() │
+│      │◄─────────────────────────"Town Square\nA busy..."────│              │
+│      │                                                      │              │
+│                                                                            │
+│  Phase 5: Disconnect                                                       │
+│  ────────────────────                                                      │
+│                                                                            │
+│      │                      │                               │              │
+│      │───TCP close─────────►│                               │              │
+│      │                      │──detect disconnect            │              │
+│      │                      │──call player->net_dead()─────►│              │
+│      │                      │                               │──save player │
+│      │                      │                               │──cleanup     │
+│      │                      │──mark player as linkdead      │              │
+│      │                      │  (or destruct after timeout)  │              │
+│      │                      │                               │              │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+### The exec() Efun
+
+The `exec(to, from)` efun is crucial - it transfers a connection from one object to another:
+
+```c
+// In /secure/login.c
+void login_successful(string username) {
+    object player = load_object("/save/" + username);
+
+    // Transfer my connection to the player object
+    // After this: I have no connection, player has my connection
+    exec(player, this_object());
+
+    // Move player into the game world
+    player->move(STARTING_ROOM);
+
+    // Self-destruct - I'm no longer needed
+    destruct(this_object());
+}
+```
+
+### this_player() vs this_interactive()
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                    this_player() vs this_interactive()                      │
+│                                                                            │
+│  Scenario: Bob types "attack orc", orc's combat code runs                  │
+│                                                                            │
+│    Bob (has connection)                                                    │
+│      │                                                                     │
+│      │───"attack orc"                                                      │
+│      │                                                                     │
+│      ▼                                                                     │
+│    bob->process_input("attack orc")                                        │
+│    │   this_object() = bob                                                 │
+│    │   this_player() = bob      ◄── who typed the command                  │
+│    │   this_interactive() = bob ◄── who has the connection                 │
+│    │                                                                       │
+│    └──► orc->attacked_by(bob)                                              │
+│         │   this_object() = orc                                            │
+│         │   this_player() = bob  ◄── STILL bob (he started this)           │
+│         │   this_interactive() = bob                                       │
+│         │                                                                  │
+│         └──► sword->do_damage(orc)                                         │
+│              │   this_object() = sword                                     │
+│              │   this_player() = bob  ◄── STILL bob                        │
+│              │   this_interactive() = bob                                  │
+│              │                                                             │
+│              └──► write("You hit the orc!")                                │
+│                   │                                                        │
+│                   │   write() looks up this_player()                       │
+│                   │   finds bob                                            │
+│                   │   sends to bob's connection                            │
+│                   ▼                                                        │
+│                   Output goes to Bob's terminal                            │
+│                                                                            │
+│  Key insight: this_player() propagates through the call chain              │
+│  so that efuns like write() always know who initiated the action           │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Driver Implementation Details
+
+```csharp
+// Simplified driver pseudocode showing context management
+
+public class Driver
+{
+    // Context stack - tracks the current "acting player"
+    private Stack<LpcObject?> _thisPlayerStack = new();
+
+    // Called when input arrives on a connection
+    public void OnInput(Connection conn, string line)
+    {
+        var interactive = conn.AttachedObject;
+
+        // Set context before executing any LPC code
+        _thisPlayerStack.Push(interactive);
+
+        try
+        {
+            // Call the LPC object's input handler
+            interactive.Call("process_input", line);
+        }
+        finally
+        {
+            _thisPlayerStack.Pop();
+        }
+    }
+
+    // Efun: this_player() - returns who initiated current action
+    public LpcObject? ThisPlayer()
+    {
+        return _thisPlayerStack.Count > 0 ? _thisPlayerStack.Peek() : null;
+    }
+
+    // Efun: this_interactive() - returns object with connection
+    // (usually same as this_player, but not always)
+    public LpcObject? ThisInteractive()
+    {
+        var player = ThisPlayer();
+        while (player != null && !player.IsInteractive)
+        {
+            player = player.CalledBy; // walk up call chain
+        }
+        return player;
+    }
+
+    // Efun: write(msg) - send to this_player()'s connection
+    public void Write(string msg)
+    {
+        var player = ThisPlayer();
+        if (player?.Connection != null)
+        {
+            player.Connection.Send(msg);
+        }
+    }
+}
+```
+
+### Connection Object Design
+
+```csharp
+public class Connection
+{
+    public TcpClient Socket { get; }
+    public LpcObject? AttachedObject { get; private set; }
+
+    // Input handling
+    private StringBuilder _inputBuffer = new();
+    private Queue<string> _inputQueue = new();
+
+    // Output handling
+    private Queue<string> _outputQueue = new();
+
+    public void AttachTo(LpcObject obj)
+    {
+        // Detach from previous object
+        if (AttachedObject != null)
+        {
+            AttachedObject.Connection = null;
+        }
+
+        // Attach to new object
+        AttachedObject = obj;
+        obj.Connection = this;
+    }
+
+    public void Send(string message)
+    {
+        _outputQueue.Enqueue(message);
+    }
+
+    // Called by network layer when data arrives
+    public void OnDataReceived(byte[] data)
+    {
+        // Buffer data, extract complete lines
+        // Add to _inputQueue for processing
+    }
+}
+```
+
+### Interactive Object Properties
+
+```csharp
+public class LpcObject
+{
+    // All objects have these
+    public string Path { get; }
+    public Dictionary<string, object> Variables { get; }
+
+    // Only interactive objects have a connection
+    public Connection? Connection { get; set; }
+
+    public bool IsInteractive => Connection != null;
+
+    // Environment (what room/container this object is in)
+    public LpcObject? Environment { get; set; }
+
+    // Inventory (objects inside this one)
+    public List<LpcObject> Inventory { get; } = new();
+}
+```
+
+### Message Routing Summary
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     MESSAGE ROUTING EFUNS                            │
+│                                                                     │
+│  write(msg)                                                         │
+│    └─► Send to this_player()'s connection                           │
+│                                                                     │
+│  tell_object(who, msg)                                              │
+│    └─► Send to 'who's connection (if interactive)                   │
+│                                                                     │
+│  tell_room(room, msg, exclude)                                      │
+│    └─► Send to all interactive objects in room except excluded      │
+│                                                                     │
+│  say(msg)                                                           │
+│    └─► tell_room(environment(this_player()), msg, ({this_player()}))│
+│        (tell everyone in room except speaker)                       │
+│                                                                     │
+│  shout(msg)                                                         │
+│    └─► Send to ALL interactive objects everywhere                   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
 ## Future Considerations
 
 ### Domains System

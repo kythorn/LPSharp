@@ -92,6 +92,15 @@ The project follows a 10-milestone phased approach (see docs/IMPLEMENTATION.md):
 
 ## Development Guidelines
 
+### Transparency
+
+Your thinking must be obvious to the user at all times:
+- **Never silently skip past errors or failures** - always explain what happened and why
+- **If you decide something is acceptable** (e.g., a shell issue vs a code bug), explain your reasoning explicitly
+- **If you work around a problem**, say so and explain why
+- **If a test fails or a command errors**, investigate and explain before moving on
+- The user should never have to ask "why did you ignore that?" - preempt with clear explanations
+
 ### Commit Messages
 
 Use descriptive commit messages that explain what changed and why:
