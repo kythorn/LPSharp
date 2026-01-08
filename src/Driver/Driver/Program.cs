@@ -12,6 +12,7 @@ try
     {
         "--tokenize" => Tokenize(args),
         "--eval" => Eval(args),
+        "--repl" => Repl(),
         "--help" or "-h" => PrintUsage(),
         _ => UnknownCommand(args[0])
     };
@@ -45,6 +46,7 @@ int PrintUsage()
         Usage:
           driver --tokenize <file>     Tokenize an LPC file and print tokens
           driver --eval "<expression>" Evaluate an LPC expression
+          driver --repl                Start interactive REPL
           driver --help                Show this help message
 
         Examples:
@@ -99,6 +101,52 @@ int Eval(string[] args)
     var result = interpreter.Evaluate(ast);
 
     Console.WriteLine(result);
+    return 0;
+}
+
+int Repl()
+{
+    Console.WriteLine("LPSharp REPL - Type expressions to evaluate, 'quit' to exit");
+    var interpreter = new Interpreter();
+
+    while (true)
+    {
+        Console.Write("LPC> ");
+        var line = Console.ReadLine();
+
+        if (line == null || line == "quit")
+        {
+            break;
+        }
+
+        if (string.IsNullOrWhiteSpace(line))
+        {
+            continue;
+        }
+
+        try
+        {
+            var lexer = new Lexer(line);
+            var tokens = lexer.Tokenize();
+            var parser = new Parser(tokens);
+            var ast = parser.Parse();
+            var result = interpreter.Evaluate(ast);
+            Console.WriteLine(result);
+        }
+        catch (LexerException ex)
+        {
+            Console.Error.WriteLine($"Lexer error: {ex.Message}");
+        }
+        catch (ParserException ex)
+        {
+            Console.Error.WriteLine($"Parse error: {ex.Message}");
+        }
+        catch (InterpreterException ex)
+        {
+            Console.Error.WriteLine($"Runtime error: {ex.Message}");
+        }
+    }
+
     return 0;
 }
 
