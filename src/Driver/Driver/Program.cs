@@ -13,6 +13,7 @@ try
         "--tokenize" => Tokenize(args),
         "--eval" => Eval(args),
         "--repl" => Repl(),
+        "--server" => Server(args),
         "--help" or "-h" => PrintUsage(),
         _ => UnknownCommand(args[0])
     };
@@ -47,11 +48,13 @@ int PrintUsage()
           driver --tokenize <file>     Tokenize an LPC file and print tokens
           driver --eval "<expression>" Evaluate an LPC expression
           driver --repl                Start interactive REPL
+          driver --server [port]       Start telnet server (default port: 4000)
           driver --help                Show this help message
 
         Examples:
           driver --tokenize test.c
           driver --eval "5 + 3 * 2"
+          driver --server 4000
         """);
     return 0;
 }
@@ -147,6 +150,24 @@ int Repl()
         }
     }
 
+    return 0;
+}
+
+int Server(string[] args)
+{
+    int port = 4000; // Default port
+
+    if (args.Length >= 2)
+    {
+        if (!int.TryParse(args[1], out port) || port < 1 || port > 65535)
+        {
+            Console.Error.WriteLine($"Error: Invalid port number: {args[1]}");
+            return 1;
+        }
+    }
+
+    using var server = new TelnetServer(port);
+    server.Run();
     return 0;
 }
 
