@@ -6,6 +6,8 @@ namespace Driver;
 /// </summary>
 public class Interpreter
 {
+    private readonly Dictionary<string, object> _variables = new();
+
     /// <summary>
     /// Evaluate an expression and return the result.
     /// Returns int for numeric results, string for string results.
@@ -20,8 +22,26 @@ public class Interpreter
             UnaryOp u => EvaluateUnary(u),
             BinaryOp b => EvaluateBinary(b),
             TernaryOp t => EvaluateTernary(t),
+            Identifier id => EvaluateIdentifier(id),
+            Assignment a => EvaluateAssignment(a),
             _ => throw new InterpreterException($"Unknown expression type: {expr.GetType().Name}", expr)
         };
+    }
+
+    private object EvaluateIdentifier(Identifier expr)
+    {
+        if (_variables.TryGetValue(expr.Name, out var value))
+        {
+            return value;
+        }
+        throw new InterpreterException($"Undefined variable '{expr.Name}'", expr);
+    }
+
+    private object EvaluateAssignment(Assignment expr)
+    {
+        var value = Evaluate(expr.Value);
+        _variables[expr.Name] = value;
+        return value;
     }
 
     private object EvaluateUnary(UnaryOp expr)

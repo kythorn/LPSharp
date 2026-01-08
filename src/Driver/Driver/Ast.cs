@@ -40,6 +40,16 @@ public record GroupedExpression(Expression Inner) : Expression;
 public record TernaryOp(Expression Condition, Expression ThenBranch, Expression ElseBranch) : Expression;
 
 /// <summary>
+/// Variable reference: x
+/// </summary>
+public record Identifier(string Name) : Expression;
+
+/// <summary>
+/// Assignment: name = value
+/// </summary>
+public record Assignment(string Name, Expression Value) : Expression;
+
+/// <summary>
 /// Binary operators with their precedence levels (higher = binds tighter).
 /// Follows authentic LDMud precedence where bitwise ops are below comparison.
 /// </summary>

@@ -292,6 +292,83 @@ public class ParserTests
 
     #endregion
 
+    #region Identifiers and Assignment
+
+    [Fact]
+    public void Parse_Identifier_ReturnsIdentifier()
+    {
+        var expr = Parse("foo");
+
+        var id = Assert.IsType<Identifier>(expr);
+        Assert.Equal("foo", id.Name);
+    }
+
+    [Fact]
+    public void Parse_Assignment_ReturnsAssignment()
+    {
+        var expr = Parse("x = 5");
+
+        var assign = Assert.IsType<Assignment>(expr);
+        Assert.Equal("x", assign.Name);
+        Assert.IsType<NumberLiteral>(assign.Value);
+    }
+
+    [Fact]
+    public void Parse_ChainedAssignment_RightToLeft()
+    {
+        // x = y = 5 should parse as x = (y = 5)
+        var expr = Parse("x = y = 5");
+
+        var outer = Assert.IsType<Assignment>(expr);
+        Assert.Equal("x", outer.Name);
+
+        var inner = Assert.IsType<Assignment>(outer.Value);
+        Assert.Equal("y", inner.Name);
+        Assert.IsType<NumberLiteral>(inner.Value);
+    }
+
+    [Fact]
+    public void Parse_IdentifierInExpression_Works()
+    {
+        var expr = Parse("x + y * 2");
+
+        var add = Assert.IsType<BinaryOp>(expr);
+        Assert.IsType<Identifier>(add.Left);
+
+        var mult = Assert.IsType<BinaryOp>(add.Right);
+        Assert.IsType<Identifier>(mult.Left);
+    }
+
+    [Fact]
+    public void Parse_AssignmentWithExpression_Works()
+    {
+        var expr = Parse("x = 5 + 3");
+
+        var assign = Assert.IsType<Assignment>(expr);
+        Assert.Equal("x", assign.Name);
+        Assert.IsType<BinaryOp>(assign.Value);
+    }
+
+    [Fact]
+    public void Parse_AssignmentPrecedenceBelowTernary()
+    {
+        // x = a ? b : c should parse as x = (a ? b : c)
+        var expr = Parse("x = 1 ? 2 : 3");
+
+        var assign = Assert.IsType<Assignment>(expr);
+        Assert.Equal("x", assign.Name);
+        Assert.IsType<TernaryOp>(assign.Value);
+    }
+
+    [Fact]
+    public void Parse_InvalidAssignmentTarget_ThrowsParserException()
+    {
+        var ex = Assert.Throws<ParserException>(() => Parse("5 = 3"));
+        Assert.Contains("Invalid assignment target", ex.Message);
+    }
+
+    #endregion
+
     #region Error Cases
 
     [Fact]

@@ -493,8 +493,8 @@ void run_tests() {
 |-----------|--------|
 | 1. Lexer | ✅ Complete |
 | 2. Parser | ✅ Complete (expressions) |
-| 3. Interpreter + REPL | ✅ Complete (expressions) |
-| 4. Functions & Variables | In Progress |
+| 3. Interpreter + REPL | ✅ Complete |
+| 4. Functions & Variables | 🔄 In Progress (variables done) |
 | 5. Object Model | Not Started |
 | 6. Telnet Server | Not Started |
 | 7. Player & Commands | Not Started |

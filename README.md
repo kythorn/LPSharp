@@ -16,19 +16,20 @@ This project follows the classic two-layer architecture:
 
 | Layer | Language | Purpose |
 |-------|----------|---------|
-| **Driver** | C# / .NET 8+ | Engine: networking, object management, LPC interpreter |
+| **Driver** | C# / .NET 9 | Engine: networking, object management, LPC interpreter |
 | **Mudlib** | LPC (custom) | Game content: rooms, items, NPCs, commands, combat |
 
 The driver exposes a set of **efuns** (external functions) that LPC code can call. This provides natural sandboxing—scripts can only do what the driver explicitly allows.
 
 ## Project Status
 
-**Phase**: Milestone 3 (Interpreter + REPL) - In Progress
+**Phase**: Milestone 4 (Functions & Variables) - In Progress
 
 Completed:
 - Milestone 1: Lexer - Full LPC tokenization
 - Milestone 2: Parser - Expression parsing with authentic LPC operator precedence
 - Milestone 3: Interpreter + REPL - Expression evaluation and interactive REPL
+- Variable assignment and retrieval in REPL
 
 See [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) for the phased implementation plan.
 

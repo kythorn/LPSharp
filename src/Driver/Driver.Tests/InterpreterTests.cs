@@ -285,4 +285,120 @@ public class InterpreterTests
     }
 
     #endregion
+
+    #region Variables
+
+    [Fact]
+    public void Evaluate_Assignment_ReturnsValue()
+    {
+        Assert.Equal(5, Eval("x = 5"));
+    }
+
+    [Fact]
+    public void Evaluate_Assignment_StoresValue()
+    {
+        var interpreter = new Interpreter();
+
+        var lexer1 = new Lexer("x = 42");
+        var parser1 = new Parser(lexer1.Tokenize());
+        interpreter.Evaluate(parser1.Parse());
+
+        var lexer2 = new Lexer("x");
+        var parser2 = new Parser(lexer2.Tokenize());
+        var result = interpreter.Evaluate(parser2.Parse());
+
+        Assert.Equal(42, result);
+    }
+
+    [Fact]
+    public void Evaluate_VariableInExpression()
+    {
+        var interpreter = new Interpreter();
+
+        var lexer1 = new Lexer("x = 5");
+        var parser1 = new Parser(lexer1.Tokenize());
+        interpreter.Evaluate(parser1.Parse());
+
+        var lexer2 = new Lexer("x + 3");
+        var parser2 = new Parser(lexer2.Tokenize());
+        var result = interpreter.Evaluate(parser2.Parse());
+
+        Assert.Equal(8, result);
+    }
+
+    [Fact]
+    public void Evaluate_MultipleVariables()
+    {
+        var interpreter = new Interpreter();
+
+        Evaluate(interpreter, "x = 10");
+        Evaluate(interpreter, "y = 20");
+        var result = Evaluate(interpreter, "x + y");
+
+        Assert.Equal(30, result);
+    }
+
+    [Fact]
+    public void Evaluate_VariableReassignment()
+    {
+        var interpreter = new Interpreter();
+
+        Evaluate(interpreter, "x = 5");
+        Evaluate(interpreter, "x = 10");
+        var result = Evaluate(interpreter, "x");
+
+        Assert.Equal(10, result);
+    }
+
+    [Fact]
+    public void Evaluate_ChainedAssignment()
+    {
+        var interpreter = new Interpreter();
+
+        var result = Evaluate(interpreter, "x = y = 5");
+        Assert.Equal(5, result);
+        Assert.Equal(5, Evaluate(interpreter, "x"));
+        Assert.Equal(5, Evaluate(interpreter, "y"));
+    }
+
+    [Fact]
+    public void Evaluate_StringVariable()
+    {
+        var interpreter = new Interpreter();
+
+        Evaluate(interpreter, "name = \"Alice\"");
+        var result = Evaluate(interpreter, "\"Hello, \" + name");
+
+        Assert.Equal("Hello, Alice", result);
+    }
+
+    [Fact]
+    public void Evaluate_VariableInTernary()
+    {
+        var interpreter = new Interpreter();
+
+        Evaluate(interpreter, "x = 1");
+        var result = Evaluate(interpreter, "x ? 10 : 20");
+
+        Assert.Equal(10, result);
+    }
+
+    [Fact]
+    public void Evaluate_UndefinedVariable_ThrowsInterpreterException()
+    {
+        var ex = Assert.Throws<InterpreterException>(() => Eval("undefined_var"));
+        Assert.Contains("Undefined variable", ex.Message);
+        Assert.Contains("undefined_var", ex.Message);
+    }
+
+    private static object Evaluate(Interpreter interpreter, string source)
+    {
+        var lexer = new Lexer(source);
+        var tokens = lexer.Tokenize();
+        var parser = new Parser(tokens);
+        var ast = parser.Parse();
+        return interpreter.Evaluate(ast);
+    }
+
+    #endregion
 }

@@ -28,7 +28,33 @@ public class Parser
 
     private Expression ParseExpression()
     {
-        return ParseTernary();
+        return ParseAssignment();
+    }
+
+    // Precedence 15: Assignment (right-to-left)
+    private Expression ParseAssignment()
+    {
+        var expr = ParseTernary();
+
+        if (Match(TokenType.Equal))
+        {
+            var equals = Previous();
+
+            // Left side must be an identifier for simple assignment
+            if (expr is Identifier id)
+            {
+                var value = ParseAssignment(); // Right-to-left associativity
+                return new Assignment(id.Name, value)
+                {
+                    Line = equals.Line,
+                    Column = equals.Column
+                };
+            }
+
+            throw new ParserException("Invalid assignment target", equals);
+        }
+
+        return expr;
     }
 
     // Precedence 14: Ternary conditional (right-to-left)
@@ -337,8 +363,17 @@ public class Parser
             };
         }
 
-        // Ternary: We handle it here for now since it's the lowest binary precedence
-        // Actually, ternary should be handled at a higher level... let's add it
+        // Identifier (variable reference)
+        if (Match(TokenType.Identifier))
+        {
+            var token = Previous();
+            return new Identifier(token.Lexeme)
+            {
+                Line = token.Line,
+                Column = token.Column
+            };
+        }
+
         throw new ParserException($"Expected expression, got '{Current().Lexeme}'", Current());
     }
 
