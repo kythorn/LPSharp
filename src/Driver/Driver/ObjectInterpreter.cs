@@ -23,11 +23,33 @@ public class ObjectInterpreter
     /// </summary>
     private readonly Stack<MudObject> _callStack = new();
 
+    /// <summary>
+    /// Local variable scopes for function parameters and local variables.
+    /// Stack of dictionaries - one per function call depth.
+    /// Top of stack is the current function's local scope.
+    /// </summary>
+    private readonly Stack<Dictionary<string, object?>> _localScopes = new();
+
     public ObjectInterpreter(ObjectManager objectManager, TextWriter? output = null)
     {
         _objectManager = objectManager;
         _efuns = new EfunRegistry(output);
         _currentObject = null!; // Will be set before execution
+
+        // Register object-specific efuns
+        RegisterObjectEfuns();
+    }
+
+    /// <summary>
+    /// Register object-specific efuns that need access to ObjectManager and interpreter state.
+    /// </summary>
+    private void RegisterObjectEfuns()
+    {
+        _efuns.Register("clone_object", CloneObjectEfun);
+        _efuns.Register("this_object", ThisObjectEfun);
+        _efuns.Register("load_object", LoadObjectEfun);
+        _efuns.Register("find_object", FindObjectEfun);
+        _efuns.Register("destruct", DestructEfun);
     }
 
     /// <summary>
@@ -247,7 +269,13 @@ public class ObjectInterpreter
 
     private object EvaluateIdentifier(Identifier id)
     {
-        // Look up variable in current object
+        // Check local scope first (function parameters/locals)
+        if (_localScopes.Count > 0 && _localScopes.Peek().TryGetValue(id.Name, out var localValue))
+        {
+            return localValue ?? 0;
+        }
+
+        // Then check object variables
         var value = _currentObject.GetVariable(id.Name);
         return value ?? 0; // Default to 0 if null
     }
@@ -255,20 +283,51 @@ public class ObjectInterpreter
     private object EvaluateAssignment(Assignment expr)
     {
         var value = Evaluate(expr.Value);
-        _currentObject.SetVariable(expr.Name, value);
+
+        // Check if it's a local variable
+        if (_localScopes.Count > 0 && _localScopes.Peek().ContainsKey(expr.Name))
+        {
+            _localScopes.Peek()[expr.Name] = value;
+        }
+        else
+        {
+            // It's an object variable
+            _currentObject.SetVariable(expr.Name, value);
+        }
+
         return value;
     }
 
     private object EvaluateCompoundAssignment(CompoundAssignment expr)
     {
-        var currentValue = _currentObject.GetVariable(expr.Name);
+        // Get current value (check local scope first)
+        object? currentValue;
+        bool isLocal = false;
+
+        if (_localScopes.Count > 0 && _localScopes.Peek().TryGetValue(expr.Name, out var localVal))
+        {
+            currentValue = localVal;
+            isLocal = true;
+        }
+        else
+        {
+            currentValue = _currentObject.GetVariable(expr.Name);
+        }
+
         var rightValue = Evaluate(expr.Value);
 
         // Handle string concatenation for +=
         if (expr.Operator == BinaryOperator.Add && currentValue is string leftStr)
         {
             var result = leftStr + ToStr(rightValue);
-            _currentObject.SetVariable(expr.Name, result);
+            if (isLocal)
+            {
+                _localScopes.Peek()[expr.Name] = result;
+            }
+            else
+            {
+                _currentObject.SetVariable(expr.Name, result);
+            }
             return result;
         }
 
@@ -293,7 +352,14 @@ public class ObjectInterpreter
             _ => throw new ObjectInterpreterException($"Unsupported compound assignment operator: {expr.Operator}")
         };
 
-        _currentObject.SetVariable(expr.Name, newValue);
+        if (isLocal)
+        {
+            _localScopes.Peek()[expr.Name] = newValue;
+        }
+        else
+        {
+            _currentObject.SetVariable(expr.Name, newValue);
+        }
         return newValue;
     }
 
@@ -347,23 +413,15 @@ public class ObjectInterpreter
                 $"Function '{funcDef.Name}' expects {funcDef.Parameters.Count} arguments, got {args.Count}");
         }
 
-        // Save current parameter values (for nested calls)
-        var savedParams = new Dictionary<string, object?>();
+        // Create local scope for function parameters
+        var localScope = new Dictionary<string, object?>();
         for (int i = 0; i < funcDef.Parameters.Count; i++)
         {
-            var paramName = funcDef.Parameters[i];
-            if (_currentObject.Variables.TryGetValue(paramName, out var oldValue))
-            {
-                savedParams[paramName] = oldValue;
-            }
-            else
-            {
-                savedParams[paramName] = null; // Didn't exist
-            }
-
-            // Set parameter value
-            _currentObject.SetVariable(paramName, args[i]);
+            localScope[funcDef.Parameters[i]] = args[i];
         }
+
+        // Push local scope onto stack
+        _localScopes.Push(localScope);
 
         try
         {
@@ -377,18 +435,8 @@ public class ObjectInterpreter
         }
         finally
         {
-            // Restore parameter values
-            foreach (var param in funcDef.Parameters)
-            {
-                if (savedParams.TryGetValue(param, out var oldValue))
-                {
-                    if (oldValue != null)
-                    {
-                        _currentObject.SetVariable(param, oldValue);
-                    }
-                    // If it didn't exist before, we leave it (LPC parameters persist)
-                }
-            }
+            // Pop local scope
+            _localScopes.Pop();
         }
     }
 
@@ -477,24 +525,50 @@ public class ObjectInterpreter
 
     private object EvaluatePreIncrement(Identifier id)
     {
+        // Check local scope first
+        if (_localScopes.Count > 0 && _localScopes.Peek().TryGetValue(id.Name, out var localVal))
+        {
+            var value = ToInt(localVal ?? 0);
+            var newValue = value + 1;
+            _localScopes.Peek()[id.Name] = newValue;
+            return newValue;
+        }
+
         var current = _currentObject.GetVariable(id.Name);
-        var value = ToInt(current ?? 0);
-        var newValue = value + 1;
-        _currentObject.SetVariable(id.Name, newValue);
-        return newValue;
+        var val = ToInt(current ?? 0);
+        var newVal = val + 1;
+        _currentObject.SetVariable(id.Name, newVal);
+        return newVal;
     }
 
     private object EvaluatePreDecrement(Identifier id)
     {
+        // Check local scope first
+        if (_localScopes.Count > 0 && _localScopes.Peek().TryGetValue(id.Name, out var localVal))
+        {
+            var value = ToInt(localVal ?? 0);
+            var newValue = value - 1;
+            _localScopes.Peek()[id.Name] = newValue;
+            return newValue;
+        }
+
         var current = _currentObject.GetVariable(id.Name);
-        var value = ToInt(current ?? 0);
-        var newValue = value - 1;
-        _currentObject.SetVariable(id.Name, newValue);
-        return newValue;
+        var val = ToInt(current ?? 0);
+        var newVal = val - 1;
+        _currentObject.SetVariable(id.Name, newVal);
+        return newVal;
     }
 
     private object EvaluatePostIncrement(Identifier id)
     {
+        // Check local scope first
+        if (_localScopes.Count > 0 && _localScopes.Peek().TryGetValue(id.Name, out var localVal))
+        {
+            var val = ToInt(localVal ?? 0);
+            _localScopes.Peek()[id.Name] = val + 1;
+            return val; // Return old value
+        }
+
         var current = _currentObject.GetVariable(id.Name);
         var value = ToInt(current ?? 0);
         _currentObject.SetVariable(id.Name, value + 1);
@@ -503,6 +577,14 @@ public class ObjectInterpreter
 
     private object EvaluatePostDecrement(Identifier id)
     {
+        // Check local scope first
+        if (_localScopes.Count > 0 && _localScopes.Peek().TryGetValue(id.Name, out var localVal))
+        {
+            var val = ToInt(localVal ?? 0);
+            _localScopes.Peek()[id.Name] = val - 1;
+            return val; // Return old value
+        }
+
         var current = _currentObject.GetVariable(id.Name);
         var value = ToInt(current ?? 0);
         _currentObject.SetVariable(id.Name, value - 1);
@@ -564,6 +646,124 @@ public class ObjectInterpreter
     public MudObject? GetPreviousObject()
     {
         return _callStack.Count > 0 ? _callStack.Peek() : null;
+    }
+
+    #endregion
+
+    #region Object Efuns
+
+    /// <summary>
+    /// clone_object(path) - Create a new clone of an object.
+    /// Returns the clone object.
+    /// </summary>
+    private object CloneObjectEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("clone_object() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string path)
+        {
+            throw new EfunException("clone_object() requires a string path argument");
+        }
+
+        try
+        {
+            var clone = _objectManager.CloneObject(path);
+            return clone;
+        }
+        catch (Exception ex)
+        {
+            throw new EfunException($"clone_object(\"{path}\") failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// this_object() - Returns the current object being executed.
+    /// </summary>
+    private object ThisObjectEfun(List<object> args)
+    {
+        if (args.Count != 0)
+        {
+            throw new EfunException("this_object() takes no arguments");
+        }
+
+        return _currentObject;
+    }
+
+    /// <summary>
+    /// load_object(path) - Load or get a blueprint object.
+    /// Returns the blueprint object.
+    /// </summary>
+    private object LoadObjectEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("load_object() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string path)
+        {
+            throw new EfunException("load_object() requires a string path argument");
+        }
+
+        try
+        {
+            var blueprint = _objectManager.LoadObject(path);
+            return blueprint;
+        }
+        catch (Exception ex)
+        {
+            throw new EfunException($"load_object(\"{path}\") failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// find_object(name) - Find an object by its full name.
+    /// Returns the object if found, or 0 if not found (LPC convention).
+    /// </summary>
+    private object FindObjectEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("find_object() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string name)
+        {
+            throw new EfunException("find_object() requires a string name argument");
+        }
+
+        var obj = _objectManager.FindObject(name);
+        return obj ?? (object)0; // LPC convention: return 0 for "not found"
+    }
+
+    /// <summary>
+    /// destruct(object) - Destroy an object and remove it from the game.
+    /// Returns 1 on success.
+    /// </summary>
+    private object DestructEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("destruct() requires exactly 1 argument");
+        }
+
+        if (args[0] is not MudObject obj)
+        {
+            throw new EfunException("destruct() requires an object argument");
+        }
+
+        try
+        {
+            _objectManager.DestructObject(obj);
+            return 1;
+        }
+        catch (Exception ex)
+        {
+            throw new EfunException($"destruct() failed: {ex.Message}");
+        }
     }
 
     #endregion

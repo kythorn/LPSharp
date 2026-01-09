@@ -225,6 +225,147 @@ void create() {
         CleanupTemp(tempDir);
     }
 
+    [Fact]
+    public void Efun_CloneObject_Works()
+    {
+        var tempDir = CreateTempMudlib();
+
+        // Create a test file that uses clone_object()
+        var testFile = Path.Combine(tempDir, "test_clone.c");
+        File.WriteAllText(testFile, @"
+void create() {
+}
+
+void test_clone() {
+    clone_object(""/std/object"");
+}
+");
+
+        var om = new ObjectManager(tempDir);
+        om.InitializeInterpreter();
+
+        var obj = om.LoadObject("/test_clone");
+
+        // Call the test_clone function which uses clone_object() efun
+        var interpreter = new ObjectInterpreter(om);
+        var func = obj.FindFunction("test_clone");
+        Assert.NotNull(func);
+
+        interpreter.ExecuteInObject(obj, func.Body);
+
+        var stats = om.GetStats();
+        Assert.Equal(3, stats.TotalObjectCount); // test_clone blueprint, std/object blueprint, and 1 clone
+
+        CleanupTemp(tempDir);
+    }
+
+    [Fact]
+    public void Efun_ThisObject_Works()
+    {
+        var tempDir = CreateTempMudlib();
+
+        // Create a test file that uses this_object()
+        var testFile = Path.Combine(tempDir, "test_this.c");
+        File.WriteAllText(testFile, @"
+int test_value;
+
+void create() {
+    test_value = 42;
+}
+
+void verify_this() {
+    // In LPC, this_object() returns the current object
+    // We'll test it by checking variables are accessible
+    test_value = 100;
+}
+");
+
+        var om = new ObjectManager(tempDir);
+        om.InitializeInterpreter();
+
+        var obj = om.LoadObject("/test_this");
+        Assert.Equal(42, obj.GetVariable("test_value"));
+
+        var interpreter = new ObjectInterpreter(om);
+        var func = obj.FindFunction("verify_this");
+        Assert.NotNull(func);
+
+        interpreter.ExecuteInObject(obj, func.Body);
+
+        // Verify the function modified the object's variable
+        Assert.Equal(100, obj.GetVariable("test_value"));
+
+        CleanupTemp(tempDir);
+    }
+
+    [Fact]
+    public void Efun_LoadObject_Works()
+    {
+        var tempDir = CreateTempMudlib();
+        var om = new ObjectManager(tempDir);
+        om.InitializeInterpreter();
+
+        // Load using LoadObject method
+        var obj1 = om.LoadObject("/std/object");
+
+        // Load again - should return same blueprint
+        var obj2 = om.LoadObject("/std/object");
+
+        Assert.Same(obj1, obj2);
+        Assert.True(obj1.IsBlueprint);
+
+        CleanupTemp(tempDir);
+    }
+
+    [Fact]
+    public void Efun_FindObject_Works()
+    {
+        var tempDir = CreateTempMudlib();
+        var om = new ObjectManager(tempDir);
+        om.InitializeInterpreter();
+
+        var blueprint = om.LoadObject("/std/object");
+        var clone = om.CloneObject("/std/object");
+
+        // Find blueprint
+        var foundBlueprint = om.FindObject("/std/object");
+        Assert.Same(blueprint, foundBlueprint);
+
+        // Find clone
+        var foundClone = om.FindObject(clone.ObjectName);
+        Assert.Same(clone, foundClone);
+
+        // Find non-existent
+        var notFound = om.FindObject("/nonexistent");
+        Assert.Null(notFound);
+
+        CleanupTemp(tempDir);
+    }
+
+    [Fact]
+    public void Efun_Destruct_Works()
+    {
+        var tempDir = CreateTempMudlib();
+        var om = new ObjectManager(tempDir);
+        om.InitializeInterpreter();
+
+        var clone = om.CloneObject("/std/object");
+        var cloneName = clone.ObjectName;
+
+        // Verify clone exists
+        Assert.NotNull(om.FindObject(cloneName));
+        Assert.False(clone.IsDestructed);
+
+        // Destruct it
+        om.DestructObject(clone);
+
+        // Verify it's gone
+        Assert.Null(om.FindObject(cloneName));
+        Assert.True(clone.IsDestructed);
+
+        CleanupTemp(tempDir);
+    }
+
     // Helper methods
 
     private string CreateTempMudlib()

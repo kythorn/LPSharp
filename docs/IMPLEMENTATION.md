@@ -217,12 +217,15 @@ void create() {
 - `this_object()` efun
 
 **Deliverables**:
-- [ ] MudObject.cs with variable storage
-- [ ] ObjectManager.cs for lifecycle management
-- [ ] Inheritance resolution
-- [ ] `create()` hook
-- [ ] `clone_object()` and `this_object()` efuns
-- [ ] Unit tests for object model
+- [x] MudObject.cs with variable storage
+- [x] ObjectManager.cs for lifecycle management
+- [x] Inheritance resolution
+- [x] `create()` hook
+- [x] `clone_object()`, `this_object()`, `load_object()`, `find_object()`, `destruct()` efuns
+- [x] Unit tests for object model (16 tests passing)
+- [x] Local scope for function parameters
+- [x] Object-centric execution model
+- [x] Thread-safe blueprint caching
 
 ---
 
@@ -492,10 +495,10 @@ void run_tests() {
 | Milestone | Status |
 |-----------|--------|
 | 1. Lexer | ✅ Complete |
-| 2. Parser | ✅ Complete (expressions) |
+| 2. Parser | ✅ Complete |
 | 3. Interpreter + REPL | ✅ Complete |
-| 4. Functions & Variables | 🔄 In Progress (variables, compound assignment, ++/-- done) |
-| 5. Object Model | Not Started |
+| 4. Functions & Variables | ✅ Complete |
+| 5. Object Model | ✅ Complete |
 | 6. Telnet Server | 🔄 Partial (basic networking, see notes below) |
 | 7. Player & Commands | Not Started |
 | 8. Rooms & Movement | Not Started |
@@ -506,15 +509,29 @@ void run_tests() {
 
 ## Current State Notes
 
-### What's Working (as of Milestone 6 partial)
+### What's Working (as of Milestone 5 complete)
 
 **Interpreter/REPL:**
 - Full expression evaluation with correct operator precedence
 - Variables: assignment (`x = 5`), compound (`x += 3`), increment/decrement (`++x`, `x--`)
 - All operators: arithmetic, comparison, logical, bitwise, ternary
 - String concatenation and comparison
+- Control flow: if/else, while, for, break, continue, return
+- User-defined functions with parameters and return values
 - Efuns: `write()`, `typeof()`, `strlen()`, `to_string()`, `to_int()`
-- 274 unit tests passing
+- 274+ unit tests passing
+
+**Object Model (Milestone 5):**
+- Blueprint/clone architecture (singletons vs instances)
+- Inheritance with `inherit` statement
+- Parent function calls with `::` operator
+- Object-centric execution (all code runs within object context)
+- Lifecycle hooks (`create()` called on load/clone)
+- Object variables (persistent state per instance)
+- Local scope for function parameters
+- Object efuns: `clone_object()`, `this_object()`, `load_object()`, `find_object()`, `destruct()`
+- Thread-safe ObjectManager with concurrent blueprint caching
+- 16 ObjectManager tests passing
 
 **Networking:**
 - Telnet server accepts multiple concurrent connections (`--server [port]`)
@@ -527,17 +544,16 @@ void run_tests() {
 
 **Networking gaps (needed for real players):**
 - No login system - connections drop directly into REPL
-- No player objects - just raw interpreter sessions
+- No player objects - connections need to be linked to player objects
 - No `this_player()` / `this_interactive()` context tracking
 - No `exec()` to transfer connections between objects
 - `write()` uses constructor-injected TextWriter, not `this_player()` lookup
 - No `tell_object()`, `tell_room()`, `say()` message routing
 
-**Interpreter gaps:**
-- No statements (if/else, while, for, return)
-- No user-defined functions
-- No arrays or mappings
-- No object model (load, clone, inherit)
+**Language gaps:**
+- No arrays or mappings (syntax exists but not implemented)
+- No call_other syntax (`obj->func()`)
+- No mapping/array indexing and manipulation
 
 ### Architecture Decision Pending
 
