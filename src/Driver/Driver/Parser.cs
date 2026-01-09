@@ -30,6 +30,39 @@ public class Parser
     }
 
     /// <summary>
+    /// Parse a complete LPC program file (top-level declarations).
+    /// Returns a list of statements including inherits, variables, and functions.
+    /// </summary>
+    public List<Statement> ParseProgram()
+    {
+        var statements = new List<Statement>();
+
+        while (!IsAtEnd() && Current().Type != TokenType.Eof)
+        {
+            // Parse top-level declarations
+            if (Check(TokenType.Inherit))
+            {
+                statements.Add(ParseInheritStatement());
+            }
+            else if (IsFunctionDefinitionStart())
+            {
+                statements.Add(ParseFunctionDefinition());
+            }
+            else if (IsTypeName(Current().Type))
+            {
+                // Could be variable declaration
+                statements.Add(ParseVariableDeclaration());
+            }
+            else
+            {
+                throw new ParserException($"Unexpected token at top level: '{Current().Lexeme}'", Current());
+            }
+        }
+
+        return statements;
+    }
+
+    /// <summary>
     /// Parse input as either a statement or expression.
     /// If it looks like a statement (starts with keyword or {), parse as statement.
     /// Otherwise parse as expression.
@@ -143,7 +176,8 @@ public class Parser
     {
         var startToken = Current();
 
-        // Skip return type (we don't enforce types yet)
+        // Capture return type
+        var returnType = Current().Lexeme;
         Advance();
 
         // Function name
@@ -191,10 +225,69 @@ public class Parser
         }
         var body = ParseBlockStatement();
 
-        return new FunctionDefinition(name, parameters, body)
+        return new FunctionDefinition(returnType, name, parameters, body)
         {
             Line = startToken.Line,
             Column = startToken.Column
+        };
+    }
+
+    private InheritStatement ParseInheritStatement()
+    {
+        var inheritToken = Current();
+        Advance(); // consume 'inherit'
+
+        if (!Match(TokenType.String))
+        {
+            throw new ParserException("Expected string path after 'inherit'", Current());
+        }
+        var path = Previous().Lexeme;
+
+        // Remove quotes from path
+        if (path.StartsWith('"') && path.EndsWith('"'))
+        {
+            path = path[1..^1];
+        }
+
+        if (!Match(TokenType.Semicolon))
+        {
+            throw new ParserException("Expected ';' after inherit statement", Current());
+        }
+
+        return new InheritStatement(path)
+        {
+            Line = inheritToken.Line,
+            Column = inheritToken.Column
+        };
+    }
+
+    private VariableDeclaration ParseVariableDeclaration()
+    {
+        var typeToken = Current();
+        var type = typeToken.Lexeme;
+        Advance(); // consume type
+
+        if (!Match(TokenType.Identifier))
+        {
+            throw new ParserException("Expected variable name after type", Current());
+        }
+        var name = Previous().Lexeme;
+
+        Expression? initializer = null;
+        if (Match(TokenType.Equal))
+        {
+            initializer = ParseExpression();
+        }
+
+        if (!Match(TokenType.Semicolon))
+        {
+            throw new ParserException("Expected ';' after variable declaration", Current());
+        }
+
+        return new VariableDeclaration(type, name, initializer)
+        {
+            Line = typeToken.Line,
+            Column = typeToken.Column
         };
     }
 

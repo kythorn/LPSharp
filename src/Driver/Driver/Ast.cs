@@ -174,7 +174,20 @@ public record ContinueStatement : Statement;
 public record ReturnStatement(Expression? Value) : Statement;
 
 /// <summary>
-/// Function definition: type name(params) { body }
-/// For now, type is just stored as string and not enforced.
+/// Inherit statement: inherit "/path/to/file";
+/// Loads and inherits from the specified object.
 /// </summary>
-public record FunctionDefinition(string Name, List<string> Parameters, Statement Body) : Statement;
+public record InheritStatement(string Path) : Statement;
+
+/// <summary>
+/// Variable declaration: type name;  or  type name = value;
+/// Examples: int damage;  string name = "sword";
+/// </summary>
+public record VariableDeclaration(string Type, string Name, Expression? Initializer) : Statement;
+
+/// <summary>
+/// Function definition: type name(params) { body }
+/// Type is stored as string for now (int, string, void, object, etc.)
+/// Parameters are stored as strings for now (will add types later).
+/// </summary>
+public record FunctionDefinition(string ReturnType, string Name, List<string> Parameters, Statement Body) : Statement;

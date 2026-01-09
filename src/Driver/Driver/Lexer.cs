@@ -47,7 +47,7 @@ public class Lexer
         return tokens;
     }
 
-    private Token? NextToken()
+    public Token? NextToken()
     {
         SkipWhitespaceAndComments();
 
