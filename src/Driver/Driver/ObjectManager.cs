@@ -47,9 +47,23 @@ public class ObjectManager
     private readonly Dictionary<string, HashSet<string>> _inheritanceChildren = new();
     private readonly object _inheritanceLock = new();
 
+    /// <summary>
+    /// Object interpreter for executing LPC code within object contexts.
+    /// </summary>
+    private ObjectInterpreter? _interpreter;
+
     public ObjectManager(string mudlibPath)
     {
         MudlibPath = Path.GetFullPath(mudlibPath);
+    }
+
+    /// <summary>
+    /// Initialize the interpreter. Should be called after ObjectManager is constructed.
+    /// Separated to avoid circular dependency (interpreter needs ObjectManager).
+    /// </summary>
+    public void InitializeInterpreter(TextWriter? output = null)
+    {
+        _interpreter = new ObjectInterpreter(this, output);
     }
 
     /// <summary>
@@ -104,8 +118,11 @@ public class ObjectManager
         // Register in all objects
         _allObjects[clone.ObjectName] = clone;
 
-        // Call create() on the clone (Milestone 5 - implemented separately)
-        // CallCreate(clone);
+        // Call create() on the clone
+        if (_interpreter != null)
+        {
+            CallCreate(clone);
+        }
 
         return clone;
     }
@@ -191,8 +208,11 @@ public class ObjectManager
         // Register in all objects
         _allObjects[blueprint.ObjectName] = blueprint;
 
-        // Call create() on the blueprint (Milestone 5 - implemented separately)
-        // CallCreate(blueprint);
+        // Execute variable initializers and call create()
+        if (_interpreter != null)
+        {
+            CallCreate(blueprint);
+        }
 
         return blueprint;
     }
@@ -333,6 +353,60 @@ public class ObjectManager
             TotalObjectCount = _allObjects.Count,
             CloneCount = _allObjects.Values.Count(o => !o.IsBlueprint)
         };
+    }
+
+    /// <summary>
+    /// Call the create() lifecycle hook on an object.
+    /// Executes variable initializers and the create() function.
+    /// </summary>
+    private void CallCreate(MudObject obj)
+    {
+        if (_interpreter == null)
+        {
+            throw new ObjectManagerException("Interpreter not initialized. Call InitializeInterpreter() first.");
+        }
+
+        try
+        {
+            // First, execute variable initializers from the program
+            ExecuteVariableInitializers(obj);
+
+            // Then call create() if it exists
+            var createFunc = obj.FindFunction("create");
+            if (createFunc != null)
+            {
+                _interpreter.ExecuteInObject(obj, createFunc.Body);
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new ObjectManagerException($"Error calling create() on {obj.ObjectName}: {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Execute variable initializers for an object.
+    /// In LPC, variable declarations can have initializers: int damage = 10;
+    /// These are executed before create().
+    /// </summary>
+    private void ExecuteVariableInitializers(MudObject obj)
+    {
+        if (_interpreter == null || obj.Program.Ast == null)
+        {
+            return;
+        }
+
+        // Find all variable declarations in the program's AST
+        if (obj.Program.Ast is BlockStatement block)
+        {
+            foreach (var stmt in block.Statements)
+            {
+                if (stmt is VariableDeclaration varDecl && varDecl.Initializer != null)
+                {
+                    _interpreter.ExecuteInObject(obj, varDecl);
+                }
+            }
+        }
     }
 }
 
