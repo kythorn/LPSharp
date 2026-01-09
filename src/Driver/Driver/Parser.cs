@@ -930,6 +930,43 @@ public class Parser
             };
         }
 
+        // Parent function call: ::function()
+        if (Match(TokenType.ColonColon))
+        {
+            var colonColon = Previous();
+
+            if (!Match(TokenType.Identifier))
+            {
+                throw new ParserException("Expected function name after '::'", Current());
+            }
+            var functionName = Previous().Lexeme;
+
+            if (!Match(TokenType.LeftParen))
+            {
+                throw new ParserException("Expected '(' after parent function name", Current());
+            }
+
+            var arguments = new List<Expression>();
+            if (!Check(TokenType.RightParen))
+            {
+                do
+                {
+                    arguments.Add(ParseExpression());
+                } while (Match(TokenType.Comma));
+            }
+
+            if (!Match(TokenType.RightParen))
+            {
+                throw new ParserException("Expected ')' after parent function arguments", Current());
+            }
+
+            return new FunctionCall(functionName, arguments, IsParentCall: true)
+            {
+                Line = colonColon.Line,
+                Column = colonColon.Column
+            };
+        }
+
         // Grouped expression: (expr)
         if (Match(TokenType.LeftParen))
         {

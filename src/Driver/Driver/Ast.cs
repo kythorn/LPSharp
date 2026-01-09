@@ -55,9 +55,10 @@ public record Assignment(string Name, Expression Value) : Expression;
 public record CompoundAssignment(string Name, BinaryOperator Operator, Expression Value) : Expression;
 
 /// <summary>
-/// Function call: name(arg1, arg2, ...)
+/// Function call: name(arg1, arg2, ...) or ::name(arg1, arg2, ...)
+/// IsParentCall=true indicates :: prefix (call parent/inherited version)
 /// </summary>
-public record FunctionCall(string Name, List<Expression> Arguments) : Expression;
+public record FunctionCall(string Name, List<Expression> Arguments, bool IsParentCall = false) : Expression;
 
 /// <summary>
 /// Binary operators with their precedence levels (higher = binds tighter).

@@ -10,9 +10,24 @@ public class Interpreter
     private readonly Dictionary<string, FunctionDefinition> _functions = new();
     private readonly EfunRegistry _efuns;
 
+    /// <summary>
+    /// The current object context during execution (for :: operator support).
+    /// Set when executing object methods.
+    /// </summary>
+    private MudObject? _currentObject;
+
     public Interpreter(TextWriter? output = null)
     {
         _efuns = new EfunRegistry(output);
+    }
+
+    /// <summary>
+    /// Set the current object context for execution.
+    /// Used when calling functions on objects to support :: operator.
+    /// </summary>
+    public void SetCurrentObject(MudObject? obj)
+    {
+        _currentObject = obj;
     }
 
     #region Statement Execution
@@ -232,10 +247,41 @@ public class Interpreter
         // Evaluate all arguments first
         var args = expr.Arguments.Select(arg => Evaluate(arg)).ToList();
 
+        // Handle parent function call (::function())
+        if (expr.IsParentCall)
+        {
+            if (_currentObject == null)
+            {
+                throw new InterpreterException(
+                    ":: operator can only be used within object methods (no current object context)",
+                    expr);
+            }
+
+            var parentFunc = _currentObject.FindParentFunction(expr.Name);
+            if (parentFunc == null)
+            {
+                throw new InterpreterException(
+                    $"Parent function '{expr.Name}' not found in inheritance chain",
+                    expr);
+            }
+
+            return CallUserFunction(parentFunc, args, expr);
+        }
+
         // Check for user-defined function first
         if (_functions.TryGetValue(expr.Name, out var funcDef))
         {
             return CallUserFunction(funcDef, args, expr);
+        }
+
+        // Check in current object if available
+        if (_currentObject != null)
+        {
+            var objectFunc = _currentObject.FindFunction(expr.Name);
+            if (objectFunc != null)
+            {
+                return CallUserFunction(objectFunc, args, expr);
+            }
         }
 
         // Check for efun
