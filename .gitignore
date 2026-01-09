@@ -1,6 +1,6 @@
 # .NET / C#
 bin/
-obj/
+# obj/ pattern moved below to be more specific
 *.dll
 *.exe
 *.pdb
@@ -32,7 +32,8 @@ x86/
 [Aa][Rr][Mm]64/
 bld/
 [Bb]in/
-[Oo]bj/
+# Only ignore C# obj directories in src/, not mudlib/obj/
+src/**/[Oo]bj/
 [Ll]og/
 [Ll]ogs/
 
