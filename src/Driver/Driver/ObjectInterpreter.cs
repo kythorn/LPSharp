@@ -178,6 +178,18 @@ public class ObjectInterpreter
 
         // Input handling efuns
         _efuns.Register("input_to", InputToEfun);
+
+        // Action system efuns
+        _efuns.Register("add_action", AddActionEfun);
+        _efuns.Register("query_verb", QueryVerbEfun);
+        _efuns.Register("notify_fail", NotifyFailEfun);
+        _efuns.Register("enable_commands", EnableCommandsEfun);
+        _efuns.Register("disable_commands", DisableCommandsEfun);
+        _efuns.Register("command", CommandEfun);
+
+        // Additional object efuns
+        _efuns.Register("clonep", ClonepEfun);
+        _efuns.Register("say", SayEfun);
     }
 
     /// <summary>
@@ -337,7 +349,7 @@ public class ObjectInterpreter
         return type switch
         {
             "string" => "",
-            _ => 0  // int, object, mixed, void, etc. default to 0
+            _ => 0L  // int, object, mixed, void, etc. default to 0
         };
     }
 
@@ -500,7 +512,11 @@ public class ObjectInterpreter
     {
         if (a == null && b == null) return true;
         if (a == null || b == null) return false;
-        if (a is int ia && b is int ib) return ia == ib;
+        // Handle int/long comparison
+        if ((a is int or long) && (b is int or long))
+        {
+            return Convert.ToInt64(a) == Convert.ToInt64(b);
+        }
         if (a is string sa && b is string sb) return sa == sb;
         return a.Equals(b);
     }
@@ -671,7 +687,7 @@ public class ObjectInterpreter
             {
                 return value;
             }
-            return 0; // LPC returns 0 for missing mapping keys
+            return 0L; // LPC returns 0 for missing mapping keys
         }
 
         throw new ObjectInterpreterException($"Cannot index into {target?.GetType().Name ?? "null"}");
@@ -687,9 +703,10 @@ public class ObjectInterpreter
 
         if (target is not MudObject targetObj)
         {
-            if (target is int i && i == 0)
+            // Check for 0 (null object) - could be int or long
+            if ((target is int i && i == 0) || (target is long l && l == 0))
             {
-                return 0; // Calling on 0 returns 0 (LPC convention)
+                return 0L; // Calling on 0 returns 0 (LPC convention)
             }
             throw new ObjectInterpreterException($"Arrow call target must be an object, got {target?.GetType().Name ?? "null"}");
         }
@@ -704,11 +721,11 @@ public class ObjectInterpreter
         // Call the function on the target object
         try
         {
-            return CallFunctionOnObject(targetObj, arrow.FunctionName, args) ?? 0;
+            return CallFunctionOnObject(targetObj, arrow.FunctionName, args) ?? 0L;
         }
         catch (ReturnException ret)
         {
-            return ret.Value ?? 0;
+            return ret.Value ?? 0L;
         }
     }
 
@@ -792,8 +809,8 @@ public class ObjectInterpreter
             BinaryOperator.BitwiseAnd => left_i & right_i,
             BinaryOperator.BitwiseOr => left_i | right_i,
             BinaryOperator.BitwiseXor => left_i ^ right_i,
-            BinaryOperator.LeftShift => left_i << right_i,
-            BinaryOperator.RightShift => left_i >> right_i,
+            BinaryOperator.LeftShift => left_i << (int)right_i,
+            BinaryOperator.RightShift => left_i >> (int)right_i,
             _ => throw new ObjectInterpreterException($"Unsupported compound assignment operator: {expr.Operator}")
         };
 
@@ -1180,11 +1197,11 @@ public class ObjectInterpreter
         {
             // Execute function body
             Execute(funcDef.Body);
-            return 0; // Default return value
+            return 0L; // Default return value
         }
         catch (ReturnException ret)
         {
-            return ret.Value ?? 0; // Return 0 if null
+            return ret.Value ?? 0L; // Return 0 if null
         }
         finally
         {
@@ -1205,17 +1222,17 @@ public class ObjectInterpreter
         if (expr.Operator == BinaryOperator.LogicalAnd)
         {
             var left = Evaluate(expr.Left);
-            if (!IsTrue(left)) return 0;
+            if (!IsTrue(left)) return 0L;
             var right = Evaluate(expr.Right);
-            return IsTrue(right) ? 1 : 0;
+            return IsTrue(right) ? 1L : 0L;
         }
 
         if (expr.Operator == BinaryOperator.LogicalOr)
         {
             var left = Evaluate(expr.Left);
-            if (IsTrue(left)) return 1;
+            if (IsTrue(left)) return 1L;
             var right = Evaluate(expr.Right);
-            return IsTrue(right) ? 1 : 0;
+            return IsTrue(right) ? 1L : 0L;
         }
 
         // Evaluate both operands
@@ -1241,8 +1258,8 @@ public class ObjectInterpreter
         {
             return expr.Operator switch
             {
-                BinaryOperator.Equal => string.Equals(ls, rs) ? 1 : 0,
-                BinaryOperator.NotEqual => !string.Equals(ls, rs) ? 1 : 0,
+                BinaryOperator.Equal => string.Equals(ls, rs) ? 1L : 0L,
+                BinaryOperator.NotEqual => !string.Equals(ls, rs) ? 1L : 0L,
                 _ => throw new ObjectInterpreterException($"Cannot apply operator {expr.Operator} to strings")
             };
         }
@@ -1251,11 +1268,11 @@ public class ObjectInterpreter
         // This matches authentic LPC behavior
         if (expr.Operator == BinaryOperator.Equal || expr.Operator == BinaryOperator.NotEqual)
         {
-            bool sameType = (leftValue is int && rightValue is int) ||
+            bool sameType = (IsInteger(leftValue) && IsInteger(rightValue)) ||
                            (leftValue is string && rightValue is string);
             if (!sameType)
             {
-                return expr.Operator == BinaryOperator.Equal ? 0 : 1;
+                return expr.Operator == BinaryOperator.Equal ? 0L : 1L;
             }
         }
 
@@ -1272,17 +1289,17 @@ public class ObjectInterpreter
                 : throw new ObjectInterpreterException("Division by zero"),
             BinaryOperator.Modulo => right_i != 0 ? left_i % right_i
                 : throw new ObjectInterpreterException("Modulo by zero"),
-            BinaryOperator.Less => left_i < right_i ? 1 : 0,
-            BinaryOperator.LessEqual => left_i <= right_i ? 1 : 0,
-            BinaryOperator.Greater => left_i > right_i ? 1 : 0,
-            BinaryOperator.GreaterEqual => left_i >= right_i ? 1 : 0,
-            BinaryOperator.Equal => left_i == right_i ? 1 : 0,
-            BinaryOperator.NotEqual => left_i != right_i ? 1 : 0,
+            BinaryOperator.Less => left_i < right_i ? 1L : 0L,
+            BinaryOperator.LessEqual => left_i <= right_i ? 1L : 0L,
+            BinaryOperator.Greater => left_i > right_i ? 1L : 0L,
+            BinaryOperator.GreaterEqual => left_i >= right_i ? 1L : 0L,
+            BinaryOperator.Equal => left_i == right_i ? 1L : 0L,
+            BinaryOperator.NotEqual => left_i != right_i ? 1L : 0L,
             BinaryOperator.BitwiseAnd => left_i & right_i,
             BinaryOperator.BitwiseOr => left_i | right_i,
             BinaryOperator.BitwiseXor => left_i ^ right_i,
-            BinaryOperator.LeftShift => left_i << right_i,
-            BinaryOperator.RightShift => left_i >> right_i,
+            BinaryOperator.LeftShift => left_i << (int)right_i,
+            BinaryOperator.RightShift => left_i >> (int)right_i,
             _ => throw new ObjectInterpreterException($"Unknown binary operator: {expr.Operator}")
         };
     }
@@ -1384,18 +1401,28 @@ public class ObjectInterpreter
     {
         return value switch
         {
+            long l => l != 0,
             int i => i != 0,
             string s => !string.IsNullOrEmpty(s),
             _ => value != null
         };
     }
 
-    private int ToInt(object? value)
+    /// <summary>
+    /// Check if a value is an integer type (int or long).
+    /// </summary>
+    private static bool IsInteger(object? value)
+    {
+        return value is int or long;
+    }
+
+    private long ToInt(object? value)
     {
         return value switch
         {
+            long l => l,
             int i => i,
-            string s => int.TryParse(s, out var result) ? result : 0,
+            string s => long.TryParse(s, out var result) ? result : 0,
             null => 0,
             _ => 0
         };
@@ -1406,6 +1433,7 @@ public class ObjectInterpreter
         return value switch
         {
             string s => s,
+            long l => l.ToString(),
             int i => i.ToString(),
             _ => value?.ToString() ?? ""
         };
@@ -1625,7 +1653,8 @@ public class ObjectInterpreter
             var context = ExecutionContext.Current;
             what = context?.PlayerObject ?? _currentObject;
 
-            if (args[0] is int i && i == 0)
+            // Check for 0 (null destination) - could be int or long
+            if ((args[0] is int i && i == 0) || (args[0] is long l && l == 0))
             {
                 destination = null; // Moving to null (remove from environment)
             }
@@ -1647,7 +1676,8 @@ public class ObjectInterpreter
             }
             what = obj;
 
-            if (args[1] is int i && i == 0)
+            // Check for 0 (null destination) - could be int or long
+            if ((args[1] is int i && i == 0) || (args[1] is long l && l == 0))
             {
                 destination = null; // Moving to null (remove from environment)
             }
@@ -1667,14 +1697,14 @@ public class ObjectInterpreter
 
         if (what == null)
         {
-            return 0;
+            return 0L;
         }
 
         // Perform the move
         var success = what.MoveTo(destination);
         if (!success)
         {
-            return 0;
+            return 0L;
         }
 
         // Call init() hooks if we moved to a valid destination
@@ -1683,7 +1713,7 @@ public class ObjectInterpreter
             CallInitHooks(what, destination);
         }
 
-        return 1;
+        return 1L;
     }
 
     /// <summary>
@@ -1788,10 +1818,10 @@ public class ObjectInterpreter
         if (args[0] is MudObject targetObj)
         {
             MudObject? container = args.Count == 2 && args[1] is MudObject c ? c : GetSearchContainer();
-            if (container == null) return 0;
+            if (container == null) return 0L;
 
             // Check if targetObj is in the container's contents
-            return container.Contents.Contains(targetObj) ? targetObj : 0;
+            return container.Contents.Contains(targetObj) ? targetObj : 0L;
         }
 
         // First arg should be a string name
@@ -1809,9 +1839,10 @@ public class ObjectInterpreter
         {
             if (args[1] is not MudObject whereObj)
             {
-                if (args[1] is int i && i == 0)
+                // Check for 0 (null object) - could be int or long
+                if ((args[1] is int i && i == 0) || (args[1] is long l && l == 0))
                 {
-                    return 0; // present(name, 0) returns 0
+                    return 0L; // present(name, 0) returns 0
                 }
                 throw new EfunException("present() second argument must be an object");
             }
@@ -1824,7 +1855,7 @@ public class ObjectInterpreter
 
         if (where == null)
         {
-            return 0;
+            return 0L;
         }
 
         // Search through contents
@@ -1843,7 +1874,7 @@ public class ObjectInterpreter
             }
         }
 
-        return 0; // Not found
+        return 0L; // Not found
     }
 
     /// <summary>
@@ -1891,11 +1922,13 @@ public class ObjectInterpreter
         try
         {
             var result = CallFunctionOnObject(obj, "id", new List<object> { name });
-            return result is int i && i != 0;
+            // Check for non-zero result (could be int or long)
+            return (result is int i && i != 0) || (result is long l && l != 0);
         }
         catch (ReturnException ret)
         {
-            return ret.Value is int i && i != 0;
+            // Check for non-zero result (could be int or long)
+            return (ret.Value is int i && i != 0) || (ret.Value is long l && l != 0);
         }
         catch
         {
@@ -2034,7 +2067,7 @@ public class ObjectInterpreter
 
         var flag = args[0] is int i ? i != 0 : false;
         _currentObject.IsLiving = flag;
-        return flag ? 1 : 0;
+        return flag ? 1L : 0L;
     }
 
     /// <summary>
@@ -2050,7 +2083,7 @@ public class ObjectInterpreter
 
         if (args[0] is MudObject obj)
         {
-            return obj.IsLiving ? 1 : 0;
+            return obj.IsLiving ? 1L : 0L;
         }
 
         if (args[0] is int i && i == 0)
@@ -2148,7 +2181,7 @@ public class ObjectInterpreter
             throw new EfunException("interactive() takes 0 or 1 argument");
         }
 
-        return target?.IsInteractive == true ? 1 : 0;
+        return target?.IsInteractive == true ? 1L : 0L;
     }
 
     /// <summary>
@@ -2236,7 +2269,7 @@ public class ObjectInterpreter
             GameLoop.Instance?.UnregisterHeartbeat(obj);
         }
 
-        return wasEnabled ? 1 : 0;
+        return wasEnabled ? 1L : 0L;
     }
 
     /// <summary>
@@ -2265,7 +2298,7 @@ public class ObjectInterpreter
             throw new EfunException("query_heart_beat() takes 0 or 1 argument");
         }
 
-        return obj.HeartbeatEnabled ? 1 : 0;
+        return obj.HeartbeatEnabled ? 1L : 0L;
     }
 
     #endregion
@@ -3262,6 +3295,254 @@ public class ObjectInterpreter
             Function = function,
             Flags = flags
         };
+
+        return 1;
+    }
+
+    #endregion
+
+    #region Action System Efuns
+
+    /// <summary>
+    /// add_action(func, verb) or add_action(func, verb, flag)
+    /// Register an action handler for a verb on this_object().
+    /// The action is available to players who can see this object (in same room or inventory).
+    /// flag: 0 = exact match (default), 1 = prefix match, 2 = override core commands
+    /// Returns 1.
+    /// </summary>
+    private object AddActionEfun(List<object> args)
+    {
+        if (args.Count < 2 || args.Count > 3)
+        {
+            throw new EfunException("add_action() requires 2 or 3 arguments");
+        }
+
+        if (args[0] is not string function)
+        {
+            throw new EfunException("add_action() first argument must be a function name");
+        }
+
+        if (args[1] is not string verb)
+        {
+            throw new EfunException("add_action() second argument must be a verb string");
+        }
+
+        var flags = MudObject.ActionFlags.None;
+        if (args.Count == 3)
+        {
+            var flagValue = ToInt(args[2]);
+            if ((flagValue & 1) != 0)
+            {
+                flags |= MudObject.ActionFlags.MatchPrefix;
+            }
+            if ((flagValue & 2) != 0)
+            {
+                flags |= MudObject.ActionFlags.OverrideCore;
+            }
+        }
+
+        _currentObject.AddAction(function, verb, flags);
+        return 1;
+    }
+
+    /// <summary>
+    /// query_verb() - Returns the current command verb being processed.
+    /// Returns 0 if not in a command context.
+    /// </summary>
+    private object QueryVerbEfun(List<object> args)
+    {
+        if (args.Count != 0)
+        {
+            throw new EfunException("query_verb() takes no arguments");
+        }
+
+        var context = ExecutionContext.Current;
+        if (context?.CurrentVerb != null)
+        {
+            return context.CurrentVerb;
+        }
+        return 0;
+    }
+
+    /// <summary>
+    /// notify_fail(msg) - Set the failure message for the current command.
+    /// If no action handler returns 1, this message is shown instead of "What?".
+    /// Returns 1.
+    /// </summary>
+    private object NotifyFailEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("notify_fail() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string message)
+        {
+            throw new EfunException("notify_fail() argument must be a string");
+        }
+
+        var context = ExecutionContext.Current;
+        if (context != null)
+        {
+            context.NotifyFailMessage = message;
+        }
+        return 1;
+    }
+
+    /// <summary>
+    /// enable_commands() - Enable command processing for this object.
+    /// Typically called by player objects to indicate they can receive commands.
+    /// Returns 1.
+    /// </summary>
+    private object EnableCommandsEfun(List<object> args)
+    {
+        if (args.Count != 0)
+        {
+            throw new EfunException("enable_commands() takes no arguments");
+        }
+
+        _currentObject.CommandsEnabled = true;
+        return 1;
+    }
+
+    /// <summary>
+    /// disable_commands() - Disable command processing for this object.
+    /// Returns 1.
+    /// </summary>
+    private object DisableCommandsEfun(List<object> args)
+    {
+        if (args.Count != 0)
+        {
+            throw new EfunException("disable_commands() takes no arguments");
+        }
+
+        _currentObject.CommandsEnabled = false;
+        return 1;
+    }
+
+    /// <summary>
+    /// command(str) - Execute a command as this_player().
+    /// Useful for forcing actions or implementing aliases.
+    /// Returns 1 if the command was handled, 0 otherwise.
+    /// </summary>
+    private object CommandEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("command() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string cmdString)
+        {
+            throw new EfunException("command() argument must be a string");
+        }
+
+        var context = ExecutionContext.Current;
+        if (context?.PlayerObject == null)
+        {
+            return 0; // No player context
+        }
+
+        var gameLoop = GameLoop.Instance;
+        if (gameLoop == null)
+        {
+            return 0;
+        }
+
+        // Queue the command for processing
+        // Note: We execute immediately in the current context rather than queueing
+        // to maintain LPC semantics where command() is synchronous
+        return gameLoop.ExecuteCommandImmediate(context, cmdString) ? 1L : 0L;
+    }
+
+    #endregion
+
+    #region Additional Object Efuns
+
+    /// <summary>
+    /// clonep(obj) - Returns 1 if obj is a clone (not a blueprint), 0 otherwise.
+    /// </summary>
+    private object ClonepEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("clonep() requires exactly 1 argument");
+        }
+
+        if (args[0] is not MudObject obj)
+        {
+            return 0; // Not an object, so not a clone
+        }
+
+        return obj.IsBlueprint ? 0 : 1;
+    }
+
+    /// <summary>
+    /// say(msg) - Send message to all objects in the same room as this_player(),
+    /// except this_player() themselves. Convenience wrapper for tell_room().
+    /// </summary>
+    private object SayEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("say() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string message)
+        {
+            throw new EfunException("say() argument must be a string");
+        }
+
+        var context = ExecutionContext.Current;
+        var player = context?.PlayerObject;
+
+        if (player == null)
+        {
+            return 0; // No player context
+        }
+
+        var room = player.Environment;
+        if (room == null)
+        {
+            return 0; // Player not in a room
+        }
+
+        // Send to all objects in room except player
+        foreach (var obj in room.Contents)
+        {
+            if (obj == player || obj.IsDestructed)
+            {
+                continue;
+            }
+
+            // If the object is interactive (a player), send the message
+            if (obj.IsInteractive && !string.IsNullOrEmpty(obj.ConnectionId))
+            {
+                context?.OutputQueue?.Enqueue(new OutputMessage
+                {
+                    ConnectionId = obj.ConnectionId,
+                    Content = message
+                });
+            }
+
+            // Also try catch_tell() for NPCs
+            var catchTell = obj.FindFunction("catch_tell");
+            if (catchTell != null)
+            {
+                try
+                {
+                    CallFunctionOnObject(obj, "catch_tell", new List<object> { message });
+                }
+                catch (ReturnException)
+                {
+                    // Normal return
+                }
+                catch
+                {
+                    // Ignore errors in catch_tell
+                }
+            }
+        }
 
         return 1;
     }

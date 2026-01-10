@@ -11,8 +11,9 @@ public abstract record Expression
 
 /// <summary>
 /// Integer literal: 42
+/// LPC integers are 64-bit to support large values (XP, gold, etc.)
 /// </summary>
-public record NumberLiteral(int Value) : Expression;
+public record NumberLiteral(long Value) : Expression;
 
 /// <summary>
 /// String literal: "hello"

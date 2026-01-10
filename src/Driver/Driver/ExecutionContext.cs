@@ -81,6 +81,23 @@ public class ExecutionContext
     public ConcurrentQueue<OutputMessage>? OutputQueue { get; init; }
 
     /// <summary>
+    /// The current command verb being processed.
+    /// Set by command resolution, used by query_verb().
+    /// </summary>
+    public string? CurrentVerb { get; set; }
+
+    /// <summary>
+    /// The current command arguments being processed.
+    /// </summary>
+    public string? CurrentArgs { get; set; }
+
+    /// <summary>
+    /// The failure message to display if no action handles the command.
+    /// Set by notify_fail(), cleared between commands.
+    /// </summary>
+    public string? NotifyFailMessage { get; set; }
+
+    /// <summary>
     /// Send output to the player's connection.
     /// </summary>
     public void SendOutput(string message)

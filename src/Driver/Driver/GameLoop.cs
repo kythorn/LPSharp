@@ -100,6 +100,33 @@ public class GameLoop
 
     #endregion
 
+    #region Command Resolution System
+
+    /// <summary>
+    /// Protected commands that can NEVER be overridden by add_action.
+    /// These are critical for player safety and game integrity.
+    /// </summary>
+    private static readonly HashSet<string> ProtectedCommands = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "quit", "save", "password", "who", "tell", "shout", "bug", "typo", "idea"
+    };
+
+    /// <summary>
+    /// Core commands that have standard implementations in /cmds/.
+    /// These can only be overridden by add_action with the OverrideCore flag.
+    /// </summary>
+    private static readonly HashSet<string> CoreCommands = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "look", "l", "go", "get", "take", "drop", "put", "give",
+        "inventory", "i", "inv", "score", "say", "emote",
+        "north", "south", "east", "west", "up", "down",
+        "n", "s", "e", "w", "u", "d",
+        "northeast", "northwest", "southeast", "southwest",
+        "ne", "nw", "se", "sw"
+    };
+
+    #endregion
+
     /// <summary>
     /// Callback invoked when a player session should be disconnected.
     /// Set by TelnetServer to handle disconnection.
@@ -745,12 +772,15 @@ public class GameLoop
         {
             PlayerObject = session.PlayerObject,
             ConnectionId = cmd.ConnectionId,
-            OutputQueue = _outputQueue
+            OutputQueue = _outputQueue,
+            CurrentVerb = verb,
+            CurrentArgs = args,
+            NotifyFailMessage = null
         };
 
         context.Execute(() =>
         {
-            ExecuteCommand(session, verb, args);
+            ExecuteCommand(context, session, verb, args);
         });
 
         // Check if player was destructed (quit command)
@@ -807,11 +837,179 @@ public class GameLoop
     }
 
     /// <summary>
-    /// Execute a command for a player.
+    /// Execute a command for a player using three-tier resolution:
+    /// 1. Protected commands (always /cmds/, never overridable)
+    /// 2. Core commands (/cmds/ unless OverrideCore flag set)
+    /// 3. add_action handlers from room, room contents, inventory
+    /// 4. Fallback to /cmds/ for any other verb
     /// </summary>
-    private void ExecuteCommand(PlayerSession session, string verb, string args)
+    private void ExecuteCommand(ExecutionContext context, PlayerSession session, string verb, string args)
     {
-        // Try to load the command object
+        // Tier 1: Protected commands - always use /cmds/, never allow override
+        if (ProtectedCommands.Contains(verb))
+        {
+            if (!ExecuteCmdFile(session, verb, args))
+            {
+                SendToPlayer(session.ConnectionId, $"Unknown command: {verb}\r\n");
+            }
+            return;
+        }
+
+        // Tier 2: Check for add_action handlers with OverrideCore flag for core commands
+        if (CoreCommands.Contains(verb))
+        {
+            // Check if any action has OverrideCore flag
+            var overrideAction = FindActionWithOverride(session.PlayerObject, verb);
+            if (overrideAction != null)
+            {
+                if (TryExecuteAction(context, session, overrideAction, args))
+                {
+                    return;
+                }
+            }
+
+            // Otherwise, use the /cmds/ implementation
+            if (ExecuteCmdFile(session, verb, args))
+            {
+                return;
+            }
+            // If /cmds/ file doesn't exist, fall through to add_action handlers
+        }
+
+        // Tier 3: Check add_action handlers (for non-core commands, or core without /cmds/ file)
+        var actions = CollectActions(session.PlayerObject, verb);
+        foreach (var action in actions)
+        {
+            if (TryExecuteAction(context, session, action, args))
+            {
+                return; // Action handled the command
+            }
+        }
+
+        // Tier 4: Fallback to /cmds/ for any verb (non-core commands)
+        if (!CoreCommands.Contains(verb))
+        {
+            if (ExecuteCmdFile(session, verb, args))
+            {
+                return;
+            }
+        }
+
+        // No handler found - show notify_fail message or default
+        var failMessage = context.NotifyFailMessage ?? "What?\r\n";
+        SendToPlayer(session.ConnectionId, failMessage);
+    }
+
+    /// <summary>
+    /// Execute a command immediately (for command() efun).
+    /// Returns true if the command was handled.
+    /// </summary>
+    public bool ExecuteCommandImmediate(ExecutionContext context, string cmdString)
+    {
+        if (_interpreter == null || context.PlayerObject == null)
+        {
+            return false;
+        }
+
+        // Parse verb and args
+        var input = cmdString.Trim();
+        if (string.IsNullOrEmpty(input))
+        {
+            return false;
+        }
+
+        var spaceIndex = input.IndexOf(' ');
+        string verb, args;
+        if (spaceIndex >= 0)
+        {
+            verb = input[..spaceIndex].ToLowerInvariant();
+            args = input[(spaceIndex + 1)..];
+        }
+        else
+        {
+            verb = input.ToLowerInvariant();
+            args = "";
+        }
+
+        // Get session for player
+        PlayerSession? session;
+        lock (_sessionLock)
+        {
+            session = _sessions.Values.FirstOrDefault(s => s.PlayerObject == context.PlayerObject);
+        }
+
+        if (session == null)
+        {
+            return false;
+        }
+
+        // Save and update context
+        var oldVerb = context.CurrentVerb;
+        var oldArgs = context.CurrentArgs;
+        var oldNotifyFail = context.NotifyFailMessage;
+
+        context.CurrentVerb = verb;
+        context.CurrentArgs = args;
+        context.NotifyFailMessage = null;
+
+        try
+        {
+            // Run command resolution
+            // For simplicity, we'll check if any action handles it or if /cmds/ handles it
+
+            // Protected commands
+            if (ProtectedCommands.Contains(verb))
+            {
+                return ExecuteCmdFile(session, verb, args);
+            }
+
+            // Core commands with override check
+            if (CoreCommands.Contains(verb))
+            {
+                var overrideAction = FindActionWithOverride(session.PlayerObject, verb);
+                if (overrideAction != null && TryExecuteAction(context, session, overrideAction, args))
+                {
+                    return true;
+                }
+                if (ExecuteCmdFile(session, verb, args))
+                {
+                    return true;
+                }
+            }
+
+            // add_action handlers
+            var actions = CollectActions(session.PlayerObject, verb);
+            foreach (var action in actions)
+            {
+                if (TryExecuteAction(context, session, action, args))
+                {
+                    return true;
+                }
+            }
+
+            // Fallback to /cmds/
+            if (!CoreCommands.Contains(verb))
+            {
+                return ExecuteCmdFile(session, verb, args);
+            }
+
+            return false;
+        }
+        finally
+        {
+            // Restore context
+            context.CurrentVerb = oldVerb;
+            context.CurrentArgs = oldArgs;
+            context.NotifyFailMessage = oldNotifyFail;
+        }
+    }
+
+    /// <summary>
+    /// Try to execute a /cmds/ file for the given verb.
+    /// Returns true if the command file was found and executed.
+    /// </summary>
+    private bool ExecuteCmdFile(PlayerSession session, string verb, string args)
+    {
         MudObject? cmdObj = null;
         try
         {
@@ -819,40 +1017,158 @@ public class GameLoop
         }
         catch (ObjectManagerException)
         {
-            // Command not found
-            SendToPlayer(session.ConnectionId, $"Unknown command: {verb}\r\n");
-            return;
+            return false; // Command not found
         }
 
-        // Find and call the main function
         var mainFunc = cmdObj.FindFunction("main");
         if (mainFunc == null)
         {
             SendToPlayer(session.ConnectionId, $"Command '{verb}' has no main() function.\r\n");
-            return;
+            return true; // We found the file but it's malformed - still "handled"
         }
 
         try
         {
-            // Reset instruction counter before each command
             _interpreter?.ResetInstructionCount();
-
-            // Execute the command's main function with args
             _interpreter?.CallFunctionOnObject(cmdObj, "main", new List<object> { args });
         }
         catch (ReturnException)
         {
-            // Normal return from command - ignore
+            // Normal return from command
         }
         catch (ExecutionLimitException ex)
         {
-            // Execution limit exceeded - report to player
             SendToPlayer(session.ConnectionId, $"EXECUTION ABORTED: {ex.Message}\r\n");
         }
         catch (Exception ex)
         {
             SendToPlayer(session.ConnectionId, $"Error: {ex.Message}\r\n");
         }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Find an action that can override core commands (has OverrideCore flag).
+    /// </summary>
+    private MudObject.ActionEntry? FindActionWithOverride(MudObject? player, string verb)
+    {
+        if (player == null) return null;
+
+        var actions = CollectActions(player, verb);
+        return actions.FirstOrDefault(a =>
+            (a.Flags & MudObject.ActionFlags.OverrideCore) != 0);
+    }
+
+    /// <summary>
+    /// Collect all action handlers for a verb from relevant objects.
+    /// Searches: player inventory, room, room contents.
+    /// </summary>
+    private List<MudObject.ActionEntry> CollectActions(MudObject? player, string verb)
+    {
+        var actions = new List<MudObject.ActionEntry>();
+        if (player == null) return actions;
+
+        // Check player's own actions (if any)
+        var playerAction = player.FindAction(verb);
+        if (playerAction != null)
+        {
+            actions.Add(playerAction);
+        }
+
+        // Check inventory
+        foreach (var item in player.Contents)
+        {
+            if (item.IsDestructed) continue;
+            var action = item.FindAction(verb);
+            if (action != null)
+            {
+                actions.Add(action);
+            }
+        }
+
+        // Check room
+        var room = player.Environment;
+        if (room != null && !room.IsDestructed)
+        {
+            var roomAction = room.FindAction(verb);
+            if (roomAction != null)
+            {
+                actions.Add(roomAction);
+            }
+
+            // Check room contents (other objects in the room)
+            foreach (var obj in room.Contents)
+            {
+                if (obj == player || obj.IsDestructed) continue;
+                var action = obj.FindAction(verb);
+                if (action != null)
+                {
+                    actions.Add(action);
+                }
+            }
+        }
+
+        return actions;
+    }
+
+    /// <summary>
+    /// Try to execute an action handler.
+    /// Returns true if the action handled the command (returned non-zero).
+    /// </summary>
+    private bool TryExecuteAction(ExecutionContext context, PlayerSession session, MudObject.ActionEntry action, string args)
+    {
+        if (_interpreter == null) return false;
+
+        var target = action.Owner;
+        if (target.IsDestructed) return false;
+
+        // Check if the function exists
+        if (target.FindFunction(action.Function) == null)
+        {
+            Console.WriteLine($"add_action warning: Function {action.Function} not found on {target.ObjectName}");
+            return false;
+        }
+
+        try
+        {
+            _interpreter.ResetInstructionCount();
+            var result = _interpreter.CallFunctionOnObject(target, action.Function, new List<object> { args });
+
+            // If function returns non-zero (truthy), command was handled
+            if (result is int i && i != 0)
+            {
+                return true;
+            }
+            if (result is bool b && b)
+            {
+                return true;
+            }
+        }
+        catch (ReturnException ex)
+        {
+            // Check the return value
+            if (ex.Value is int i && i != 0)
+            {
+                return true;
+            }
+            if (ex.Value is bool b && b)
+            {
+                return true;
+            }
+        }
+        catch (ExecutionLimitException ex)
+        {
+            SendToPlayer(session.ConnectionId, $"EXECUTION ABORTED: {ex.Message}\r\n");
+            return true; // Prevent further handlers from running
+        }
+        catch (Exception ex)
+        {
+            SendToPlayer(session.ConnectionId, $"Error in {action.Function}: {ex.Message}\r\n");
+            return true; // Prevent further handlers from running
+        }
+
+        return false;
     }
 
     /// <summary>

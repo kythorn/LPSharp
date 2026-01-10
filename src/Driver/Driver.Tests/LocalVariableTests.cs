@@ -198,7 +198,7 @@ string get_str_result() {
         _interpreter.CallFunctionOnObject(obj, "main", new List<object> { "" });
 
         var result = obj.GetVariable("result");
-        Assert.Equal(5, result);
+        Assert.Equal(5L, result);
     }
 
     [Fact]
@@ -208,7 +208,7 @@ string get_str_result() {
         _interpreter.CallFunctionOnObject(obj, "main", new List<object> { "" });
 
         var result = obj.GetVariable("result");
-        Assert.Equal(10, result);
+        Assert.Equal(10L, result);
     }
 
     [Fact]
@@ -218,7 +218,7 @@ string get_str_result() {
         _interpreter.CallFunctionOnObject(obj, "main", new List<object> { "" });
 
         var result = obj.GetVariable("result");
-        Assert.Equal(3, result);
+        Assert.Equal(3L, result);
     }
 
     [Fact]
@@ -229,12 +229,12 @@ string get_str_result() {
         // Run main which uses local x = 5
         _interpreter.CallFunctionOnObject(obj, "main", new List<object> { "" });
         var localValue = obj.GetVariable("local_value");
-        Assert.Equal(5, localValue);
+        Assert.Equal(5L, localValue);
 
         // Check that object-level x is still 100
         _interpreter.CallFunctionOnObject(obj, "check_object_x", new List<object>());
         var objectValue = obj.GetVariable("object_value");
-        Assert.Equal(100, objectValue);
+        Assert.Equal(100L, objectValue);
     }
 
     [Fact]
@@ -244,7 +244,7 @@ string get_str_result() {
         _interpreter.CallFunctionOnObject(obj, "main", new List<object> { "" });
 
         var result = obj.GetVariable("result");
-        Assert.Equal(10, result); // 0 + 1 + 2 + 3 + 4 = 10
+        Assert.Equal(10L, result); // 0 + 1 + 2 + 3 + 4 = 10
     }
 
     [Fact]
@@ -266,7 +266,7 @@ string get_str_result() {
         var intResult = obj.GetVariable("int_result");
         var strResult = obj.GetVariable("str_result");
 
-        Assert.Equal(0, intResult);
+        Assert.Equal(0L, intResult);
         Assert.Equal("", strResult);
     }
 }

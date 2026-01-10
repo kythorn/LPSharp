@@ -97,7 +97,7 @@ public class ObjectManagerTests
 
         var mass = obj.GetVariable("mass");
         Assert.NotNull(mass);
-        Assert.Equal(1, mass);
+        Assert.Equal(1L, mass);
 
         CleanupTemp(tempDir);
     }
@@ -114,7 +114,7 @@ public class ObjectManagerTests
         // Each clone should have independent variables initialized by create()
         var damage = clone.GetVariable("damage");
         Assert.NotNull(damage);
-        Assert.Equal(5, damage); // Default from /std/weapon create()
+        Assert.Equal(5L, damage); // Default from /std/weapon create()
 
         CleanupTemp(tempDir);
     }
@@ -130,11 +130,11 @@ public class ObjectManagerTests
         var clone2 = om.CloneObject("/std/weapon");
 
         // Modify clone1's variable
-        clone1.SetVariable("damage", 100);
+        clone1.SetVariable("damage", 100L);
 
         // clone2 should be unaffected
-        Assert.Equal(100, clone1.GetVariable("damage"));
-        Assert.Equal(5, clone2.GetVariable("damage"));
+        Assert.Equal(100L, clone1.GetVariable("damage"));
+        Assert.Equal(5L, clone2.GetVariable("damage"));
 
         CleanupTemp(tempDir);
     }
@@ -160,7 +160,7 @@ void create() {
 
         var obj = om.LoadObject("/test");
 
-        Assert.Equal(42, obj.GetVariable("initialized"));
+        Assert.Equal(42L, obj.GetVariable("initialized"));
         Assert.Equal("test", obj.GetVariable("name"));
 
         CleanupTemp(tempDir);
@@ -284,7 +284,7 @@ void verify_this() {
         om.InitializeInterpreter();
 
         var obj = om.LoadObject("/test_this");
-        Assert.Equal(42, obj.GetVariable("test_value"));
+        Assert.Equal(42L, obj.GetVariable("test_value"));
 
         var interpreter = new ObjectInterpreter(om);
         var func = obj.FindFunction("verify_this");
@@ -293,7 +293,7 @@ void verify_this() {
         interpreter.ExecuteInObject(obj, func.Body);
 
         // Verify the function modified the object's variable
-        Assert.Equal(100, obj.GetVariable("test_value"));
+        Assert.Equal(100L, obj.GetVariable("test_value"));
 
         CleanupTemp(tempDir);
     }

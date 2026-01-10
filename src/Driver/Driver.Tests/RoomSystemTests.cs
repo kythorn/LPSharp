@@ -241,18 +241,18 @@ int query_init_called() { return init_called; }
 
         // Verify init not called yet
         var initCalled = _interpreter.CallFunctionOnObject(room, "query_init_called", new List<object>());
-        Assert.Equal(0, initCalled);
+        Assert.Equal(0L, initCalled);
 
         // Move player to room using move_object efun
         _interpreter.CallFunctionOnObject(player, "create", new List<object>()); // Ensure created
 
         // Use the efun to move (which should trigger init)
         var moveResult = _interpreter.CallEfun("move_object", new List<object> { player, room });
-        Assert.Equal(1, moveResult);
+        Assert.Equal(1L, moveResult);
 
         // Verify init was called on the room
         initCalled = _interpreter.CallFunctionOnObject(room, "query_init_called", new List<object>());
-        Assert.Equal(1, initCalled);
+        Assert.Equal(1L, initCalled);
     }
 
     [Fact]
@@ -281,14 +281,14 @@ int query_init_called() { return init_called; }
 
         // Verify NPC init not called yet
         var npcInitCalled = _interpreter.CallFunctionOnObject(npc, "query_init_called", new List<object>());
-        Assert.Equal(0, npcInitCalled);
+        Assert.Equal(0L, npcInitCalled);
 
         // Move player to room via efun
         _interpreter.CallEfun("move_object", new List<object> { player, room });
 
         // Verify init was called on the NPC (because player entered)
         npcInitCalled = _interpreter.CallFunctionOnObject(npc, "query_init_called", new List<object>());
-        Assert.Equal(1, npcInitCalled);
+        Assert.Equal(1L, npcInitCalled);
     }
 
     [Fact]
@@ -301,14 +301,14 @@ int query_init_called() { return init_called; }
         player.MoveTo(room);
 
         // Reset init counter
-        room.SetVariable("init_called", 0);
+        room.SetVariable("init_called", 0L);
 
         // Move player to null (remove from environment)
         _interpreter.CallEfun("move_object", new List<object> { player, 0 });
 
         // Verify init was NOT called on room
         var initCalled = _interpreter.CallFunctionOnObject(room, "query_init_called", new List<object>());
-        Assert.Equal(0, initCalled);
+        Assert.Equal(0L, initCalled);
     }
 }
 
@@ -406,7 +406,7 @@ void create() {
         sword.MoveTo(room);
 
         var result = _interpreter.CallEfun("present", new List<object> { "axe", room });
-        Assert.Equal(0, result);
+        Assert.Equal(0L, result);
     }
 
     [Fact]
@@ -439,7 +439,7 @@ void create() {
         // "room" is in the short description but id() doesn't match it
         // (base object.c id() only matches obj_id which is empty)
         var result = _interpreter.CallEfun("present", new List<object> { "room", container });
-        Assert.Equal(0, result); // NOT found - no fallback to short desc
+        Assert.Equal(0L, result); // NOT found - no fallback to short desc
     }
 
     [Fact]
@@ -469,7 +469,7 @@ void create() {
         Assert.Equal(sword, resultSword);
 
         var resultShield = _interpreter.CallEfun("present", new List<object> { shield, room });
-        Assert.Equal(0, resultShield);
+        Assert.Equal(0L, resultShield);
     }
 }
 
@@ -538,7 +538,7 @@ int test_arrow_multi_args(object target) {
         var caller = _objectManager.CloneObject("/obj/caller");
 
         var result = _interpreter.CallFunctionOnObject(caller, "test_arrow_call", new List<object> { target });
-        Assert.Equal(42, result);
+        Assert.Equal(42L, result);
     }
 
     [Fact]
@@ -548,7 +548,7 @@ int test_arrow_multi_args(object target) {
         var caller = _objectManager.CloneObject("/obj/caller");
 
         var result = _interpreter.CallFunctionOnObject(caller, "test_arrow_with_args", new List<object> { target });
-        Assert.Equal(100, result);
+        Assert.Equal(100L, result);
     }
 
     [Fact]
@@ -558,7 +558,7 @@ int test_arrow_multi_args(object target) {
         var caller = _objectManager.CloneObject("/obj/caller");
 
         var result = _interpreter.CallFunctionOnObject(caller, "test_arrow_multi_args", new List<object> { target });
-        Assert.Equal(30, result);
+        Assert.Equal(30L, result);
     }
 
     [Fact]
@@ -575,6 +575,6 @@ int test_zero() {
 ");
         var caller = _objectManager.LoadObject("/obj/zero_caller");
         var result = _interpreter.CallFunctionOnObject(caller, "test_zero", new List<object>());
-        Assert.Equal(0, result);
+        Assert.Equal(0L, result);
     }
 }

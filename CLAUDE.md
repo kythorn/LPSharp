@@ -93,11 +93,12 @@ The project follows a 10-milestone phased approach (see docs/IMPLEMENTATION.md):
 ## LPC Language Notes
 
 - C-like syntax with `inherit` for single inheritance
-- Types: `int`, `string`, `object`, `mapping`, `mixed`, `void`
+- Types: `int` (64-bit), `string`, `object`, `mapping`, `mixed`, `void`
 - Array syntax: `({ 1, 2, 3 })`
 - Mapping syntax: `([ "key": value ])`
 - Call parent function with `::`
 - Lifecycle hooks: `create()`, `init()`, `dest()`
+- LPC integers are 64-bit to support large values (XP, gold, etc.)
 
 ## Available Efuns
 
@@ -124,6 +125,7 @@ The project follows a 10-milestone phased approach (see docs/IMPLEMENTATION.md):
 - `write(str)` - Write to current player
 - `tell_object(obj, str)` - Send message to object
 - `tell_room(room, str, exclude)` - Broadcast to room
+- `say(msg)` - Broadcast to room except this_player()
 
 ### Living/Interactive
 - `set_living(flag)` - Mark object as living
@@ -145,6 +147,22 @@ The project follows a 10-milestone phased approach (see docs/IMPLEMENTATION.md):
 ### Input Handling
 - `input_to(func, [flags])` - Capture next line of input
 
+### Action System (add_action)
+- `add_action(func, verb, [flags])` - Register command handler for a verb
+- `query_verb()` - Get current command verb being processed
+- `notify_fail(msg)` - Set failure message if no handler succeeds
+- `enable_commands()` - Enable command processing for this object
+- `disable_commands()` - Disable command processing
+- `command(str)` - Execute command as this_player()
+
+### Type Predicates
+- `intp(x)` - Returns 1 if x is an integer
+- `stringp(x)` - Returns 1 if x is a string
+- `objectp(x)` - Returns 1 if x is an object
+- `pointerp(x)` / `arrayp(x)` - Returns 1 if x is an array
+- `mappingp(x)` - Returns 1 if x is a mapping
+- `clonep(obj)` - Returns 1 if obj is a clone (not blueprint)
+
 ### Strings
 - `strlen(str)` - String length
 - `sprintf(fmt, args...)` - Formatted string
@@ -155,6 +173,8 @@ The project follows a 10-milestone phased approach (see docs/IMPLEMENTATION.md):
 - `capitalize(str)` - Capitalize first letter
 - `strsrch(str, substr, [start])` - Find substring position
 - `sscanf(str, fmt, vars...)` - Parse formatted input
+- `replace_string(str, from, to)` - Replace all occurrences
+- `trim(str)` - Remove leading/trailing whitespace
 
 ### Arrays
 - `sizeof(arr)` - Array/mapping size
@@ -163,6 +183,8 @@ The project follows a 10-milestone phased approach (see docs/IMPLEMENTATION.md):
 - `unique_array(arr)` - Remove duplicates
 - `filter_array(arr, func)` - Filter with callback
 - `map_array(arr, func)` - Transform with callback
+- `allocate(n)` - Create array of n elements (all 0)
+- `copy(x)` - Deep copy array or mapping
 
 ### Mappings
 - `m_indices(map)` / `keys(map)` - Get all keys

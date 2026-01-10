@@ -79,10 +79,10 @@ public class ExecutionContextTests
 
         var result = context.Execute(() =>
         {
-            return 42;
+            return 42L;
         });
 
-        Assert.Equal(42, result);
+        Assert.Equal(42L, result);
     }
 
     [Fact]

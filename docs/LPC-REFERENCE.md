@@ -23,12 +23,14 @@ void create() {
 
 | Type | Description | Example |
 |------|-------------|---------|
-| `int` | Integer (32-bit signed) | `42`, `-17`, `0` |
+| `int` | Integer (64-bit signed) | `42`, `-17`, `0` |
 | `string` | Text string | `"hello"`, `"world\n"` |
 | `object` | Reference to an LPC object | `this_object()` |
 | `mapping` | Key-value dictionary | `([ "a": 1, "b": 2 ])` |
 | `mixed` | Any type | Used for generic functions |
 | `void` | No value (function returns) | `void setup() { }` |
+
+**Note on integers:** LPC integers are 64-bit signed, supporting values from -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807. This matches modern LDMud/FluffOS behavior and allows for large values like experience points, gold, and timestamps without overflow concerns.
 
 ### Arrays
 
@@ -404,16 +406,70 @@ Efuns are functions provided by the driver, callable from any LPC code.
 | `set_heart_beat(flag)` | Enable/disable heartbeat for this object |
 | `call_out(func, delay, args...)` | Schedule delayed function call |
 | `remove_call_out(func)` | Cancel pending callout |
+| `find_call_out(func)` | Get time until callout fires |
 
-### Data Manipulation
+### Action System
+
+The action system allows objects to register custom command handlers via `add_action()`.
+
+| Efun | Description |
+|------|-------------|
+| `add_action(func, verb, [flags])` | Register function to handle a verb |
+| `query_verb()` | Get the current command verb being processed |
+| `notify_fail(msg)` | Set failure message if command not handled |
+| `enable_commands()` | Allow this object to receive commands |
+| `disable_commands()` | Disable command receiving |
+| `command(str)` | Execute a command as this_player() |
+
+**Flags for add_action:**
+- `0` - Exact match (default)
+- `1` - Prefix match ("l" matches "look")
+- `2` - Allow overriding core commands
+
+**Example:**
+```c
+void init() {
+    add_action("do_pull", "pull");
+}
+
+int do_pull(string arg) {
+    if (arg != "lever") {
+        notify_fail("Pull what?\n");
+        return 0;
+    }
+    write("You pull the lever. A trapdoor opens!\n");
+    return 1;
+}
+```
+
+### Arrays
 
 | Efun | Description |
 |------|-------------|
 | `sizeof(x)` | Length of array/mapping/string |
-| `m_indices(map)` | Get array of mapping keys |
-| `m_values(map)` | Get array of mapping values |
 | `member_array(elem, arr)` | Find index of element in array (-1 if not found) |
+| `allocate(n)` | Create array of n elements (initialized to 0) |
+| `copy(x)` | Deep copy an array or mapping |
+| `sort_array(arr, dir)` | Sort array (1=ascending, -1=descending) |
+| `filter_array(arr, func)` | Filter array elements with callback |
+| `map_array(arr, func)` | Transform array elements with callback |
+
+### Mappings
+
+| Efun | Description |
+|------|-------------|
+| `m_indices(map)` / `keys(map)` | Get array of mapping keys |
+| `m_values(map)` / `values(map)` | Get array of mapping values |
+| `m_delete(map, key)` | Remove a key from mapping |
+| `mkmapping(keys, values)` | Create mapping from two arrays |
+
+### Other
+
+| Efun | Description |
+|------|-------------|
 | `random(n)` | Random integer from 0 to n-1 |
+| `time()` | Current Unix timestamp |
+| `typeof(x)` | Get type name as string |
 
 ### Strings
 
@@ -422,7 +478,14 @@ Efuns are functions provided by the driver, callable from any LPC code.
 | `strlen(str)` | Length of string |
 | `capitalize(str)` | Capitalize first letter |
 | `lower_case(str)` | Convert to lowercase |
+| `upper_case(str)` | Convert to uppercase |
 | `sprintf(fmt, args...)` | Formatted string |
+| `explode(str, delim)` | Split string into array |
+| `implode(arr, delim)` | Join array into string |
+| `replace_string(str, from, to)` | Replace all occurrences of `from` with `to` |
+| `trim(str)` | Remove leading/trailing whitespace |
+| `strsrch(str, substr)` | Find position of substring (-1 if not found) |
+| `sscanf(str, fmt, vars...)` | Parse formatted string into variables |
 
 ### Type Checking
 
@@ -431,8 +494,9 @@ Efuns are functions provided by the driver, callable from any LPC code.
 | `intp(x)` | Is x an integer? |
 | `stringp(x)` | Is x a string? |
 | `objectp(x)` | Is x an object? |
-| `arrayp(x)` | Is x an array? |
-| `mapp(x)` | Is x a mapping? |
+| `pointerp(x)` / `arrayp(x)` | Is x an array? |
+| `mappingp(x)` | Is x a mapping? |
+| `clonep(x)` | Is x a clone (not a blueprint)? |
 
 ### Testing
 

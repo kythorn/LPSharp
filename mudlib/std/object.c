@@ -9,6 +9,12 @@ void create() {
     mass = 1;
 }
 
+// init() is called when this object enters an environment, or when
+// something enters this object's environment. Override to add actions.
+void init() {
+    // Base implementation - nothing to do
+}
+
 string query_short() {
     return short_desc;
 }

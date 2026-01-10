@@ -110,6 +110,98 @@ public class MudObject
 
     #endregion
 
+    #region Action System (add_action)
+
+    /// <summary>
+    /// Flags for add_action registration.
+    /// </summary>
+    [Flags]
+    public enum ActionFlags
+    {
+        None = 0,
+        /// <summary>Match verb as prefix (e.g., "l" matches "look")</summary>
+        MatchPrefix = 1,
+        /// <summary>Allow this action to override core commands</summary>
+        OverrideCore = 2,
+    }
+
+    /// <summary>
+    /// An action registered via add_action().
+    /// </summary>
+    public record ActionEntry(
+        string Verb,
+        string Function,
+        ActionFlags Flags,
+        MudObject Owner
+    );
+
+    /// <summary>
+    /// Actions registered by this object via add_action().
+    /// These are actions this object provides to command givers (players).
+    /// </summary>
+    private readonly List<ActionEntry> _actions = new();
+
+    /// <summary>
+    /// Read-only access to registered actions.
+    /// </summary>
+    public IReadOnlyList<ActionEntry> Actions => _actions.AsReadOnly();
+
+    /// <summary>
+    /// Whether this object can receive and process commands.
+    /// Set via enable_commands(). Typically true only for players.
+    /// </summary>
+    public bool CommandsEnabled { get; set; }
+
+    /// <summary>
+    /// Register an action handler for a verb.
+    /// Called by add_action() efun.
+    /// </summary>
+    public void AddAction(string function, string verb, ActionFlags flags = ActionFlags.None)
+    {
+        // Remove any existing action for this verb from this object
+        _actions.RemoveAll(a => a.Verb == verb);
+        _actions.Add(new ActionEntry(verb, function, flags, this));
+    }
+
+    /// <summary>
+    /// Remove an action handler for a verb.
+    /// </summary>
+    public bool RemoveAction(string verb)
+    {
+        return _actions.RemoveAll(a => a.Verb == verb) > 0;
+    }
+
+    /// <summary>
+    /// Clear all registered actions.
+    /// Called when object leaves an environment.
+    /// </summary>
+    public void ClearActions()
+    {
+        _actions.Clear();
+    }
+
+    /// <summary>
+    /// Find an action that matches the given verb.
+    /// </summary>
+    public ActionEntry? FindAction(string verb)
+    {
+        foreach (var action in _actions)
+        {
+            if (action.Verb == verb)
+            {
+                return action;
+            }
+            // Check prefix match
+            if ((action.Flags & ActionFlags.MatchPrefix) != 0 && verb.StartsWith(action.Verb))
+            {
+                return action;
+            }
+        }
+        return null;
+    }
+
+    #endregion
+
     /// <summary>
     /// The environment (container) this object is in.
     /// For players: typically a room.

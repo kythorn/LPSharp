@@ -1137,11 +1137,11 @@ public class Parser
     // Precedence 1: Primary expressions (literals, grouping)
     private Expression ParsePrimary()
     {
-        // Number literal
+        // Number literal (64-bit integers)
         if (Match(TokenType.Number))
         {
             var token = Previous();
-            if (!int.TryParse(token.Lexeme, out int value))
+            if (!long.TryParse(token.Lexeme, out long value))
             {
                 throw new ParserException($"Invalid number '{token.Lexeme}'", token);
             }

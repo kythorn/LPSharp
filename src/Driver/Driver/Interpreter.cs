@@ -216,7 +216,7 @@ public class Interpreter
     {
         if (a == null && b == null) return true;
         if (a == null || b == null) return false;
-        if (a is int ia && b is int ib) return ia == ib;
+        if (IsInteger(a) && IsInteger(b)) return ToLong(a) == ToLong(b);
         if (a is string sa && b is string sb) return sa == sb;
         return a.Equals(b);
     }
@@ -338,28 +338,30 @@ public class Interpreter
 
         if (target is string str)
         {
-            if (index is not int i)
+            if (!IsInteger(index))
             {
                 throw new InterpreterException("String index must be an integer", expr);
             }
+            var i = ToLong(index);
             if (i < 0 || i >= str.Length)
             {
                 throw new InterpreterException($"String index {i} out of bounds (length {str.Length})", expr);
             }
-            return (int)str[i]; // Return character as int (LPC convention)
+            return (long)str[(int)i]; // Return character as long (LPC convention)
         }
 
         if (target is List<object> arr)
         {
-            if (index is not int i)
+            if (!IsInteger(index))
             {
                 throw new InterpreterException("Array index must be an integer", expr);
             }
+            var i = ToLong(index);
             if (i < 0 || i >= arr.Count)
             {
                 throw new InterpreterException($"Array index {i} out of bounds (size {arr.Count})", expr);
             }
-            return arr[i];
+            return arr[(int)i];
         }
 
         if (target is Dictionary<object, object> dict)
@@ -368,7 +370,7 @@ public class Interpreter
             {
                 return value;
             }
-            return 0; // LPC returns 0 for missing mapping keys
+            return 0L; // LPC returns 0 for missing mapping keys
         }
 
         throw new InterpreterException($"Cannot index into {target?.GetType().Name ?? "null"}", expr);
@@ -427,8 +429,8 @@ public class Interpreter
             BinaryOperator.BitwiseAnd => left_i & right_i,
             BinaryOperator.BitwiseOr => left_i | right_i,
             BinaryOperator.BitwiseXor => left_i ^ right_i,
-            BinaryOperator.LeftShift => left_i << right_i,
-            BinaryOperator.RightShift => left_i >> right_i,
+            BinaryOperator.LeftShift => left_i << (int)right_i,
+            BinaryOperator.RightShift => left_i >> (int)right_i,
             _ => throw new InterpreterException($"Unsupported compound assignment operator: {expr.Operator}", expr)
         };
 
@@ -528,11 +530,11 @@ public class Interpreter
         {
             // Execute function body
             Execute(funcDef.Body);
-            return 0; // Functions that don't return explicitly return 0
+            return 0L; // Functions that don't return explicitly return 0
         }
         catch (ReturnException ret)
         {
-            return ret.Value ?? 0; // Return the value, or 0 if no value
+            return ret.Value ?? 0L; // Return the value, or 0 if no value
         }
         finally
         {
@@ -613,17 +615,17 @@ public class Interpreter
         if (expr.Operator == BinaryOperator.LogicalAnd)
         {
             var left = Evaluate(expr.Left);
-            if (!IsTrue(left)) return 0;
+            if (!IsTrue(left)) return 0L;
             var right = Evaluate(expr.Right);
-            return IsTrue(right) ? 1 : 0;
+            return IsTrue(right) ? 1L : 0L;
         }
 
         if (expr.Operator == BinaryOperator.LogicalOr)
         {
             var left = Evaluate(expr.Left);
-            if (IsTrue(left)) return 1;
+            if (IsTrue(left)) return 1L;
             var right = Evaluate(expr.Right);
-            return IsTrue(right) ? 1 : 0;
+            return IsTrue(right) ? 1L : 0L;
         }
 
         // For all other operators, evaluate both sides
@@ -649,8 +651,8 @@ public class Interpreter
         {
             return expr.Operator switch
             {
-                BinaryOperator.Equal => leftStr == rightStr ? 1 : 0,
-                BinaryOperator.NotEqual => leftStr != rightStr ? 1 : 0,
+                BinaryOperator.Equal => leftStr == rightStr ? 1L : 0L,
+                BinaryOperator.NotEqual => leftStr != rightStr ? 1L : 0L,
                 _ => throw new InterpreterException($"Operator {expr.Operator} not supported for strings", expr)
             };
         }
@@ -673,19 +675,19 @@ public class Interpreter
                 : throw new InterpreterException("Modulo by zero", expr),
 
             // Comparison (return 0 or 1)
-            BinaryOperator.Less => left_i < right_i ? 1 : 0,
-            BinaryOperator.LessEqual => left_i <= right_i ? 1 : 0,
-            BinaryOperator.Greater => left_i > right_i ? 1 : 0,
-            BinaryOperator.GreaterEqual => left_i >= right_i ? 1 : 0,
-            BinaryOperator.Equal => left_i == right_i ? 1 : 0,
-            BinaryOperator.NotEqual => left_i != right_i ? 1 : 0,
+            BinaryOperator.Less => left_i < right_i ? 1L : 0L,
+            BinaryOperator.LessEqual => left_i <= right_i ? 1L : 0L,
+            BinaryOperator.Greater => left_i > right_i ? 1L : 0L,
+            BinaryOperator.GreaterEqual => left_i >= right_i ? 1L : 0L,
+            BinaryOperator.Equal => left_i == right_i ? 1L : 0L,
+            BinaryOperator.NotEqual => left_i != right_i ? 1L : 0L,
 
             // Bitwise
             BinaryOperator.BitwiseAnd => left_i & right_i,
             BinaryOperator.BitwiseOr => left_i | right_i,
             BinaryOperator.BitwiseXor => left_i ^ right_i,
-            BinaryOperator.LeftShift => left_i << right_i,
-            BinaryOperator.RightShift => left_i >> right_i,
+            BinaryOperator.LeftShift => left_i << (int)right_i,
+            BinaryOperator.RightShift => left_i >> (int)right_i,
 
             _ => throw new InterpreterException($"Unknown binary operator: {expr.Operator}", expr)
         };
@@ -704,12 +706,34 @@ public class Interpreter
     #region Helper Methods
 
     /// <summary>
-    /// Convert a value to int. In LPC, 0 and "" are false, everything else is true.
+    /// Check if a value is an integer type (int or long).
     /// </summary>
-    private static int ToInt(object value, Expression context)
+    private static bool IsInteger(object? value)
+    {
+        return value is int or long;
+    }
+
+    /// <summary>
+    /// Convert a value to long (64-bit integer).
+    /// </summary>
+    private static long ToLong(object? value)
     {
         return value switch
         {
+            long l => l,
+            int i => i,
+            _ => 0
+        };
+    }
+
+    /// <summary>
+    /// Convert a value to long. In LPC, 0 and "" are false, everything else is true.
+    /// </summary>
+    private static long ToInt(object value, Expression context)
+    {
+        return value switch
+        {
+            long l => l,
             int i => i,
             string s => throw new InterpreterException($"Cannot convert string to int", context),
             _ => throw new InterpreterException($"Unknown value type: {value.GetType().Name}", context)
@@ -723,6 +747,7 @@ public class Interpreter
     {
         return value switch
         {
+            long l => l != 0,
             int i => i != 0,
             string s => s.Length > 0,
             _ => true

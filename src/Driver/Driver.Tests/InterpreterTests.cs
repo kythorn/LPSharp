@@ -15,12 +15,12 @@ public class InterpreterTests
     #region Integer Arithmetic
 
     [Theory]
-    [InlineData("5 + 3", 8)]
-    [InlineData("5 - 3", 2)]
-    [InlineData("5 * 3", 15)]
-    [InlineData("10 / 3", 3)]    // Integer division
-    [InlineData("10 % 3", 1)]
-    public void Evaluate_IntegerArithmetic_ReturnsCorrectResult(string source, int expected)
+    [InlineData("5 + 3", 8L)]
+    [InlineData("5 - 3", 2L)]
+    [InlineData("5 * 3", 15L)]
+    [InlineData("10 / 3", 3L)]    // Integer division
+    [InlineData("10 % 3", 1L)]
+    public void Evaluate_IntegerArithmetic_ReturnsCorrectResult(string source, long expected)
     {
         var result = Eval(source);
         Assert.Equal(expected, result);
@@ -29,9 +29,9 @@ public class InterpreterTests
     [Fact]
     public void Evaluate_NegativeNumbers_WorksCorrectly()
     {
-        Assert.Equal(-5, Eval("-5"));
-        Assert.Equal(2, Eval("5 + -3"));
-        Assert.Equal(8, Eval("5 - -3"));
+        Assert.Equal(-5L, Eval("-5"));
+        Assert.Equal(2L, Eval("5 + -3"));
+        Assert.Equal(8L, Eval("5 - -3"));
     }
 
     #endregion
@@ -41,19 +41,19 @@ public class InterpreterTests
     [Fact]
     public void Evaluate_PrecedenceMultiplicationBeforeAddition()
     {
-        Assert.Equal(11, Eval("5 + 3 * 2"));  // 5 + (3 * 2) = 11, not 16
+        Assert.Equal(11L, Eval("5 + 3 * 2"));  // 5 + (3 * 2) = 11, not 16
     }
 
     [Fact]
     public void Evaluate_ParenthesesOverridePrecedence()
     {
-        Assert.Equal(16, Eval("(5 + 3) * 2"));
+        Assert.Equal(16L, Eval("(5 + 3) * 2"));
     }
 
     [Fact]
     public void Evaluate_LeftToRightAssociativity()
     {
-        Assert.Equal(2, Eval("10 - 5 - 3"));  // (10 - 5) - 3 = 2, not 8
+        Assert.Equal(2L, Eval("10 - 5 - 3"));  // (10 - 5) - 3 = 2, not 8
     }
 
     #endregion
@@ -61,17 +61,17 @@ public class InterpreterTests
     #region Comparison Operators
 
     [Theory]
-    [InlineData("5 == 5", 1)]
-    [InlineData("5 == 3", 0)]
-    [InlineData("5 != 3", 1)]
-    [InlineData("5 != 5", 0)]
-    [InlineData("5 < 10", 1)]
-    [InlineData("5 < 3", 0)]
-    [InlineData("5 <= 5", 1)]
-    [InlineData("5 > 3", 1)]
-    [InlineData("5 > 10", 0)]
-    [InlineData("5 >= 5", 1)]
-    public void Evaluate_ComparisonOperators_ReturnZeroOrOne(string source, int expected)
+    [InlineData("5 == 5", 1L)]
+    [InlineData("5 == 3", 0L)]
+    [InlineData("5 != 3", 1L)]
+    [InlineData("5 != 5", 0L)]
+    [InlineData("5 < 10", 1L)]
+    [InlineData("5 < 3", 0L)]
+    [InlineData("5 <= 5", 1L)]
+    [InlineData("5 > 3", 1L)]
+    [InlineData("5 > 10", 0L)]
+    [InlineData("5 >= 5", 1L)]
+    public void Evaluate_ComparisonOperators_ReturnZeroOrOne(string source, long expected)
     {
         var result = Eval(source);
         Assert.Equal(expected, result);
@@ -82,15 +82,15 @@ public class InterpreterTests
     #region Logical Operators
 
     [Theory]
-    [InlineData("1 && 1", 1)]
-    [InlineData("1 && 0", 0)]
-    [InlineData("0 && 1", 0)]
-    [InlineData("0 && 0", 0)]
-    [InlineData("1 || 1", 1)]
-    [InlineData("1 || 0", 1)]
-    [InlineData("0 || 1", 1)]
-    [InlineData("0 || 0", 0)]
-    public void Evaluate_LogicalOperators_ReturnZeroOrOne(string source, int expected)
+    [InlineData("1 && 1", 1L)]
+    [InlineData("1 && 0", 0L)]
+    [InlineData("0 && 1", 0L)]
+    [InlineData("0 && 0", 0L)]
+    [InlineData("1 || 1", 1L)]
+    [InlineData("1 || 0", 1L)]
+    [InlineData("0 || 1", 1L)]
+    [InlineData("0 || 0", 0L)]
+    public void Evaluate_LogicalOperators_ReturnZeroOrOne(string source, long expected)
     {
         var result = Eval(source);
         Assert.Equal(expected, result);
@@ -99,23 +99,23 @@ public class InterpreterTests
     [Fact]
     public void Evaluate_LogicalNot()
     {
-        Assert.Equal(0, Eval("!1"));
-        Assert.Equal(1, Eval("!0"));
-        Assert.Equal(0, Eval("!5"));    // Any non-zero is true
+        Assert.Equal(0L, Eval("!1"));
+        Assert.Equal(1L, Eval("!0"));
+        Assert.Equal(0L, Eval("!5"));    // Any non-zero is true
     }
 
     [Fact]
     public void Evaluate_ShortCircuitAnd()
     {
         // 0 && (1/0) should not throw because && short-circuits
-        Assert.Equal(0, Eval("0 && 1"));
+        Assert.Equal(0L, Eval("0 && 1"));
     }
 
     [Fact]
     public void Evaluate_ShortCircuitOr()
     {
         // 1 || (1/0) should not throw because || short-circuits
-        Assert.Equal(1, Eval("1 || 0"));
+        Assert.Equal(1L, Eval("1 || 0"));
     }
 
     #endregion
@@ -123,13 +123,13 @@ public class InterpreterTests
     #region Bitwise Operators
 
     [Theory]
-    [InlineData("5 & 3", 1)]       // 0101 & 0011 = 0001
-    [InlineData("5 | 3", 7)]       // 0101 | 0011 = 0111
-    [InlineData("5 ^ 3", 6)]       // 0101 ^ 0011 = 0110
-    [InlineData("~0", -1)]         // Bitwise NOT of 0
-    [InlineData("8 << 2", 32)]     // 8 * 4 = 32
-    [InlineData("8 >> 2", 2)]      // 8 / 4 = 2
-    public void Evaluate_BitwiseOperators_ReturnsCorrectResult(string source, int expected)
+    [InlineData("5 & 3", 1L)]       // 0101 & 0011 = 0001
+    [InlineData("5 | 3", 7L)]       // 0101 | 0011 = 0111
+    [InlineData("5 ^ 3", 6L)]       // 0101 ^ 0011 = 0110
+    [InlineData("~0", -1L)]         // Bitwise NOT of 0
+    [InlineData("8 << 2", 32L)]     // 8 * 4 = 32
+    [InlineData("8 >> 2", 2L)]      // 8 / 4 = 2
+    public void Evaluate_BitwiseOperators_ReturnsCorrectResult(string source, long expected)
     {
         var result = Eval(source);
         Assert.Equal(expected, result);
@@ -142,15 +142,15 @@ public class InterpreterTests
     [Fact]
     public void Evaluate_UnaryNegate()
     {
-        Assert.Equal(-5, Eval("-5"));
-        Assert.Equal(5, Eval("- -5"));   // -(-5) = 5 (space needed to avoid -- operator)
+        Assert.Equal(-5L, Eval("-5"));
+        Assert.Equal(5L, Eval("- -5"));   // -(-5) = 5 (space needed to avoid -- operator)
     }
 
     [Fact]
     public void Evaluate_UnaryBitwiseNot()
     {
-        Assert.Equal(-1, Eval("~0"));
-        Assert.Equal(-6, Eval("~5"));   // ~5 = -6 in two's complement
+        Assert.Equal(-1L, Eval("~0"));
+        Assert.Equal(-6L, Eval("~5"));   // ~5 = -6 in two's complement
     }
 
     #endregion
@@ -160,27 +160,27 @@ public class InterpreterTests
     [Fact]
     public void Evaluate_TernaryTrue()
     {
-        Assert.Equal(1, Eval("5 > 3 ? 1 : 0"));
+        Assert.Equal(1L, Eval("5 > 3 ? 1 : 0"));
     }
 
     [Fact]
     public void Evaluate_TernaryFalse()
     {
-        Assert.Equal(0, Eval("5 < 3 ? 1 : 0"));
+        Assert.Equal(0L, Eval("5 < 3 ? 1 : 0"));
     }
 
     [Fact]
     public void Evaluate_TernaryWithExpressions()
     {
-        Assert.Equal(10, Eval("1 ? 5 + 5 : 3 + 3"));
-        Assert.Equal(6, Eval("0 ? 5 + 5 : 3 + 3"));
+        Assert.Equal(10L, Eval("1 ? 5 + 5 : 3 + 3"));
+        Assert.Equal(6L, Eval("0 ? 5 + 5 : 3 + 3"));
     }
 
     [Fact]
     public void Evaluate_NestedTernary()
     {
         // 0 ? 1 : 1 ? 2 : 3 = 0 ? 1 : (1 ? 2 : 3) = 2
-        Assert.Equal(2, Eval("0 ? 1 : 1 ? 2 : 3"));
+        Assert.Equal(2L, Eval("0 ? 1 : 1 ? 2 : 3"));
     }
 
     #endregion
@@ -209,16 +209,16 @@ public class InterpreterTests
     [Fact]
     public void Evaluate_StringEquality()
     {
-        Assert.Equal(1, Eval("\"hello\" == \"hello\""));
-        Assert.Equal(0, Eval("\"hello\" == \"world\""));
-        Assert.Equal(1, Eval("\"hello\" != \"world\""));
+        Assert.Equal(1L, Eval("\"hello\" == \"hello\""));
+        Assert.Equal(0L, Eval("\"hello\" == \"world\""));
+        Assert.Equal(1L, Eval("\"hello\" != \"world\""));
     }
 
     [Fact]
     public void Evaluate_EmptyStringIsFalsy()
     {
-        Assert.Equal(0, Eval("\"\" ? 1 : 0"));
-        Assert.Equal(1, Eval("\"x\" ? 1 : 0"));
+        Assert.Equal(0L, Eval("\"\" ? 1 : 0"));
+        Assert.Equal(1L, Eval("\"x\" ? 1 : 0"));
     }
 
     #endregion
@@ -253,9 +253,9 @@ public class InterpreterTests
     [Fact]
     public void Evaluate_GroupedExpression()
     {
-        Assert.Equal(5, Eval("(5)"));
-        Assert.Equal(8, Eval("(5 + 3)"));
-        Assert.Equal(16, Eval("((5 + 3) * 2)"));
+        Assert.Equal(5L, Eval("(5)"));
+        Assert.Equal(8L, Eval("(5 + 3)"));
+        Assert.Equal(16L, Eval("((5 + 3) * 2)"));
     }
 
     #endregion
@@ -265,17 +265,17 @@ public class InterpreterTests
     [Fact]
     public void Evaluate_ComplexArithmetic()
     {
-        Assert.Equal(14, Eval("2 + 3 * 4"));           // 2 + 12 = 14
-        Assert.Equal(10, Eval("(2 + 3) * 2"));         // 5 * 2 = 10
-        Assert.Equal(5, Eval("1 + 2 * 3 - 4 / 2"));    // 1 + (2*3) - (4/2) = 1 + 6 - 2 = 5
+        Assert.Equal(14L, Eval("2 + 3 * 4"));           // 2 + 12 = 14
+        Assert.Equal(10L, Eval("(2 + 3) * 2"));         // 5 * 2 = 10
+        Assert.Equal(5L, Eval("1 + 2 * 3 - 4 / 2"));    // 1 + (2*3) - (4/2) = 1 + 6 - 2 = 5
     }
 
     [Fact]
     public void Evaluate_ComplexLogical()
     {
-        Assert.Equal(1, Eval("5 > 3 && 10 > 5"));
-        Assert.Equal(0, Eval("5 > 3 && 10 < 5"));
-        Assert.Equal(1, Eval("5 > 3 || 10 < 5"));
+        Assert.Equal(1L, Eval("5 > 3 && 10 > 5"));
+        Assert.Equal(0L, Eval("5 > 3 && 10 < 5"));
+        Assert.Equal(1L, Eval("5 > 3 || 10 < 5"));
     }
 
     [Fact]
@@ -291,7 +291,7 @@ public class InterpreterTests
     [Fact]
     public void Evaluate_Assignment_ReturnsValue()
     {
-        Assert.Equal(5, Eval("x = 5"));
+        Assert.Equal(5L, Eval("x = 5"));
     }
 
     [Fact]
@@ -307,7 +307,7 @@ public class InterpreterTests
         var parser2 = new Parser(lexer2.Tokenize());
         var result = interpreter.Evaluate(parser2.Parse());
 
-        Assert.Equal(42, result);
+        Assert.Equal(42L, result);
     }
 
     [Fact]
@@ -323,7 +323,7 @@ public class InterpreterTests
         var parser2 = new Parser(lexer2.Tokenize());
         var result = interpreter.Evaluate(parser2.Parse());
 
-        Assert.Equal(8, result);
+        Assert.Equal(8L, result);
     }
 
     [Fact]
@@ -335,7 +335,7 @@ public class InterpreterTests
         Evaluate(interpreter, "y = 20");
         var result = Evaluate(interpreter, "x + y");
 
-        Assert.Equal(30, result);
+        Assert.Equal(30L, result);
     }
 
     [Fact]
@@ -347,7 +347,7 @@ public class InterpreterTests
         Evaluate(interpreter, "x = 10");
         var result = Evaluate(interpreter, "x");
 
-        Assert.Equal(10, result);
+        Assert.Equal(10L, result);
     }
 
     [Fact]
@@ -356,9 +356,9 @@ public class InterpreterTests
         var interpreter = new Interpreter();
 
         var result = Evaluate(interpreter, "x = y = 5");
-        Assert.Equal(5, result);
-        Assert.Equal(5, Evaluate(interpreter, "x"));
-        Assert.Equal(5, Evaluate(interpreter, "y"));
+        Assert.Equal(5L, result);
+        Assert.Equal(5L, Evaluate(interpreter, "x"));
+        Assert.Equal(5L, Evaluate(interpreter, "y"));
     }
 
     [Fact]
@@ -380,7 +380,7 @@ public class InterpreterTests
         Evaluate(interpreter, "x = 1");
         var result = Evaluate(interpreter, "x ? 10 : 20");
 
-        Assert.Equal(10, result);
+        Assert.Equal(10L, result);
     }
 
     [Fact]
@@ -410,8 +410,8 @@ public class InterpreterTests
         var interpreter = new Interpreter();
         Evaluate(interpreter, "x = 10");
         var result = Evaluate(interpreter, "x += 5");
-        Assert.Equal(15, result);
-        Assert.Equal(15, Evaluate(interpreter, "x"));
+        Assert.Equal(15L, result);
+        Assert.Equal(15L, Evaluate(interpreter, "x"));
     }
 
     [Fact]
@@ -420,8 +420,8 @@ public class InterpreterTests
         var interpreter = new Interpreter();
         Evaluate(interpreter, "x = 10");
         var result = Evaluate(interpreter, "x -= 3");
-        Assert.Equal(7, result);
-        Assert.Equal(7, Evaluate(interpreter, "x"));
+        Assert.Equal(7L, result);
+        Assert.Equal(7L, Evaluate(interpreter, "x"));
     }
 
     [Fact]
@@ -430,7 +430,7 @@ public class InterpreterTests
         var interpreter = new Interpreter();
         Evaluate(interpreter, "x = 5");
         var result = Evaluate(interpreter, "x *= 4");
-        Assert.Equal(20, result);
+        Assert.Equal(20L, result);
     }
 
     [Fact]
@@ -439,7 +439,7 @@ public class InterpreterTests
         var interpreter = new Interpreter();
         Evaluate(interpreter, "x = 20");
         var result = Evaluate(interpreter, "x /= 4");
-        Assert.Equal(5, result);
+        Assert.Equal(5L, result);
     }
 
     [Fact]
@@ -448,7 +448,7 @@ public class InterpreterTests
         var interpreter = new Interpreter();
         Evaluate(interpreter, "x = 17");
         var result = Evaluate(interpreter, "x %= 5");
-        Assert.Equal(2, result);
+        Assert.Equal(2L, result);
     }
 
     [Fact]
@@ -457,7 +457,7 @@ public class InterpreterTests
         var interpreter = new Interpreter();
         Evaluate(interpreter, "x = 7");    // 0111
         var result = Evaluate(interpreter, "x &= 3");  // 0011
-        Assert.Equal(3, result);           // 0011
+        Assert.Equal(3L, result);           // 0011
     }
 
     [Fact]
@@ -466,7 +466,7 @@ public class InterpreterTests
         var interpreter = new Interpreter();
         Evaluate(interpreter, "x = 5");    // 0101
         var result = Evaluate(interpreter, "x |= 3");  // 0011
-        Assert.Equal(7, result);           // 0111
+        Assert.Equal(7L, result);           // 0111
     }
 
     [Fact]
@@ -475,7 +475,7 @@ public class InterpreterTests
         var interpreter = new Interpreter();
         Evaluate(interpreter, "x = 5");    // 0101
         var result = Evaluate(interpreter, "x ^= 3");  // 0011
-        Assert.Equal(6, result);           // 0110
+        Assert.Equal(6L, result);           // 0110
     }
 
     [Fact]
@@ -484,7 +484,7 @@ public class InterpreterTests
         var interpreter = new Interpreter();
         Evaluate(interpreter, "x = 4");
         var result = Evaluate(interpreter, "x <<= 2");
-        Assert.Equal(16, result);
+        Assert.Equal(16L, result);
     }
 
     [Fact]
@@ -493,7 +493,7 @@ public class InterpreterTests
         var interpreter = new Interpreter();
         Evaluate(interpreter, "x = 16");
         var result = Evaluate(interpreter, "x >>= 2");
-        Assert.Equal(4, result);
+        Assert.Equal(4L, result);
     }
 
     [Fact]
@@ -512,7 +512,7 @@ public class InterpreterTests
         var interpreter = new Interpreter();
         Evaluate(interpreter, "x = 10");
         var result = Evaluate(interpreter, "x += 2 * 3");  // x += 6
-        Assert.Equal(16, result);
+        Assert.Equal(16L, result);
     }
 
     [Fact]
@@ -542,8 +542,8 @@ public class InterpreterTests
         var interpreter = new Interpreter();
         Evaluate(interpreter, "x = 5");
         var result = Evaluate(interpreter, "++x");
-        Assert.Equal(6, result);
-        Assert.Equal(6, Evaluate(interpreter, "x"));
+        Assert.Equal(6L, result);
+        Assert.Equal(6L, Evaluate(interpreter, "x"));
     }
 
     [Fact]
@@ -552,8 +552,8 @@ public class InterpreterTests
         var interpreter = new Interpreter();
         Evaluate(interpreter, "x = 5");
         var result = Evaluate(interpreter, "--x");
-        Assert.Equal(4, result);
-        Assert.Equal(4, Evaluate(interpreter, "x"));
+        Assert.Equal(4L, result);
+        Assert.Equal(4L, Evaluate(interpreter, "x"));
     }
 
     [Fact]
@@ -562,8 +562,8 @@ public class InterpreterTests
         var interpreter = new Interpreter();
         Evaluate(interpreter, "x = 5");
         var result = Evaluate(interpreter, "x++");
-        Assert.Equal(5, result);  // Returns old value
-        Assert.Equal(6, Evaluate(interpreter, "x"));  // But variable is incremented
+        Assert.Equal(5L, result);  // Returns old value
+        Assert.Equal(6L, Evaluate(interpreter, "x"));  // But variable is incremented
     }
 
     [Fact]
@@ -572,8 +572,8 @@ public class InterpreterTests
         var interpreter = new Interpreter();
         Evaluate(interpreter, "x = 5");
         var result = Evaluate(interpreter, "x--");
-        Assert.Equal(5, result);  // Returns old value
-        Assert.Equal(4, Evaluate(interpreter, "x"));  // But variable is decremented
+        Assert.Equal(5L, result);  // Returns old value
+        Assert.Equal(4L, Evaluate(interpreter, "x"));  // But variable is decremented
     }
 
     [Fact]
@@ -582,8 +582,8 @@ public class InterpreterTests
         var interpreter = new Interpreter();
         Evaluate(interpreter, "x = 5");
         var result = Evaluate(interpreter, "x++ + 10");  // 5 + 10 = 15, then x becomes 6
-        Assert.Equal(15, result);
-        Assert.Equal(6, Evaluate(interpreter, "x"));
+        Assert.Equal(15L, result);
+        Assert.Equal(6L, Evaluate(interpreter, "x"));
     }
 
     [Fact]
@@ -592,8 +592,8 @@ public class InterpreterTests
         var interpreter = new Interpreter();
         Evaluate(interpreter, "x = 5");
         var result = Evaluate(interpreter, "++x + 10");  // x becomes 6, then 6 + 10 = 16
-        Assert.Equal(16, result);
-        Assert.Equal(6, Evaluate(interpreter, "x"));
+        Assert.Equal(16L, result);
+        Assert.Equal(6L, Evaluate(interpreter, "x"));
     }
 
     [Fact]
@@ -615,7 +615,7 @@ public class InterpreterTests
         var interpreter = new Interpreter(output);
         var result = Evaluate(interpreter, "write(42)");
 
-        Assert.Equal(1, result);  // write() returns 1
+        Assert.Equal(1L, result);  // write() returns 1
         Assert.Equal("42" + Environment.NewLine, output.ToString());
     }
 
@@ -644,8 +644,8 @@ public class InterpreterTests
     [Fact]
     public void Evaluate_Strlen_ReturnsLength()
     {
-        Assert.Equal(5, Eval("strlen(\"hello\")"));
-        Assert.Equal(0, Eval("strlen(\"\")"));
+        Assert.Equal(5L, Eval("strlen(\"hello\")"));
+        Assert.Equal(0L, Eval("strlen(\"\")"));
     }
 
     [Fact]
@@ -663,25 +663,25 @@ public class InterpreterTests
     [Fact]
     public void Evaluate_ToInt_String()
     {
-        Assert.Equal(42, Eval("to_int(\"42\")"));
+        Assert.Equal(42L, Eval("to_int(\"42\")"));
     }
 
     [Fact]
     public void Evaluate_ToInt_NonNumericString()
     {
-        Assert.Equal(0, Eval("to_int(\"hello\")"));  // LPC returns 0
+        Assert.Equal(0L, Eval("to_int(\"hello\")"));  // LPC returns 0
     }
 
     [Fact]
     public void Evaluate_ToInt_Int()
     {
-        Assert.Equal(42, Eval("to_int(42)"));
+        Assert.Equal(42L, Eval("to_int(42)"));
     }
 
     [Fact]
     public void Evaluate_EfunInExpression()
     {
-        Assert.Equal(10, Eval("strlen(\"hello\") * 2"));
+        Assert.Equal(10L, Eval("strlen(\"hello\") * 2"));
     }
 
     [Fact]
@@ -741,7 +741,7 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "if (1) x = 42;");
 
-        Assert.Equal(42, Evaluate(interpreter, "x"));
+        Assert.Equal(42L, Evaluate(interpreter, "x"));
     }
 
     [Fact]
@@ -752,7 +752,7 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "if (0) x = 42;");
 
-        Assert.Equal(0, Evaluate(interpreter, "x"));
+        Assert.Equal(0L, Evaluate(interpreter, "x"));
     }
 
     [Fact]
@@ -763,7 +763,7 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "if (0) x = 1; else x = 2;");
 
-        Assert.Equal(2, Evaluate(interpreter, "x"));
+        Assert.Equal(2L, Evaluate(interpreter, "x"));
     }
 
     [Fact]
@@ -774,7 +774,7 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "if (x > 3) x = 100;");
 
-        Assert.Equal(100, Evaluate(interpreter, "x"));
+        Assert.Equal(100L, Evaluate(interpreter, "x"));
     }
 
     [Fact]
@@ -786,8 +786,8 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "while (x < 5) { sum = sum + x; x = x + 1; }");
 
-        Assert.Equal(5, Evaluate(interpreter, "x"));
-        Assert.Equal(10, Evaluate(interpreter, "sum")); // 0+1+2+3+4 = 10
+        Assert.Equal(5L, Evaluate(interpreter, "x"));
+        Assert.Equal(10L, Evaluate(interpreter, "sum")); // 0+1+2+3+4 = 10
     }
 
     [Fact]
@@ -798,7 +798,7 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "while (0) x = 42;");
 
-        Assert.Equal(0, Evaluate(interpreter, "x"));
+        Assert.Equal(0L, Evaluate(interpreter, "x"));
     }
 
     [Fact]
@@ -809,8 +809,8 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "for (i = 0; i < 5; i = i + 1) sum = sum + i;");
 
-        Assert.Equal(10, Evaluate(interpreter, "sum")); // 0+1+2+3+4 = 10
-        Assert.Equal(5, Evaluate(interpreter, "i"));
+        Assert.Equal(10L, Evaluate(interpreter, "sum")); // 0+1+2+3+4 = 10
+        Assert.Equal(5L, Evaluate(interpreter, "i"));
     }
 
     [Fact]
@@ -821,7 +821,7 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "for (i = 1; i <= 5; ++i) sum = sum + i;");
 
-        Assert.Equal(15, Evaluate(interpreter, "sum")); // 1+2+3+4+5 = 15
+        Assert.Equal(15L, Evaluate(interpreter, "sum")); // 1+2+3+4+5 = 15
     }
 
     [Fact]
@@ -833,7 +833,7 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "for (;;) { x = x + 1; if (x >= 3) break; }");
 
-        Assert.Equal(3, Evaluate(interpreter, "x"));
+        Assert.Equal(3L, Evaluate(interpreter, "x"));
     }
 
     [Fact]
@@ -844,7 +844,7 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "while (1) { x = x + 1; if (x == 3) break; }");
 
-        Assert.Equal(3, Evaluate(interpreter, "x"));
+        Assert.Equal(3L, Evaluate(interpreter, "x"));
     }
 
     [Fact]
@@ -855,7 +855,7 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "for (i = 0; i < 100; i = i + 1) { last = i; if (i == 5) break; }");
 
-        Assert.Equal(5, Evaluate(interpreter, "last"));
+        Assert.Equal(5L, Evaluate(interpreter, "last"));
     }
 
     [Fact]
@@ -867,7 +867,7 @@ public class InterpreterTests
         // Sum only even numbers
         ExecStmt(interpreter, "for (i = 0; i < 6; i = i + 1) { if (i % 2) continue; sum = sum + i; }");
 
-        Assert.Equal(6, Evaluate(interpreter, "sum")); // 0+2+4 = 6
+        Assert.Equal(6L, Evaluate(interpreter, "sum")); // 0+2+4 = 6
     }
 
     [Fact]
@@ -879,7 +879,7 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "while (x < 5) { x = x + 1; if (x == 3) continue; sum = sum + x; }");
 
-        Assert.Equal(12, Evaluate(interpreter, "sum")); // 1+2+4+5 = 12 (skipped 3)
+        Assert.Equal(12L, Evaluate(interpreter, "sum")); // 1+2+4+5 = 12 (skipped 3)
     }
 
     [Fact]
@@ -888,7 +888,7 @@ public class InterpreterTests
         var interpreter = new Interpreter();
 
         var ex = Assert.Throws<ReturnException>(() => ExecStmt(interpreter, "return 42;"));
-        Assert.Equal(42, ex.Value);
+        Assert.Equal(42L, ex.Value);
     }
 
     [Fact]
@@ -923,7 +923,7 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "{ x = 1; y = 2; z = x + y; }");
 
-        Assert.Equal(3, Evaluate(interpreter, "z"));
+        Assert.Equal(3L, Evaluate(interpreter, "z"));
     }
 
     [Fact]
@@ -936,7 +936,7 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "if (x > 0) { if (y > 5) result = 1; }");
 
-        Assert.Equal(1, Evaluate(interpreter, "result"));
+        Assert.Equal(1L, Evaluate(interpreter, "result"));
     }
 
     [Fact]
@@ -947,7 +947,7 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "for (i = 0; i < 3; i = i + 1) for (j = 0; j < 3; j = j + 1) count = count + 1;");
 
-        Assert.Equal(9, Evaluate(interpreter, "count"));
+        Assert.Equal(9L, Evaluate(interpreter, "count"));
     }
 
     #endregion
@@ -963,7 +963,7 @@ public class InterpreterTests
         ExecStmt(interpreter, "int double(int x) { return x * 2; }");
 
         // Call it
-        Assert.Equal(10, Evaluate(interpreter, "double(5)"));
+        Assert.Equal(10L, Evaluate(interpreter, "double(5)"));
     }
 
     [Fact]
@@ -973,7 +973,7 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "int five() { return 5; }");
 
-        Assert.Equal(5, Evaluate(interpreter, "five()"));
+        Assert.Equal(5L, Evaluate(interpreter, "five()"));
     }
 
     [Fact]
@@ -983,7 +983,7 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "int add(int a, int b) { return a + b; }");
 
-        Assert.Equal(8, Evaluate(interpreter, "add(3, 5)"));
+        Assert.Equal(8L, Evaluate(interpreter, "add(3, 5)"));
     }
 
     [Fact]
@@ -1003,9 +1003,9 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "int fact(int n) { if (n <= 1) { return 1; } return n * fact(n - 1); }");
 
-        Assert.Equal(120, Evaluate(interpreter, "fact(5)"));
-        Assert.Equal(1, Evaluate(interpreter, "fact(0)"));
-        Assert.Equal(1, Evaluate(interpreter, "fact(1)"));
+        Assert.Equal(120L, Evaluate(interpreter, "fact(5)"));
+        Assert.Equal(1L, Evaluate(interpreter, "fact(0)"));
+        Assert.Equal(1L, Evaluate(interpreter, "fact(1)"));
     }
 
     [Fact]
@@ -1017,7 +1017,7 @@ public class InterpreterTests
         ExecStmt(interpreter, "void setResult(int x) { result = x; }");
         Evaluate(interpreter, "setResult(42)");
 
-        Assert.Equal(42, Evaluate(interpreter, "result"));
+        Assert.Equal(42L, Evaluate(interpreter, "result"));
     }
 
     [Fact]
@@ -1027,7 +1027,7 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "void doNothing() { return; }");
 
-        Assert.Equal(0, Evaluate(interpreter, "doNothing()"));
+        Assert.Equal(0L, Evaluate(interpreter, "doNothing()"));
     }
 
     [Fact]
@@ -1039,9 +1039,9 @@ public class InterpreterTests
         ExecStmt(interpreter, "int addOne(int x) { return x + 1; }");
 
         // Call with different value
-        Assert.Equal(6, Evaluate(interpreter, "addOne(5)"));
+        Assert.Equal(6L, Evaluate(interpreter, "addOne(5)"));
         // Original x should be unchanged
-        Assert.Equal(100, Evaluate(interpreter, "x"));
+        Assert.Equal(100L, Evaluate(interpreter, "x"));
     }
 
     [Fact]
@@ -1054,7 +1054,7 @@ public class InterpreterTests
         // The function parameter shadows outer x, but multiplier is accessible
         ExecStmt(interpreter, "int mult(int x) { return x * multiplier; }");
 
-        Assert.Equal(50, Evaluate(interpreter, "mult(5)"));
+        Assert.Equal(50L, Evaluate(interpreter, "mult(5)"));
     }
 
     [Fact]
@@ -1075,7 +1075,7 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "int sumTo(int n) { sum = 0; for (i = 1; i <= n; i = i + 1) sum = sum + i; return sum; }");
 
-        Assert.Equal(55, Evaluate(interpreter, "sumTo(10)")); // 1+2+...+10 = 55
+        Assert.Equal(55L, Evaluate(interpreter, "sumTo(10)")); // 1+2+...+10 = 55
     }
 
     [Fact]
@@ -1085,9 +1085,9 @@ public class InterpreterTests
 
         ExecStmt(interpreter, "int isPositive(int x) { if (x > 0) return 1; return 0; }");
 
-        Assert.Equal(1, Evaluate(interpreter, "isPositive(5)"));
-        Assert.Equal(0, Evaluate(interpreter, "isPositive(-5)"));
-        Assert.Equal(0, Evaluate(interpreter, "isPositive(0)"));
+        Assert.Equal(1L, Evaluate(interpreter, "isPositive(5)"));
+        Assert.Equal(0L, Evaluate(interpreter, "isPositive(-5)"));
+        Assert.Equal(0L, Evaluate(interpreter, "isPositive(0)"));
     }
 
     [Fact]
@@ -1099,7 +1099,7 @@ public class InterpreterTests
         ExecStmt(interpreter, "int triple(int x) { return x * 3; }");
         ExecStmt(interpreter, "int addDoubleTriple(int x) { return double(x) + triple(x); }");
 
-        Assert.Equal(25, Evaluate(interpreter, "addDoubleTriple(5)")); // 10 + 15 = 25
+        Assert.Equal(25L, Evaluate(interpreter, "addDoubleTriple(5)")); // 10 + 15 = 25
     }
 
     [Fact]
@@ -1108,10 +1108,10 @@ public class InterpreterTests
         var interpreter = new Interpreter();
 
         ExecStmt(interpreter, "int getValue() { return 1; }");
-        Assert.Equal(1, Evaluate(interpreter, "getValue()"));
+        Assert.Equal(1L, Evaluate(interpreter, "getValue()"));
 
         ExecStmt(interpreter, "int getValue() { return 2; }");
-        Assert.Equal(2, Evaluate(interpreter, "getValue()"));
+        Assert.Equal(2L, Evaluate(interpreter, "getValue()"));
     }
 
     #endregion
@@ -1132,9 +1132,9 @@ public class InterpreterTests
         var result = Eval("({ 1, 2, 3 })");
         var arr = Assert.IsType<List<object>>(result);
         Assert.Equal(3, arr.Count);
-        Assert.Equal(1, arr[0]);
-        Assert.Equal(2, arr[1]);
-        Assert.Equal(3, arr[2]);
+        Assert.Equal(1L, arr[0]);
+        Assert.Equal(2L, arr[1]);
+        Assert.Equal(3L, arr[2]);
     }
 
     [Fact]
@@ -1143,9 +1143,9 @@ public class InterpreterTests
         var result = Eval("({ 1, \"hello\", 42 })");
         var arr = Assert.IsType<List<object>>(result);
         Assert.Equal(3, arr.Count);
-        Assert.Equal(1, arr[0]);
+        Assert.Equal(1L, arr[0]);
         Assert.Equal("hello", arr[1]);
-        Assert.Equal(42, arr[2]);
+        Assert.Equal(42L, arr[2]);
     }
 
     [Fact]
@@ -1155,9 +1155,9 @@ public class InterpreterTests
         var result1 = Eval("({ 10, 20, 30 })[0]");
         var result2 = Eval("({ 10, 20, 30 })[1]");
         var result3 = Eval("({ 10, 20, 30 })[2]");
-        Assert.Equal(10, result1);
-        Assert.Equal(20, result2);
-        Assert.Equal(30, result3);
+        Assert.Equal(10L, result1);
+        Assert.Equal(20L, result2);
+        Assert.Equal(30L, result3);
     }
 
     [Fact]
@@ -1166,23 +1166,23 @@ public class InterpreterTests
         var result = Eval("({ 1, 2 }) + ({ 3, 4 })");
         var arr = Assert.IsType<List<object>>(result);
         Assert.Equal(4, arr.Count);
-        Assert.Equal(1, arr[0]);
-        Assert.Equal(2, arr[1]);
-        Assert.Equal(3, arr[2]);
-        Assert.Equal(4, arr[3]);
+        Assert.Equal(1L, arr[0]);
+        Assert.Equal(2L, arr[1]);
+        Assert.Equal(3L, arr[2]);
+        Assert.Equal(4L, arr[3]);
     }
 
     [Fact]
     public void Evaluate_SizeOfArray()
     {
         // Test sizeof directly on literal
-        Assert.Equal(5, Eval("sizeof(({ 1, 2, 3, 4, 5 }))"));
+        Assert.Equal(5L, Eval("sizeof(({ 1, 2, 3, 4, 5 }))"));
     }
 
     [Fact]
     public void Evaluate_SizeOfEmptyArray()
     {
-        Assert.Equal(0, Eval("sizeof(({ }))"));
+        Assert.Equal(0L, Eval("sizeof(({ }))"));
     }
 
     [Fact]
@@ -1194,17 +1194,17 @@ public class InterpreterTests
 
         var inner1 = Assert.IsType<List<object>>(arr[0]);
         Assert.Equal(2, inner1.Count);
-        Assert.Equal(1, inner1[0]);
-        Assert.Equal(2, inner1[1]);
+        Assert.Equal(1L, inner1[0]);
+        Assert.Equal(2L, inner1[1]);
     }
 
     [Fact]
     public void Evaluate_StringIndexing()
     {
         // String indexing returns the character code
-        Assert.Equal((int)'h', Eval("\"hello\"[0]"));
-        Assert.Equal((int)'e', Eval("\"hello\"[1]"));
-        Assert.Equal((int)'o', Eval("\"hello\"[4]"));
+        Assert.Equal((long)'h', Eval("\"hello\"[0]"));
+        Assert.Equal((long)'e', Eval("\"hello\"[1]"));
+        Assert.Equal((long)'o', Eval("\"hello\"[4]"));
     }
 
     #endregion

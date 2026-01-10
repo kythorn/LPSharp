@@ -164,7 +164,7 @@ int get_sum() {
 
         // Verify it actually ran
         var count = obj.GetVariable("count");
-        Assert.Equal(1000, count);
+        Assert.Equal(1000L, count);
     }
 
     [Fact]
@@ -181,7 +181,7 @@ int get_sum() {
 
         // Verify it actually ran
         var sum = obj.GetVariable("sum");
-        Assert.Equal(50, sum);
+        Assert.Equal(50L, sum);
     }
 
     [Fact]
@@ -199,7 +199,7 @@ int get_sum() {
 
         // Verify it actually ran
         var count = obj.GetVariable("count");
-        Assert.Equal(1000, count);
+        Assert.Equal(1000L, count);
 
         // Re-enable limits for cleanup
         _interpreter.LimitsEnabled = true;
@@ -221,7 +221,7 @@ int get_sum() {
 
         // Both runs completed
         var count = obj.GetVariable("count");
-        Assert.Equal(1000, count);
+        Assert.Equal(1000L, count);
     }
 
     [Fact]

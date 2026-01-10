@@ -68,9 +68,26 @@ public class EfunRegistry
         Register("first_inventory", FirstInventory);
         Register("next_inventory", NextInventory);
 
+        // Type predicates
+        Register("intp", Intp);
+        Register("stringp", Stringp);
+        Register("objectp", Objectp);
+        Register("pointerp", Pointerp);
+        Register("arrayp", Pointerp);  // Alias
+        Register("mappingp", Mappingp);
+
+        // Array/mapping utilities
+        Register("allocate", Allocate);
+        Register("copy", Copy);
+
+        // Additional string functions
+        Register("replace_string", ReplaceString);
+        Register("trim", Trim);
+
         // Note: load_object, clone_object, move_object, etc. are registered by ObjectInterpreter
         // Note: filter_array, map_array are in ObjectInterpreter (need callback support)
         // Note: sscanf is in ObjectInterpreter (needs variable assignment)
+        // Note: clonep, say are in ObjectInterpreter (need object model access)
     }
 
     public void Register(string name, Func<List<object>, object> implementation)
@@ -105,6 +122,7 @@ public class EfunRegistry
         {
             string s => s,
             int i => i.ToString(),
+            long l => l.ToString(),
             _ => value.ToString() ?? ""
         };
 
@@ -120,7 +138,7 @@ public class EfunRegistry
             _output.WriteLine(output);
         }
 
-        return 1;
+        return 1L;
     }
 
     /// <summary>
@@ -187,6 +205,7 @@ public class EfunRegistry
         return args[0] switch
         {
             int => "int",
+            long => "int",  // LPC doesn't distinguish int/long - both are "int"
             string => "string",
             _ => "unknown"
         };
@@ -207,7 +226,7 @@ public class EfunRegistry
             throw new EfunException("strlen() requires a string argument");
         }
 
-        return s.Length;
+        return (long)s.Length;
     }
 
     /// <summary>
@@ -223,9 +242,9 @@ public class EfunRegistry
 
         return args[0] switch
         {
-            List<object> list => list.Count,
-            string s => s.Length,
-            Dictionary<object, object> dict => dict.Count,
+            List<object> list => (long)list.Count,
+            string s => (long)s.Length,
+            Dictionary<object, object> dict => (long)dict.Count,
             _ => throw new EfunException($"sizeof() requires an array, string, or mapping, got {args[0]?.GetType().Name ?? "null"}")
         };
     }
@@ -244,6 +263,7 @@ public class EfunRegistry
         {
             string s => s,
             int i => i.ToString(),
+            long l => l.ToString(),
             _ => args[0].ToString() ?? ""
         };
     }
@@ -260,9 +280,10 @@ public class EfunRegistry
 
         return args[0] switch
         {
-            int i => i,
-            string s when int.TryParse(s, out var result) => result,
-            string => 0, // LPC returns 0 for non-numeric strings
+            int i => (long)i,
+            long l => l,
+            string s when long.TryParse(s, out var result) => result,
+            string => 0L, // LPC returns 0 for non-numeric strings
             _ => throw new EfunException($"to_int() cannot convert {args[0].GetType().Name}")
         };
     }
@@ -408,17 +429,26 @@ public class EfunRegistry
             throw new EfunException("random() requires exactly 1 argument");
         }
 
-        if (args[0] is not int n)
+        long n;
+        if (args[0] is int i)
+        {
+            n = i;
+        }
+        else if (args[0] is long l)
+        {
+            n = l;
+        }
+        else
         {
             throw new EfunException("random() argument must be an integer");
         }
 
         if (n <= 0)
         {
-            return 0;
+            return 0L;
         }
 
-        return System.Random.Shared.Next(n);
+        return (long)System.Random.Shared.NextInt64(n);
     }
 
     /// <summary>
@@ -443,11 +473,11 @@ public class EfunRegistry
         {
             if (Equals(item, array[i]))
             {
-                return i;
+                return (long)i;
             }
         }
 
-        return -1;
+        return -1L;
     }
 
     /// <summary>
@@ -755,7 +785,7 @@ public class EfunRegistry
             throw new EfunException("time() takes no arguments");
         }
 
-        return (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        return DateTimeOffset.UtcNow.ToUnixTimeSeconds();
     }
 
     /// <summary>
@@ -773,11 +803,12 @@ public class EfunRegistry
         }
         else if (args.Count == 1)
         {
-            if (args[0] is not int t)
+            timestamp = args[0] switch
             {
-                throw new EfunException("ctime() argument must be an integer");
-            }
-            timestamp = t;
+                long l => l,
+                int i => i,
+                _ => throw new EfunException("ctime() argument must be an integer")
+            };
         }
         else
         {
@@ -1010,13 +1041,13 @@ public class EfunRegistry
         if (reverse)
         {
             // Search from end
-            return str.LastIndexOf(substr, start, StringComparison.Ordinal);
+            return (long)str.LastIndexOf(substr, start, StringComparison.Ordinal);
         }
         else
         {
             // Search from start
-            if (start >= str.Length) return -1;
-            return str.IndexOf(substr, start, StringComparison.Ordinal);
+            if (start >= str.Length) return -1L;
+            return (long)str.IndexOf(substr, start, StringComparison.Ordinal);
         }
     }
 
@@ -1082,6 +1113,195 @@ public class EfunRegistry
         }
 
         return 0;
+    }
+
+    #endregion
+
+    #region Type Predicates
+
+    /// <summary>
+    /// intp(x) - Returns 1 if x is an integer (32-bit or 64-bit), 0 otherwise.
+    /// </summary>
+    private static object Intp(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("intp() requires exactly 1 argument");
+        }
+        return args[0] is int or long ? 1L : 0L;
+    }
+
+    /// <summary>
+    /// stringp(x) - Returns 1 if x is a string, 0 otherwise.
+    /// </summary>
+    private static object Stringp(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("stringp() requires exactly 1 argument");
+        }
+        return args[0] is string ? 1L : 0L;
+    }
+
+    /// <summary>
+    /// objectp(x) - Returns 1 if x is an object, 0 otherwise.
+    /// </summary>
+    private static object Objectp(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("objectp() requires exactly 1 argument");
+        }
+        return args[0] is MudObject ? 1L : 0L;
+    }
+
+    /// <summary>
+    /// pointerp(x) / arrayp(x) - Returns 1 if x is an array, 0 otherwise.
+    /// "Pointer" is classic LPC terminology for arrays.
+    /// </summary>
+    private static object Pointerp(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("pointerp() requires exactly 1 argument");
+        }
+        return args[0] is List<object> ? 1L : 0L;
+    }
+
+    /// <summary>
+    /// mappingp(x) - Returns 1 if x is a mapping, 0 otherwise.
+    /// </summary>
+    private static object Mappingp(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("mappingp() requires exactly 1 argument");
+        }
+        return args[0] is Dictionary<object, object> ? 1L : 0L;
+    }
+
+    #endregion
+
+    #region Array/Mapping Utilities
+
+    /// <summary>
+    /// allocate(n) - Create an array of n elements, all initialized to 0.
+    /// </summary>
+    private static object Allocate(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("allocate() requires exactly 1 argument");
+        }
+
+        if (args[0] is not int size)
+        {
+            throw new EfunException("allocate() argument must be an integer");
+        }
+
+        if (size < 0)
+        {
+            throw new EfunException("allocate() size cannot be negative");
+        }
+
+        if (size > 10000)
+        {
+            throw new EfunException("allocate() size too large (max 10000)");
+        }
+
+        var result = new List<object>(size);
+        for (int i = 0; i < size; i++)
+        {
+            result.Add(0);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// copy(x) - Create a deep copy of an array or mapping.
+    /// Prevents aliasing bugs when modifying collections.
+    /// </summary>
+    private static object Copy(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("copy() requires exactly 1 argument");
+        }
+
+        return DeepCopy(args[0]);
+    }
+
+    /// <summary>
+    /// Recursively deep copy a value.
+    /// </summary>
+    private static object DeepCopy(object value)
+    {
+        return value switch
+        {
+            List<object> list => list.Select(DeepCopy).ToList(),
+            Dictionary<object, object> dict => dict.ToDictionary(
+                kv => DeepCopy(kv.Key),
+                kv => DeepCopy(kv.Value)
+            ),
+            // Primitives and objects are not deep-copied
+            _ => value
+        };
+    }
+
+    #endregion
+
+    #region Additional String Functions
+
+    /// <summary>
+    /// replace_string(str, from, to) - Replace all occurrences of 'from' with 'to' in 'str'.
+    /// Returns the modified string.
+    /// </summary>
+    private static object ReplaceString(List<object> args)
+    {
+        if (args.Count != 3)
+        {
+            throw new EfunException("replace_string() requires exactly 3 arguments");
+        }
+
+        if (args[0] is not string str)
+        {
+            throw new EfunException("replace_string() first argument must be a string");
+        }
+
+        if (args[1] is not string from)
+        {
+            throw new EfunException("replace_string() second argument must be a string");
+        }
+
+        if (args[2] is not string to)
+        {
+            throw new EfunException("replace_string() third argument must be a string");
+        }
+
+        if (string.IsNullOrEmpty(from))
+        {
+            return str; // Can't replace empty string
+        }
+
+        return str.Replace(from, to);
+    }
+
+    /// <summary>
+    /// trim(str) - Remove leading and trailing whitespace from a string.
+    /// </summary>
+    private static object Trim(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("trim() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string str)
+        {
+            throw new EfunException("trim() argument must be a string");
+        }
+
+        return str.Trim();
     }
 
     #endregion

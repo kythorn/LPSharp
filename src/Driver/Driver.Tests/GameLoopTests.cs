@@ -244,7 +244,9 @@ void main(string args) {
             outputs.Add(output!);
         }
 
-        Assert.Contains(outputs, o => o.Content.Contains("Unknown command: unknowncommand"));
+        // Classic LPMud behavior: "What?" is the default failure message
+        // Custom messages can be set via notify_fail()
+        Assert.Contains(outputs, o => o.Content.Contains("What?"));
     }
 
     [Fact]

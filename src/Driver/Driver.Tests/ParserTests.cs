@@ -18,7 +18,7 @@ public class ParserTests
         var expr = Parse("42");
 
         var num = Assert.IsType<NumberLiteral>(expr);
-        Assert.Equal(42, num.Value);
+        Assert.Equal(42L, num.Value);
     }
 
     [Fact]
@@ -27,7 +27,7 @@ public class ParserTests
         var expr = Parse("0");
 
         var num = Assert.IsType<NumberLiteral>(expr);
-        Assert.Equal(0, num.Value);
+        Assert.Equal(0L, num.Value);
     }
 
     #endregion
@@ -95,7 +95,7 @@ public class ParserTests
         Assert.Equal(BinaryOperator.Add, add.Operator);
 
         var left = Assert.IsType<NumberLiteral>(add.Left);
-        Assert.Equal(5, left.Value);
+        Assert.Equal(5L, left.Value);
 
         var mult = Assert.IsType<BinaryOp>(add.Right);
         Assert.Equal(BinaryOperator.Multiply, mult.Operator);
@@ -505,7 +505,7 @@ public class ParserTests
         Assert.Equal("write", call.Name);
         Assert.Single(call.Arguments);
         var arg = Assert.IsType<NumberLiteral>(call.Arguments[0]);
-        Assert.Equal(42, arg.Value);
+        Assert.Equal(42L, arg.Value);
     }
 
     [Fact]
@@ -708,7 +708,7 @@ public class ParserTests
         var ret = Assert.IsType<ReturnStatement>(result);
         Assert.NotNull(ret.Value);
         var num = Assert.IsType<NumberLiteral>(ret.Value);
-        Assert.Equal(42, num.Value);
+        Assert.Equal(42L, num.Value);
     }
 
     [Fact]
