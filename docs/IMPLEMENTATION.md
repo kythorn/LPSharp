@@ -360,13 +360,17 @@ Obvious exits: south, west
 - `init()` called when entering room
 
 **Deliverables**:
-- [ ] /std/room.c with exits and descriptions
-- [ ] /room/start.c starting location
-- [ ] /room/market.c connected room
-- [ ] /cmds/look.c command
-- [ ] /cmds/go.c command
-- [ ] Movement and room messaging efuns
-- [ ] Integration tests for movement
+- [x] /std/room.c with exits, descriptions, and hidden exit support
+- [x] /room/town_square.c starting location (medieval fantasy town square)
+- [x] 20+ connected rooms (tavern, temple, market, castle, forest, etc.)
+- [x] /cmds/look.c command (shows room description, exits)
+- [x] /cmds/go.c command with all direction shortcuts
+- [x] Direction commands: n, s, e, w, ne, nw, se, sw, up, down (and full names)
+- [x] environment(), move_object(), tell_room(), all_inventory() efuns
+- [x] call_other() efun for inter-object function calls
+- [x] Environment/contents model on MudObject
+- [x] Unit tests for room loading including double inheritance
+- [x] Fixed critical bug in parent function calls (::) with multi-level inheritance
 
 ---
 
@@ -524,7 +528,7 @@ void run_tests() {
 | 5. Object Model | ✅ Complete |
 | 6. Telnet Server | ✅ Complete |
 | 7. Player & Commands | ✅ Complete |
-| 8. Rooms & Movement | Not Started |
+| 8. Rooms & Movement | ✅ Complete |
 | 9. Heartbeats & Callouts | Not Started |
 | 10. Combat | Not Started |
 
@@ -532,7 +536,7 @@ void run_tests() {
 
 ## Current State Notes
 
-### What's Working (as of Milestone 7 complete)
+### What's Working (as of Milestone 8 complete)
 
 **Interpreter/REPL:**
 - Full expression evaluation with correct operator precedence
@@ -541,13 +545,14 @@ void run_tests() {
 - String concatenation and comparison
 - Control flow: if/else, while, for, break, continue, return
 - User-defined functions with parameters and return values
+- Local variables inside function bodies
 - Efuns: `write()`, `typeof()`, `strlen()`, `to_string()`, `to_int()`
-- 374+ unit tests passing
+- 401+ unit tests passing
 
 **Object Model (Milestone 5):**
 - Blueprint/clone architecture (singletons vs instances)
-- Inheritance with `inherit` statement
-- Parent function calls with `::` operator
+- Inheritance with `inherit` statement (multi-level inheritance works correctly)
+- Parent function calls with `::` operator (fixed for deep inheritance chains)
 - Object-centric execution (all code runs within object context)
 - Lifecycle hooks (`create()` called on load/clone)
 - Object variables (persistent state per instance)
@@ -573,23 +578,35 @@ void run_tests() {
 - Line buffering with basic telnet protocol handling
 - Graceful quit/exit and Ctrl+C shutdown
 
+**Rooms & Movement (Milestone 8):**
+- `/std/room.c` base class with short/long descriptions
+- Exit system supporting 10 directions (n, s, e, w, ne, nw, se, sw, up, down)
+- Hidden exits (exist but don't show in "Obvious exits")
+- Environment/contents containment model
+- `environment()`, `move_object()`, `tell_room()`, `all_inventory()` efuns
+- `call_other()` efun for inter-object function calls
+- 20+ medieval fantasy rooms (town square, tavern, temple, market, castle, forest, ruins)
+- Direction shortcut commands (n, e, s, w, etc.)
+- Players start in town square on connect
+
 **Commands:**
 - `/cmds/say.c` - Say a message
-- `/cmds/look.c` - Look at surroundings (basic version)
+- `/cmds/look.c` - Look at room (shows description, exits)
 - `/cmds/quit.c` - Quit and disconnect
+- `/cmds/go.c` - Move in a direction
+- Direction shortcuts: n, s, e, w, ne, nw, se, sw, up, down (and full names)
 
 ### What's NOT Working Yet
 
 **Language gaps:**
 - No arrays or mappings (syntax exists but not implemented)
-- No call_other syntax (`obj->func()`)
+- No `obj->func()` arrow syntax (use `call_other()` instead)
 - No mapping/array indexing and manipulation
 
-**Gameplay gaps (needed for Milestone 8+):**
-- No rooms - players exist in a void
-- No `environment()` or `move_object()` efuns
-- No `tell_room()` for room-wide messaging
-- No exits or movement
+**Gameplay gaps (needed for Milestone 9+):**
+- No heartbeats or callouts (time-based callbacks)
+- No `init()` hook when entering rooms
+- No combat system
 
 **Execution Limits (Safety):**
 - Instruction counter limits execution to 1,000,000 instructions per command (configurable)

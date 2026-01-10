@@ -65,11 +65,32 @@ public class GameLoop
     }
 
     /// <summary>
+    /// The starting room path for new players.
+    /// </summary>
+    public string StartingRoomPath { get; set; } = "/room/town_square";
+
+    /// <summary>
     /// Initialize the interpreter. Must be called after ObjectManager.InitializeInterpreter().
     /// </summary>
     public void InitializeInterpreter(ObjectInterpreter interpreter)
     {
         _interpreter = interpreter;
+
+        // Wire up efun callbacks for tell_room() support
+        EfunRegistry.FindSessionByPlayer = FindSessionByPlayerObject;
+        EfunRegistry.SendToConnection = SendToPlayer;
+    }
+
+    /// <summary>
+    /// Find a session by its player object.
+    /// Used by tell_room() efun.
+    /// </summary>
+    private PlayerSession? FindSessionByPlayerObject(MudObject playerObject)
+    {
+        lock (_sessionLock)
+        {
+            return _sessions.Values.FirstOrDefault(s => s.PlayerObject == playerObject);
+        }
     }
 
     /// <summary>
@@ -133,6 +154,7 @@ public class GameLoop
     public void CreatePlayerSession(string connectionId)
     {
         MudObject? playerObject = null;
+        MudObject? startingRoom = null;
 
         try
         {
@@ -143,6 +165,23 @@ public class GameLoop
         {
             Console.WriteLine($"Warning: Could not create player object: {ex.Message}");
             // Create session without player object (will use fallback behavior)
+        }
+
+        // Try to load the starting room
+        try
+        {
+            startingRoom = _objectManager.LoadObject(StartingRoomPath);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Could not load starting room {StartingRoomPath}: {ex.Message}");
+        }
+
+        // Move player to starting room
+        if (playerObject != null && startingRoom != null)
+        {
+            playerObject.MoveTo(startingRoom);
+            Console.WriteLine($"Moved player to {StartingRoomPath}");
         }
 
         var session = new PlayerSession

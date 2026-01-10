@@ -80,6 +80,34 @@ public class LpcProgram
     }
 
     /// <summary>
+    /// Finds a function in this program or its inheritance chain,
+    /// returning both the function and the program it was defined in.
+    /// This is needed for correct :: (parent call) behavior.
+    /// </summary>
+    /// <param name="name">Function name to find</param>
+    /// <returns>Tuple of (function, owning program) or (null, null) if not found</returns>
+    public (FunctionDefinition? Function, LpcProgram? OwningProgram) FindFunctionWithProgram(string name)
+    {
+        // Check this program first
+        if (Functions.TryGetValue(name, out var func))
+        {
+            return (func, this);
+        }
+
+        // Check inherited programs in order
+        foreach (var inherited in InheritedPrograms)
+        {
+            var result = inherited.FindFunctionWithProgram(name);
+            if (result.Function != null)
+            {
+                return result;
+            }
+        }
+
+        return (null, null);
+    }
+
+    /// <summary>
     /// Finds a function in parent programs only (for :: operator).
     /// </summary>
     /// <param name="name">Function name to find</param>

@@ -371,12 +371,9 @@ public class ObjectManager
             // First, execute variable initializers from the program
             ExecuteVariableInitializers(obj);
 
-            // Then call create() if it exists
-            var createFunc = obj.FindFunction("create");
-            if (createFunc != null)
-            {
-                _interpreter.ExecuteInObject(obj, createFunc.Body);
-            }
+            // Then call create() if it exists, using proper function call mechanism
+            // This ensures the executing program is tracked for correct :: behavior
+            _interpreter.CallFunctionOnObjectInit(obj, "create");
         }
         catch (Exception ex)
         {

@@ -67,6 +67,26 @@ public class MudObject
     public DateTime CreatedAt { get; }
 
     /// <summary>
+    /// The environment (container) this object is in.
+    /// For players: typically a room.
+    /// For items: a room, player, or container.
+    /// null if not in any environment.
+    /// </summary>
+    public MudObject? Environment { get; private set; }
+
+    /// <summary>
+    /// Objects contained within this object.
+    /// For rooms: players, NPCs, items on the floor.
+    /// For players: inventory items.
+    /// </summary>
+    private readonly List<MudObject> _contents = new();
+
+    /// <summary>
+    /// Read-only access to contents.
+    /// </summary>
+    public IReadOnlyList<MudObject> Contents => _contents.AsReadOnly();
+
+    /// <summary>
     /// Create a blueprint object.
     /// </summary>
     public MudObject(LpcProgram program)
@@ -170,6 +190,57 @@ public class MudObject
     {
         var type = IsBlueprint ? "Blueprint" : "Clone";
         return $"{type}({ObjectName})";
+    }
+
+    /// <summary>
+    /// Move this object into a new environment.
+    /// Removes from old environment (if any), adds to new environment.
+    /// </summary>
+    /// <param name="destination">The new environment, or null to remove from any environment</param>
+    /// <returns>True if move succeeded</returns>
+    public bool MoveTo(MudObject? destination)
+    {
+        // Can't move into self
+        if (destination == this)
+        {
+            return false;
+        }
+
+        // Remove from old environment
+        Environment?._contents.Remove(this);
+        var oldEnvironment = Environment;
+        Environment = null;
+
+        // Add to new environment
+        if (destination != null)
+        {
+            destination._contents.Add(this);
+            Environment = destination;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Check if this object contains another object (directly or indirectly).
+    /// Used to prevent circular containment.
+    /// </summary>
+    public bool Contains(MudObject obj)
+    {
+        if (_contents.Contains(obj))
+        {
+            return true;
+        }
+
+        foreach (var content in _contents)
+        {
+            if (content.Contains(obj))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

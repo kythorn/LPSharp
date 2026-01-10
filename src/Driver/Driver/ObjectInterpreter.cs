@@ -30,6 +30,14 @@ public class ObjectInterpreter
     /// </summary>
     private readonly Stack<Dictionary<string, object?>> _localScopes = new();
 
+    /// <summary>
+    /// Stack tracking which program each executing function belongs to.
+    /// Used for correct :: (parent call) behavior in inheritance chains.
+    /// When function A from program X calls ::foo(), we need to search
+    /// from X's inheritance chain, not from _currentObject's program.
+    /// </summary>
+    private readonly Stack<LpcProgram> _executingPrograms = new();
+
     #region Execution Limits
 
     /// <summary>
@@ -120,6 +128,7 @@ public class ObjectInterpreter
         _efuns.Register("load_object", LoadObjectEfun);
         _efuns.Register("find_object", FindObjectEfun);
         _efuns.Register("destruct", DestructEfun);
+        _efuns.Register("call_other", CallOtherEfun);
     }
 
     /// <summary>
@@ -165,7 +174,7 @@ public class ObjectInterpreter
     /// </summary>
     public object? CallFunctionOnObject(MudObject target, string functionName, List<object> args)
     {
-        var func = target.FindFunction(functionName);
+        var (func, owningProgram) = target.Program.FindFunctionWithProgram(functionName);
         if (func == null)
         {
             throw new ObjectInterpreterException($"Function '{functionName}' not found in object {target.ObjectName}");
@@ -179,12 +188,37 @@ public class ObjectInterpreter
 
         try
         {
-            return CallUserFunction(func, args);
+            return CallUserFunctionWithProgram(func, args, owningProgram);
         }
         finally
         {
             _currentObject = previousObject;
             _callStack.Pop();
+        }
+    }
+
+    /// <summary>
+    /// Call a function on an object during initialization (for create() lifecycle hook).
+    /// Does not manage call stack since there's no caller during object creation.
+    /// </summary>
+    public object? CallFunctionOnObjectInit(MudObject target, string functionName)
+    {
+        var (func, owningProgram) = target.Program.FindFunctionWithProgram(functionName);
+        if (func == null)
+        {
+            return null; // Function doesn't exist, which is okay
+        }
+
+        var previousObject = _currentObject;
+        _currentObject = target;
+
+        try
+        {
+            return CallUserFunctionWithProgram(func, new List<object>(), owningProgram);
+        }
+        finally
+        {
+            _currentObject = previousObject;
         }
     }
 
@@ -469,21 +503,41 @@ public class ObjectInterpreter
         // Handle parent function call (::function())
         if (expr.IsParentCall)
         {
-            var parentFunc = _currentObject.FindParentFunction(expr.Name);
+            // For parent calls, we need to find the parent relative to the program
+            // where the calling function is defined, not relative to _currentObject.
+            // This is critical for correct behavior with multi-level inheritance.
+            LpcProgram searchFrom;
+            if (_executingPrograms.Count > 0)
+            {
+                // Use the program of the currently executing function
+                searchFrom = _executingPrograms.Peek();
+            }
+            else
+            {
+                // No function context - use object's program (shouldn't happen normally)
+                searchFrom = _currentObject.Program;
+            }
+
+            var parentFunc = searchFrom.FindParentFunction(expr.Name);
             if (parentFunc == null)
             {
                 throw new ObjectInterpreterException(
-                    $"Parent function '{expr.Name}' not found in inheritance chain of {_currentObject.ObjectName}");
+                    $"Parent function '{expr.Name}' not found in inheritance chain");
             }
 
-            return CallUserFunction(parentFunc, args) ?? 0;
+            // Find which program owns this parent function for correct nested parent calls
+            var (_, owningProgram) = searchFrom.InheritedPrograms
+                .Select(p => p.FindFunctionWithProgram(expr.Name))
+                .FirstOrDefault(r => r.Function != null);
+
+            return CallUserFunctionWithProgram(parentFunc, args, owningProgram) ?? 0;
         }
 
         // Check in current object's program (including inherited functions)
-        var objectFunc = _currentObject.FindFunction(expr.Name);
+        var (objectFunc, funcProgram) = _currentObject.Program.FindFunctionWithProgram(expr.Name);
         if (objectFunc != null)
         {
-            return CallUserFunction(objectFunc, args) ?? 0;
+            return CallUserFunctionWithProgram(objectFunc, args, funcProgram) ?? 0;
         }
 
         // Check for efun
@@ -504,6 +558,13 @@ public class ObjectInterpreter
 
     private object? CallUserFunction(FunctionDefinition funcDef, List<object> args)
     {
+        // Use the current object's program as the owning program
+        // This is the legacy behavior, but CallUserFunctionWithProgram should be preferred
+        return CallUserFunctionWithProgram(funcDef, args, _currentObject.Program);
+    }
+
+    private object? CallUserFunctionWithProgram(FunctionDefinition funcDef, List<object> args, LpcProgram? owningProgram)
+    {
         // Check argument count
         if (args.Count != funcDef.Parameters.Count)
         {
@@ -520,6 +581,13 @@ public class ObjectInterpreter
 
         // Push local scope onto stack
         _localScopes.Push(localScope);
+
+        // Push the owning program onto the executing programs stack
+        // This is used for correct :: (parent call) resolution
+        if (owningProgram != null)
+        {
+            _executingPrograms.Push(owningProgram);
+        }
 
         // Check recursion depth limit
         CheckRecursionDepth();
@@ -538,6 +606,12 @@ public class ObjectInterpreter
         {
             // Pop local scope
             _localScopes.Pop();
+
+            // Pop executing program
+            if (owningProgram != null)
+            {
+                _executingPrograms.Pop();
+            }
         }
     }
 
@@ -876,6 +950,64 @@ public class ObjectInterpreter
         catch (Exception ex)
         {
             throw new EfunException($"destruct() failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// call_other(object, "function_name", args...) - Call a function on another object.
+    /// Traditional LPC way to invoke methods on objects.
+    /// Returns the function's return value, or 0 if function not found.
+    /// </summary>
+    private object CallOtherEfun(List<object> args)
+    {
+        if (args.Count < 2)
+        {
+            throw new EfunException("call_other() requires at least 2 arguments (object, function_name)");
+        }
+
+        if (args[0] is not MudObject target)
+        {
+            // If it's an int 0, return 0 (calling on null object)
+            if (args[0] is int i && i == 0)
+            {
+                return 0;
+            }
+            throw new EfunException("call_other() first argument must be an object");
+        }
+
+        if (args[1] is not string functionName)
+        {
+            throw new EfunException("call_other() second argument must be a string (function name)");
+        }
+
+        // Gather remaining arguments for the function call
+        var funcArgs = new List<object>();
+        for (int i = 2; i < args.Count; i++)
+        {
+            funcArgs.Add(args[i]);
+        }
+
+        // Find the function
+        var func = target.FindFunction(functionName);
+        if (func == null)
+        {
+            // LPC convention: return 0 if function not found
+            return 0;
+        }
+
+        try
+        {
+            // Call the function on the target object
+            var result = CallFunctionOnObject(target, functionName, funcArgs);
+            return result ?? 0;
+        }
+        catch (ReturnException ret)
+        {
+            return ret.Value ?? 0;
+        }
+        catch (Exception ex)
+        {
+            throw new EfunException($"call_other() failed: {ex.Message}");
         }
     }
 
