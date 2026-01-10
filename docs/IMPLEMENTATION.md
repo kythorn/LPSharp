@@ -602,9 +602,6 @@ void run_tests() {
 
 ### What's NOT Working Yet
 
-**Language gaps:**
-- No `obj->func()` arrow syntax (use `call_other()` instead)
-
 **Gameplay gaps (needed for Milestone 9+):**
 - No heartbeats or callouts (time-based callbacks)
 - No combat system

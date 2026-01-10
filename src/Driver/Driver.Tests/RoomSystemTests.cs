@@ -472,3 +472,109 @@ void create() {
         Assert.Equal(0, resultShield);
     }
 }
+
+/// <summary>
+/// Tests for arrow syntax: obj->func(args)
+/// </summary>
+public class ArrowSyntaxTests : IDisposable
+{
+    private readonly string _testMudlibPath;
+    private readonly ObjectManager _objectManager;
+    private readonly ObjectInterpreter _interpreter;
+
+    public ArrowSyntaxTests()
+    {
+        _testMudlibPath = Path.Combine(Path.GetTempPath(), $"mudlib_arrow_test_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(_testMudlibPath);
+        Directory.CreateDirectory(Path.Combine(_testMudlibPath, "std"));
+        Directory.CreateDirectory(Path.Combine(_testMudlibPath, "obj"));
+
+        // Create base object with query functions
+        File.WriteAllText(Path.Combine(_testMudlibPath, "std", "object.c"), @"
+int test_value;
+void create() { test_value = 42; }
+int get_value() { return test_value; }
+void set_value(int v) { test_value = v; }
+int add(int a, int b) { return a + b; }
+");
+
+        // Create test object that uses arrow syntax
+        File.WriteAllText(Path.Combine(_testMudlibPath, "obj", "caller.c"), @"
+inherit ""/std/object"";
+void create() { ::create(); }
+
+int test_arrow_call(object target) {
+    return target->get_value();
+}
+
+int test_arrow_with_args(object target) {
+    target->set_value(100);
+    return target->get_value();
+}
+
+int test_arrow_multi_args(object target) {
+    return target->add(10, 20);
+}
+");
+
+        _objectManager = new ObjectManager(_testMudlibPath);
+        _objectManager.InitializeInterpreter();
+        _interpreter = new ObjectInterpreter(_objectManager);
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_testMudlibPath))
+        {
+            try { Directory.Delete(_testMudlibPath, true); }
+            catch { /* Ignore cleanup errors */ }
+        }
+    }
+
+    [Fact]
+    public void ArrowCall_CallsFunction()
+    {
+        var target = _objectManager.CloneObject("/std/object");
+        var caller = _objectManager.CloneObject("/obj/caller");
+
+        var result = _interpreter.CallFunctionOnObject(caller, "test_arrow_call", new List<object> { target });
+        Assert.Equal(42, result);
+    }
+
+    [Fact]
+    public void ArrowCall_WithArguments()
+    {
+        var target = _objectManager.CloneObject("/std/object");
+        var caller = _objectManager.CloneObject("/obj/caller");
+
+        var result = _interpreter.CallFunctionOnObject(caller, "test_arrow_with_args", new List<object> { target });
+        Assert.Equal(100, result);
+    }
+
+    [Fact]
+    public void ArrowCall_MultipleArguments()
+    {
+        var target = _objectManager.CloneObject("/std/object");
+        var caller = _objectManager.CloneObject("/obj/caller");
+
+        var result = _interpreter.CallFunctionOnObject(caller, "test_arrow_multi_args", new List<object> { target });
+        Assert.Equal(30, result);
+    }
+
+    [Fact]
+    public void ArrowCall_OnZero_ReturnsZero()
+    {
+        // Create object that tries to call on 0
+        File.WriteAllText(Path.Combine(_testMudlibPath, "obj", "zero_caller.c"), @"
+inherit ""/std/object"";
+int test_zero() {
+    object o;
+    o = 0;
+    return o->get_value();
+}
+");
+        var caller = _objectManager.LoadObject("/obj/zero_caller");
+        var result = _interpreter.CallFunctionOnObject(caller, "test_zero", new List<object>());
+        Assert.Equal(0, result);
+    }
+}

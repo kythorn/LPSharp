@@ -948,6 +948,44 @@ public class Parser
                 continue;
             }
 
+            // Check for arrow call: expr->func(args)
+            if (Match(TokenType.Arrow))
+            {
+                var arrow = Previous();
+
+                if (!Match(TokenType.Identifier))
+                {
+                    throw new ParserException("Expected function name after '->'", Current());
+                }
+                var funcName = Previous().Lexeme;
+
+                if (!Match(TokenType.LeftParen))
+                {
+                    throw new ParserException("Expected '(' after function name in arrow call", Current());
+                }
+
+                var arguments = new List<Expression>();
+                if (!Check(TokenType.RightParen))
+                {
+                    do
+                    {
+                        arguments.Add(ParseExpression());
+                    } while (Match(TokenType.Comma));
+                }
+
+                if (!Match(TokenType.RightParen))
+                {
+                    throw new ParserException("Expected ')' after arrow call arguments", Current());
+                }
+
+                expr = new ArrowCall(expr, funcName, arguments)
+                {
+                    Line = arrow.Line,
+                    Column = arrow.Column
+                };
+                continue;
+            }
+
             // Check for postfix ++/--
             if (Match(TokenType.PlusPlus, TokenType.MinusMinus))
             {

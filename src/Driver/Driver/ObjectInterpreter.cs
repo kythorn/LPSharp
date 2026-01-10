@@ -411,6 +411,7 @@ public class ObjectInterpreter
             Assignment assign => EvaluateAssignment(assign),
             CompoundAssignment compound => EvaluateCompoundAssignment(compound),
             FunctionCall call => EvaluateFunctionCall(call),
+            ArrowCall arrow => EvaluateArrowCall(arrow),
             IndexExpression idx => EvaluateIndexExpression(idx),
             _ => throw new ObjectInterpreterException($"Unknown expression type: {expr.GetType().Name}")
         };
@@ -479,6 +480,41 @@ public class ObjectInterpreter
         }
 
         throw new ObjectInterpreterException($"Cannot index into {target?.GetType().Name ?? "null"}");
+    }
+
+    /// <summary>
+    /// Evaluate arrow call: obj->func(args)
+    /// This is syntactic sugar for call_other(obj, "func", args...)
+    /// </summary>
+    private object EvaluateArrowCall(ArrowCall arrow)
+    {
+        var target = Evaluate(arrow.Target);
+
+        if (target is not MudObject targetObj)
+        {
+            if (target is int i && i == 0)
+            {
+                return 0; // Calling on 0 returns 0 (LPC convention)
+            }
+            throw new ObjectInterpreterException($"Arrow call target must be an object, got {target?.GetType().Name ?? "null"}");
+        }
+
+        // Evaluate arguments
+        var args = new List<object>();
+        foreach (var arg in arrow.Arguments)
+        {
+            args.Add(Evaluate(arg));
+        }
+
+        // Call the function on the target object
+        try
+        {
+            return CallFunctionOnObject(targetObj, arrow.FunctionName, args) ?? 0;
+        }
+        catch (ReturnException ret)
+        {
+            return ret.Value ?? 0;
+        }
     }
 
     private object EvaluateIdentifier(Identifier id)

@@ -61,6 +61,12 @@ public record CompoundAssignment(string Name, BinaryOperator Operator, Expressio
 public record FunctionCall(string Name, List<Expression> Arguments, bool IsParentCall = false) : Expression;
 
 /// <summary>
+/// Arrow call: obj->func(arg1, arg2, ...)
+/// Syntactic sugar for call_other(obj, "func", args...)
+/// </summary>
+public record ArrowCall(Expression Target, string FunctionName, List<Expression> Arguments) : Expression;
+
+/// <summary>
 /// Array literal: ({ expr1, expr2, ... })
 /// </summary>
 public record ArrayLiteral(List<Expression> Elements) : Expression;

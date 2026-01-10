@@ -178,6 +178,7 @@ public class Interpreter
             Assignment a => EvaluateAssignment(a),
             CompoundAssignment ca => EvaluateCompoundAssignment(ca),
             FunctionCall fc => EvaluateFunctionCall(fc),
+            ArrowCall ac => throw new InterpreterException("Arrow calls (obj->func()) require object context; use --mudlib mode", ac),
             IndexExpression ie => EvaluateIndex(ie),
             _ => throw new InterpreterException($"Unknown expression type: {expr.GetType().Name}", expr)
         };
