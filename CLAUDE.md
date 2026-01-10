@@ -6,6 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **NEVER add Co-Authored-By trailers to commits. NEVER. The user is the sole author of all commits in this repository. This is non-negotiable.**
 
+## CRITICAL: Development Workflow
+
+**Commit after every major change.** Do not batch unrelated features together. Each feature should be a complete unit:
+
+1. Implement the feature
+2. Update documentation in `docs/` (e.g., `docs/LPC-REFERENCE.md`)
+3. Commit with a descriptive message
+4. Move on to the next task
+
+**Documentation lives in `docs/`, not CLAUDE.md.** The `docs/` directory contains real documentation for users. CLAUDE.md is internal guidance for Claude Code only - it is not user-facing documentation.
+
 ## Project Overview
 
 LPMud Revival is a modern reimplementation of the classic LPMud architecture in C#/.NET 9. The project follows a two-layer architecture:
