@@ -548,7 +548,7 @@ void run_tests() {
 - User-defined functions with parameters and return values
 - Local variables inside function bodies
 - Efuns: `write()`, `typeof()`, `strlen()`, `sizeof()`, `to_string()`, `to_int()`
-- 414+ unit tests passing
+- 420+ unit tests passing
 
 **Object Model (Milestone 5):**
 - Blueprint/clone architecture (singletons vs instances)
@@ -584,9 +584,10 @@ void run_tests() {
 - Exit system supporting 10 directions (n, s, e, w, ne, nw, se, sw, up, down)
 - Hidden exits (exist but don't show in "Obvious exits")
 - Environment/contents containment model
-- `environment()`, `move_object()`, `tell_room()`, `all_inventory()` efuns
+- `environment()`, `move_object()`, `tell_room()`, `all_inventory()`, `present()` efuns
 - `call_other()` efun for inter-object function calls
 - `init()` hook called on destination and other objects when something enters
+- `present(name, where)` finds objects by calling their `id()` function
 - 20+ medieval fantasy rooms (town square, tavern, temple, market, castle, forest, ruins)
 - Direction shortcut commands (n, e, s, w, etc.)
 - Players start in town square on connect

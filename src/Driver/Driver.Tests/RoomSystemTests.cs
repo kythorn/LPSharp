@@ -311,3 +311,164 @@ int query_init_called() { return init_called; }
         Assert.Equal(0, initCalled);
     }
 }
+
+/// <summary>
+/// Tests for present() efun - finding objects by name.
+/// </summary>
+public class PresentEfunTests : IDisposable
+{
+    private readonly string _testMudlibPath;
+    private readonly ObjectManager _objectManager;
+    private readonly ObjectInterpreter _interpreter;
+
+    public PresentEfunTests()
+    {
+        _testMudlibPath = Path.Combine(Path.GetTempPath(), $"mudlib_present_test_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(_testMudlibPath);
+        Directory.CreateDirectory(Path.Combine(_testMudlibPath, "std"));
+        Directory.CreateDirectory(Path.Combine(_testMudlibPath, "obj"));
+
+        // Create minimal base object with id() function
+        File.WriteAllText(Path.Combine(_testMudlibPath, "std", "object.c"), @"
+string short_desc;
+string obj_id;
+void create() { short_desc = ""something""; obj_id = """"; }
+string query_short() { return short_desc; }
+void set_short(string s) { short_desc = s; }
+void set_id(string id) { obj_id = id; }
+int id(string name) {
+    if (obj_id != """" && name == obj_id) return 1;
+    return 0;
+}
+");
+
+        // Create a simple sword item
+        File.WriteAllText(Path.Combine(_testMudlibPath, "obj", "sword.c"), @"
+inherit ""/std/object"";
+void create() {
+    ::create();
+    set_short(""a rusty sword"");
+    set_id(""sword"");
+}
+");
+
+        // Create a simple shield item
+        File.WriteAllText(Path.Combine(_testMudlibPath, "obj", "shield.c"), @"
+inherit ""/std/object"";
+void create() {
+    ::create();
+    set_short(""a wooden shield"");
+    set_id(""shield"");
+}
+");
+
+        // Create a room
+        File.WriteAllText(Path.Combine(_testMudlibPath, "std", "room.c"), @"
+inherit ""/std/object"";
+void create() {
+    ::create();
+    set_short(""a room"");
+}
+");
+
+        _objectManager = new ObjectManager(_testMudlibPath);
+        _objectManager.InitializeInterpreter();
+        _interpreter = new ObjectInterpreter(_objectManager);
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_testMudlibPath))
+        {
+            try { Directory.Delete(_testMudlibPath, true); }
+            catch { /* Ignore cleanup errors */ }
+        }
+    }
+
+    [Fact]
+    public void Present_FindsObjectById()
+    {
+        var room = _objectManager.LoadObject("/std/room");
+        var sword = _objectManager.CloneObject("/obj/sword");
+
+        sword.MoveTo(room);
+
+        var result = _interpreter.CallEfun("present", new List<object> { "sword", room });
+        Assert.Equal(sword, result);
+    }
+
+    [Fact]
+    public void Present_ReturnsZeroWhenNotFound()
+    {
+        var room = _objectManager.LoadObject("/std/room");
+        var sword = _objectManager.CloneObject("/obj/sword");
+
+        sword.MoveTo(room);
+
+        var result = _interpreter.CallEfun("present", new List<object> { "axe", room });
+        Assert.Equal(0, result);
+    }
+
+    [Fact]
+    public void Present_FindsSecondObjectWithIndex()
+    {
+        var room = _objectManager.LoadObject("/std/room");
+        var sword1 = _objectManager.CloneObject("/obj/sword");
+        var sword2 = _objectManager.CloneObject("/obj/sword");
+
+        sword1.MoveTo(room);
+        sword2.MoveTo(room);
+
+        // "sword" finds first
+        var result1 = _interpreter.CallEfun("present", new List<object> { "sword", room });
+        Assert.Equal(sword1, result1);
+
+        // "sword 2" finds second
+        var result2 = _interpreter.CallEfun("present", new List<object> { "sword 2", room });
+        Assert.Equal(sword2, result2);
+    }
+
+    [Fact]
+    public void Present_RequiresIdFunction()
+    {
+        // Objects without a matching id() function should NOT be found
+        var room = _objectManager.LoadObject("/std/room");
+        var container = _objectManager.CloneObject("/std/room");
+        room.MoveTo(container);
+
+        // "room" is in the short description but id() doesn't match it
+        // (base object.c id() only matches obj_id which is empty)
+        var result = _interpreter.CallEfun("present", new List<object> { "room", container });
+        Assert.Equal(0, result); // NOT found - no fallback to short desc
+    }
+
+    [Fact]
+    public void Present_IsCaseInsensitive()
+    {
+        var room = _objectManager.LoadObject("/std/room");
+        var sword = _objectManager.CloneObject("/obj/sword");
+
+        sword.MoveTo(room);
+
+        var result = _interpreter.CallEfun("present", new List<object> { "SWORD", room });
+        Assert.Equal(sword, result);
+    }
+
+    [Fact]
+    public void Present_ChecksIfObjectIsInContainer()
+    {
+        var room = _objectManager.LoadObject("/std/room");
+        var sword = _objectManager.CloneObject("/obj/sword");
+        var shield = _objectManager.CloneObject("/obj/shield");
+
+        sword.MoveTo(room);
+        // shield is NOT in room
+
+        // present(object, container) checks if object is in container
+        var resultSword = _interpreter.CallEfun("present", new List<object> { sword, room });
+        Assert.Equal(sword, resultSword);
+
+        var resultShield = _interpreter.CallEfun("present", new List<object> { shield, room });
+        Assert.Equal(0, resultShield);
+    }
+}

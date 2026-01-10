@@ -130,6 +130,7 @@ public class ObjectInterpreter
         _efuns.Register("destruct", DestructEfun);
         _efuns.Register("call_other", CallOtherEfun);
         _efuns.Register("move_object", MoveObjectEfun);
+        _efuns.Register("present", PresentEfun);
     }
 
     /// <summary>
@@ -1236,6 +1237,145 @@ public class ObjectInterpreter
         {
             // Log but don't fail the move
             Console.WriteLine($"Warning: init() in {obj.ObjectName} threw: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// present(name) or present(name, where)
+    /// Finds an object by name/ID in an environment.
+    ///
+    /// With 1 arg: searches this_player()'s environment and inventory
+    /// With 2 args: searches the specified object's inventory
+    ///
+    /// Name can be:
+    /// - Simple name: "sword" - finds first matching object
+    /// - Indexed name: "sword 2" - finds the second sword
+    ///
+    /// Returns the object if found, 0 if not found.
+    /// </summary>
+    private object PresentEfun(List<object> args)
+    {
+        if (args.Count < 1 || args.Count > 2)
+        {
+            throw new EfunException("present() requires 1 or 2 arguments");
+        }
+
+        // If first arg is already an object, check if it's in the environment
+        if (args[0] is MudObject targetObj)
+        {
+            MudObject? container = args.Count == 2 && args[1] is MudObject c ? c : GetSearchContainer();
+            if (container == null) return 0;
+
+            // Check if targetObj is in the container's contents
+            return container.Contents.Contains(targetObj) ? targetObj : 0;
+        }
+
+        // First arg should be a string name
+        if (args[0] is not string nameArg)
+        {
+            throw new EfunException("present() first argument must be a string or object");
+        }
+
+        // Parse the name - might be "sword" or "sword 2"
+        var (name, index) = ParsePresentName(nameArg);
+
+        // Determine where to search
+        MudObject? where;
+        if (args.Count == 2)
+        {
+            if (args[1] is not MudObject whereObj)
+            {
+                if (args[1] is int i && i == 0)
+                {
+                    return 0; // present(name, 0) returns 0
+                }
+                throw new EfunException("present() second argument must be an object");
+            }
+            where = whereObj;
+        }
+        else
+        {
+            where = GetSearchContainer();
+        }
+
+        if (where == null)
+        {
+            return 0;
+        }
+
+        // Search through contents
+        int matchCount = 0;
+        foreach (var obj in where.Contents)
+        {
+            if (obj.IsDestructed) continue;
+
+            if (ObjectMatchesName(obj, name))
+            {
+                matchCount++;
+                if (matchCount == index)
+                {
+                    return obj;
+                }
+            }
+        }
+
+        return 0; // Not found
+    }
+
+    /// <summary>
+    /// Get the default container to search (player's environment or player itself).
+    /// </summary>
+    private MudObject? GetSearchContainer()
+    {
+        var context = ExecutionContext.Current;
+        var player = context?.PlayerObject;
+        return player?.Environment;
+    }
+
+    /// <summary>
+    /// Parse a present() name argument like "sword" or "sword 2".
+    /// Returns the name and index (1-based, defaults to 1).
+    /// </summary>
+    private (string name, int index) ParsePresentName(string nameArg)
+    {
+        // Check if the last part is a number
+        var parts = nameArg.Trim().Split(' ');
+        if (parts.Length >= 2 && int.TryParse(parts[^1], out int idx) && idx > 0)
+        {
+            // "sword 2" -> ("sword", 2)
+            var name = string.Join(" ", parts[..^1]);
+            return (name.ToLowerInvariant(), idx);
+        }
+
+        // "sword" -> ("sword", 1)
+        return (nameArg.ToLowerInvariant(), 1);
+    }
+
+    /// <summary>
+    /// Check if an object matches a given name by calling id(name).
+    /// Returns true if the object's id() function returns non-zero.
+    /// No fallback to short description - objects must explicitly define their IDs.
+    /// </summary>
+    private bool ObjectMatchesName(MudObject obj, string name)
+    {
+        var idFunc = obj.FindFunction("id");
+        if (idFunc == null)
+        {
+            return false; // No id() function means object can't be found by name
+        }
+
+        try
+        {
+            var result = CallFunctionOnObject(obj, "id", new List<object> { name });
+            return result is int i && i != 0;
+        }
+        catch (ReturnException ret)
+        {
+            return ret.Value is int i && i != 0;
+        }
+        catch
+        {
+            return false;
         }
     }
 
