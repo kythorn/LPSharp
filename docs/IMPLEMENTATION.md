@@ -544,10 +544,11 @@ void run_tests() {
 - All operators: arithmetic, comparison, logical, bitwise, ternary
 - String concatenation and comparison
 - Arrays: `({ 1, 2, 3 })` literals, indexing `arr[0]`, concatenation `+`, `sizeof()`
+- Mappings: `([ "key": value ])` literals, indexing `map["key"]`, `sizeof()`
 - Control flow: if/else, while, for, break, continue, return
 - User-defined functions with parameters and return values
 - Local variables inside function bodies
-- Efuns: `write()`, `typeof()`, `strlen()`, `sizeof()`, `to_string()`, `to_int()`
+- Efuns: `write()`, `typeof()`, `strlen()`, `sizeof()`, `to_string()`, `to_int()`, `random()`, `member_array()`, `sprintf()`
 - 420+ unit tests passing
 
 **Object Model (Milestone 5):**
@@ -602,7 +603,6 @@ void run_tests() {
 ### What's NOT Working Yet
 
 **Language gaps:**
-- No mappings (syntax exists but not implemented)
 - No `obj->func()` arrow syntax (use `call_other()` instead)
 
 **Gameplay gaps (needed for Milestone 9+):**
