@@ -427,6 +427,109 @@ This design matches LDMud's architecture:
 - **Hot-reload complexity**: "already existing clones will not change just because the master does" ([LPC on GitHub](https://github.com/burzumishi/LPC))
 - **Recursive updates**: "You may need to use update -R on objects which inherit the code that you have changed" ([LPMud Efuns](https://www.lysator.liu.se/mud/efuns/index.html))
 
+## Performance and Concurrency
+
+### Thread Safety
+
+**Current Implementation (Milestone 5):**
+
+The ObjectManager is designed for **concurrent blueprint loading** but **single-threaded execution**:
+
+1. **Blueprint Cache** (`ConcurrentDictionary`): Multiple connections can load objects concurrently without blocking. This is safe because blueprints are immutable after compilation.
+
+2. **Clone Counter**: Protected by locks to ensure unique clone numbers across threads.
+
+3. **Object Execution**: The ObjectInterpreter is **NOT thread-safe**. All LPC code execution should happen on a single thread.
+
+**Architecture for Networking (Milestone 6-7):**
+
+When integrating with the telnet server, follow the classic MUD architecture:
+
+```
+┌─────────────────┐
+│  Connections    │ (Multiple threads)
+│  - Async I/O    │
+│  - Line buffer  │
+│  - Queue input  │
+└────────┬────────┘
+         │
+         v
+┌─────────────────┐
+│   Game Loop     │ (Single thread)
+│  - ObjectMgr    │
+│  - Interpreter  │
+│  - Process cmds │
+│  - Heartbeats   │
+└────────┬────────┘
+         │
+         v
+┌─────────────────┐
+│  Output Queue   │ (Async send)
+│  - Per-conn buf │
+└─────────────────┘
+```
+
+**Key Points:**
+
+- **Async networking**: Use `async/await` for TCP I/O (already implemented)
+- **Command queue**: Connections queue input to game loop
+- **Single-threaded game logic**: All object state access happens on one thread
+- **No locks needed**: Eliminates race conditions in LPC code
+
+This matches how classic LPMuds work and avoids all concurrency issues with object state.
+
+### Performance Characteristics
+
+**What's Efficient:**
+
+1. **Blueprint Caching**: O(1) lookup, shared code across all clones
+2. **Inheritance Chain**: Pre-resolved during compilation, not at runtime
+3. **Variable Storage**: Dictionary lookup is O(1) average case
+4. **Function Lookup**: Dictionary + inheritance chain traversal - acceptable
+
+**What's Acceptable for Now:**
+
+1. **Tree-Walking Interpreter**: Direct AST interpretation is simple and maintainable. This is how many LPMuds work. Profiling will show if optimization is needed (it probably isn't until you have thousands of simultaneous heartbeats).
+
+2. **Variable Boxing**: Using `object?` for all values means boxing overhead for integers. This is minor compared to network I/O and game logic overhead.
+
+**What Will Need Addressing Later:**
+
+1. **Execution Limits** (Milestone 9): Need instruction counters and call depth limits to prevent infinite loops from hanging the server.
+
+2. **Memory Tracking**: Eventually want limits on:
+   - Clones per blueprint
+   - Total object count
+   - Memory per object
+
+3. **Garbage Collection**: Periodic cleanup of destructed objects and orphaned data.
+
+### Scalability
+
+The current architecture can handle:
+
+- **Thousands of blueprints**: Cached efficiently, immutable
+- **Tens of thousands of clones**: Each has independent state
+- **Hundreds of concurrent players**: Limited by single-threaded game loop
+
+**Bottlenecks:**
+
+- **Game loop throughput**: All LPC execution is single-threaded. This is intentional and matches classic MUDs.
+- **Heartbeat overhead**: If thousands of objects have heartbeats running every second, this could be expensive. Profile and optimize when needed.
+
+**Not a concern:**
+
+- **Blueprint loading**: Concurrent and cached
+- **Network I/O**: Async, scales to thousands of connections
+- **Variable access**: O(1) dictionary lookup
+
+### Recommendations
+
+1. **For Milestone 6-7**: Implement single-threaded game loop as described above.
+2. **For Milestone 9**: Add execution limits (max instructions per call, max call depth).
+3. **Profile before optimizing**: The current implementation is appropriate for the scale we're targeting.
+4. **If needed later**: Consider bytecode compilation or JIT, but tree-walking is probably fine.
+
 ## References
 
 - [LDMud - LPC Objects](https://www.ldmud.eu/lpc-objects.html)
