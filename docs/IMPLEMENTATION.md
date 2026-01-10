@@ -405,11 +405,11 @@ void heart_beat() {
 - Configurable tick rate
 
 **Deliverables**:
-- [ ] GameLoop.cs with timing system
-- [ ] Heartbeat registration and dispatch
-- [ ] Callout scheduling and dispatch
-- [ ] set_heart_beat(), call_out(), remove_call_out() efuns
-- [ ] Unit tests for timing
+- [x] GameLoop.cs with timing system
+- [x] Heartbeat registration and dispatch
+- [x] Callout scheduling and dispatch
+- [x] set_heart_beat(), query_heart_beat(), call_out(), remove_call_out(), find_call_out() efuns
+- [x] Unit tests for timing
 
 ---
 
@@ -529,7 +529,7 @@ void run_tests() {
 | 6. Telnet Server | ✅ Complete |
 | 7. Player & Commands | ✅ Complete |
 | 8. Rooms & Movement | ✅ Complete |
-| 9. Heartbeats & Callouts | Not Started |
+| 9. Heartbeats & Callouts | ✅ Complete |
 | 10. Combat | Not Started |
 
 ---
@@ -593,6 +593,12 @@ void run_tests() {
 - Direction shortcut commands (n, e, s, w, etc.)
 - Players start in town square on connect
 
+**Heartbeats & Callouts (Milestone 9):**
+- `set_heart_beat()`, `query_heart_beat()` - periodic callbacks (2-second interval)
+- `call_out()`, `remove_call_out()`, `find_call_out()` - scheduled delayed calls
+- Priority queue for efficient callout management
+- Used for: combat rounds, AI, regeneration, ambient effects, respawn timers
+
 **Commands:**
 - `/cmds/say.c` - Say a message
 - `/cmds/look.c` - Look at room (shows description, exits)
@@ -602,8 +608,7 @@ void run_tests() {
 
 ### What's NOT Working Yet
 
-**Gameplay gaps (needed for Milestone 9+):**
-- No heartbeats or callouts (time-based callbacks)
+**Gameplay gaps (needed for Milestone 10):**
 - No combat system
 
 **Execution Limits (Safety):**
