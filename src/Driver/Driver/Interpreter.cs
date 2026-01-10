@@ -169,6 +169,7 @@ public class Interpreter
             NumberLiteral n => n.Value,
             StringLiteral s => s.Value,
             ArrayLiteral a => EvaluateArrayLiteral(a),
+            MappingLiteral m => EvaluateMappingLiteral(m),
             GroupedExpression g => Evaluate(g.Inner),
             UnaryOp u => EvaluateUnary(u),
             BinaryOp b => EvaluateBinary(b),
@@ -190,6 +191,18 @@ public class Interpreter
             elements.Add(Evaluate(element));
         }
         return elements;
+    }
+
+    private object EvaluateMappingLiteral(MappingLiteral expr)
+    {
+        var dict = new Dictionary<object, object>();
+        foreach (var (keyExpr, valueExpr) in expr.Entries)
+        {
+            var key = Evaluate(keyExpr);
+            var value = Evaluate(valueExpr);
+            dict[key] = value;
+        }
+        return dict;
     }
 
     private object EvaluateIndex(IndexExpression expr)
@@ -221,6 +234,15 @@ public class Interpreter
                 throw new InterpreterException($"Array index {i} out of bounds (size {arr.Count})", expr);
             }
             return arr[i];
+        }
+
+        if (target is Dictionary<object, object> dict)
+        {
+            if (dict.TryGetValue(index, out var value))
+            {
+                return value;
+            }
+            return 0; // LPC returns 0 for missing mapping keys
         }
 
         throw new InterpreterException($"Cannot index into {target?.GetType().Name ?? "null"}", expr);

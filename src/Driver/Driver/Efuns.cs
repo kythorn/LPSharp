@@ -38,6 +38,9 @@ public class EfunRegistry
         Register("environment", Environment);
         Register("tell_room", TellRoom);
         Register("all_inventory", AllInventory);
+        Register("random", Random);
+        Register("member_array", MemberArray);
+        Register("sprintf", Sprintf);
         // Note: load_object, clone_object, move_object, etc. are registered by ObjectInterpreter
     }
 
@@ -334,8 +337,6 @@ public class EfunRegistry
     /// <summary>
     /// all_inventory(obj) - Returns an array of all objects in obj.
     /// If no argument, returns contents of this_object().
-    /// Note: Returns a placeholder since we don't have arrays yet.
-    /// For now, returns the count of objects.
     /// </summary>
     private static object AllInventory(List<object> args)
     {
@@ -359,9 +360,239 @@ public class EfunRegistry
             throw new EfunException("all_inventory() takes 0 or 1 argument");
         }
 
-        // For now, return count since we don't have arrays
-        // TODO: Return actual array when array support is added
-        return target?.Contents.Count ?? 0;
+        if (target == null)
+        {
+            return new List<object>();
+        }
+
+        return target.Contents.Cast<object>().ToList();
+    }
+
+    /// <summary>
+    /// random(n) - Returns a random integer from 0 to n-1.
+    /// If n is 0 or negative, returns 0.
+    /// </summary>
+    private static object Random(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("random() requires exactly 1 argument");
+        }
+
+        if (args[0] is not int n)
+        {
+            throw new EfunException("random() argument must be an integer");
+        }
+
+        if (n <= 0)
+        {
+            return 0;
+        }
+
+        return System.Random.Shared.Next(n);
+    }
+
+    /// <summary>
+    /// member_array(item, array) - Returns the index of item in array, or -1 if not found.
+    /// Comparison is done using Equals().
+    /// </summary>
+    private static object MemberArray(List<object> args)
+    {
+        if (args.Count != 2)
+        {
+            throw new EfunException("member_array() requires exactly 2 arguments");
+        }
+
+        var item = args[0];
+
+        if (args[1] is not List<object> array)
+        {
+            throw new EfunException("member_array() second argument must be an array");
+        }
+
+        for (int i = 0; i < array.Count; i++)
+        {
+            if (Equals(item, array[i]))
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /// <summary>
+    /// sprintf(format, args...) - Format a string using printf-style format specifiers.
+    /// Supports: %s (string), %d (decimal), %i (integer), %o (octal), %x (hex), %% (literal %)
+    /// Width specifiers: %5d (min width), %-5s (left-align), %05d (zero-pad)
+    /// </summary>
+    private static object Sprintf(List<object> args)
+    {
+        if (args.Count < 1)
+        {
+            throw new EfunException("sprintf() requires at least 1 argument");
+        }
+
+        if (args[0] is not string format)
+        {
+            throw new EfunException("sprintf() first argument must be a format string");
+        }
+
+        var result = new System.Text.StringBuilder();
+        var argIndex = 1;
+        var i = 0;
+
+        while (i < format.Length)
+        {
+            if (format[i] != '%')
+            {
+                result.Append(format[i]);
+                i++;
+                continue;
+            }
+
+            i++; // Skip '%'
+            if (i >= format.Length)
+            {
+                break;
+            }
+
+            // Check for %%
+            if (format[i] == '%')
+            {
+                result.Append('%');
+                i++;
+                continue;
+            }
+
+            // Parse flags
+            bool leftAlign = false;
+            bool zeroPad = false;
+
+            if (format[i] == '-')
+            {
+                leftAlign = true;
+                i++;
+            }
+            else if (format[i] == '0')
+            {
+                zeroPad = true;
+                i++;
+            }
+
+            // Parse width
+            int width = 0;
+            while (i < format.Length && char.IsDigit(format[i]))
+            {
+                width = width * 10 + (format[i] - '0');
+                i++;
+            }
+
+            if (i >= format.Length)
+            {
+                break;
+            }
+
+            // Parse format specifier
+            var spec = format[i];
+            i++;
+
+            if (argIndex >= args.Count)
+            {
+                // Not enough arguments - LPC typically just outputs nothing
+                continue;
+            }
+
+            var arg = args[argIndex++];
+            string formatted;
+
+            switch (spec)
+            {
+                case 's':
+                    formatted = arg switch
+                    {
+                        string s => s,
+                        int n => n.ToString(),
+                        _ => arg?.ToString() ?? ""
+                    };
+                    break;
+                case 'd':
+                case 'i':
+                    formatted = arg switch
+                    {
+                        int n => n.ToString(),
+                        string s when int.TryParse(s, out var n) => n.ToString(),
+                        _ => "0"
+                    };
+                    break;
+                case 'o':
+                    formatted = arg switch
+                    {
+                        int n => Convert.ToString(n, 8),
+                        _ => "0"
+                    };
+                    break;
+                case 'x':
+                    formatted = arg switch
+                    {
+                        int n => Convert.ToString(n, 16),
+                        _ => "0"
+                    };
+                    break;
+                case 'X':
+                    formatted = arg switch
+                    {
+                        int n => Convert.ToString(n, 16).ToUpper(),
+                        _ => "0"
+                    };
+                    break;
+                case 'O':
+                    // %O is LPC's "object" format - dump the value
+                    formatted = FormatValue(arg);
+                    break;
+                default:
+                    formatted = arg?.ToString() ?? "";
+                    break;
+            }
+
+            // Apply width
+            if (width > 0 && formatted.Length < width)
+            {
+                if (leftAlign)
+                {
+                    formatted = formatted.PadRight(width);
+                }
+                else if (zeroPad && (spec == 'd' || spec == 'i' || spec == 'o' || spec == 'x' || spec == 'X'))
+                {
+                    formatted = formatted.PadLeft(width, '0');
+                }
+                else
+                {
+                    formatted = formatted.PadLeft(width);
+                }
+            }
+
+            result.Append(formatted);
+        }
+
+        return result.ToString();
+    }
+
+    /// <summary>
+    /// Format a value for %O (object dump) output.
+    /// </summary>
+    private static string FormatValue(object value)
+    {
+        return value switch
+        {
+            null => "0",
+            int i => i.ToString(),
+            string s => $"\"{s}\"",
+            List<object> arr => "({ " + string.Join(", ", arr.Select(FormatValue)) + " })",
+            Dictionary<object, object> dict => "([ " + string.Join(", ", dict.Select(kv => $"{FormatValue(kv.Key)}: {FormatValue(kv.Value)}")) + " ])",
+            MudObject obj => obj.FilePath,
+            _ => value.ToString() ?? "0"
+        };
     }
 
     #endregion

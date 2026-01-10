@@ -66,6 +66,11 @@ public record FunctionCall(string Name, List<Expression> Arguments, bool IsParen
 public record ArrayLiteral(List<Expression> Elements) : Expression;
 
 /// <summary>
+/// Mapping literal: ([ key1: val1, key2: val2, ... ])
+/// </summary>
+public record MappingLiteral(List<(Expression Key, Expression Value)> Entries) : Expression;
+
+/// <summary>
 /// Array/string indexing: expr[index]
 /// </summary>
 public record IndexExpression(Expression Target, Expression Index) : Expression;

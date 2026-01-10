@@ -1087,6 +1087,38 @@ public class Parser
             };
         }
 
+        // Mapping literal: ([ key: val, key: val, ... ])
+        if (Match(TokenType.MappingStart))
+        {
+            var mappingStart = Previous();
+            var entries = new List<(Expression Key, Expression Value)>();
+
+            if (!Check(TokenType.MappingEnd))
+            {
+                do
+                {
+                    var key = ParseExpression();
+                    if (!Match(TokenType.Colon))
+                    {
+                        throw new ParserException("Expected ':' after mapping key", Current());
+                    }
+                    var value = ParseExpression();
+                    entries.Add((key, value));
+                } while (Match(TokenType.Comma));
+            }
+
+            if (!Match(TokenType.MappingEnd))
+            {
+                throw new ParserException("Expected '])' after mapping entries", Current());
+            }
+
+            return new MappingLiteral(entries)
+            {
+                Line = mappingStart.Line,
+                Column = mappingStart.Column
+            };
+        }
+
         // Identifier (variable reference)
         if (Match(TokenType.Identifier))
         {
