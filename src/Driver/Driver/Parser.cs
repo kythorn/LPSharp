@@ -150,6 +150,50 @@ public class Parser
             or TokenType.Identifier; // for user-defined types
     }
 
+    /// <summary>
+    /// Check if we're looking at a local variable declaration.
+    /// Pattern: type identifier (not followed by '(' which would be a function)
+    /// </summary>
+    private bool IsLocalVariableDeclaration()
+    {
+        // Need at least 2 tokens ahead
+        if (_position + 1 >= _tokens.Count)
+        {
+            return false;
+        }
+
+        var current = Current();
+        var next = _tokens[_position + 1];
+
+        // Must start with a type keyword (not just any identifier, to avoid ambiguity)
+        // We check for actual type keywords, not identifiers which could be function calls
+        bool isTypeKeyword = current.Type is TokenType.Int or TokenType.StringType
+            or TokenType.Void or TokenType.Object or TokenType.Mixed or TokenType.Mapping;
+
+        if (!isTypeKeyword)
+        {
+            return false;
+        }
+
+        // Next must be an identifier (the variable name)
+        if (next.Type != TokenType.Identifier)
+        {
+            return false;
+        }
+
+        // If there's a third token, make sure it's not '(' (which would make this a function)
+        if (_position + 2 < _tokens.Count)
+        {
+            var third = _tokens[_position + 2];
+            if (third.Type == TokenType.LeftParen)
+            {
+                return false; // This is a function definition, not a variable
+            }
+        }
+
+        return true;
+    }
+
     #region Statement Parsing
 
     private Statement ParseStatement()
@@ -167,6 +211,12 @@ public class Parser
         if (Match(TokenType.Break)) return ParseBreakStatement();
         if (Match(TokenType.Continue)) return ParseContinueStatement();
         if (Match(TokenType.LeftBrace)) return ParseBlockStatement();
+
+        // Check for local variable declaration (type identifier ...)
+        if (IsLocalVariableDeclaration())
+        {
+            return ParseVariableDeclaration();
+        }
 
         // Expression statement
         return ParseExpressionStatement();

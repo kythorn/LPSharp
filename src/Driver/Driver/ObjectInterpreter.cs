@@ -212,14 +212,36 @@ public class ObjectInterpreter
 
     private object? ExecuteVariableDeclaration(VariableDeclaration varDecl)
     {
-        // Variable already exists in object (created during object initialization)
-        // Just set the initializer value if provided
-        if (varDecl.Initializer != null)
+        // Determine initial value
+        object? initialValue = varDecl.Initializer != null
+            ? Evaluate(varDecl.Initializer)
+            : GetDefaultValue(varDecl.Type);
+
+        // If we're inside a function (local scope exists), add to local scope
+        if (_localScopes.Count > 0)
         {
-            var value = Evaluate(varDecl.Initializer);
-            _currentObject.SetVariable(varDecl.Name, value);
+            _localScopes.Peek()[varDecl.Name] = initialValue;
         }
+        else
+        {
+            // Top-level: set on object (existing behavior for object variables)
+            _currentObject.SetVariable(varDecl.Name, initialValue);
+        }
+
         return null;
+    }
+
+    /// <summary>
+    /// Get the default value for a type.
+    /// In LPC, integers default to 0, strings to empty string.
+    /// </summary>
+    private static object GetDefaultValue(string type)
+    {
+        return type switch
+        {
+            "string" => "",
+            _ => 0  // int, object, mixed, void, etc. default to 0
+        };
     }
 
     private object? ExecuteBlock(BlockStatement block)
