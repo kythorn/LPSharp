@@ -12,26 +12,23 @@ LPMud Revival is a modern reimplementation of the classic LPMud architecture in 
 ## Build and Run Commands
 
 ```bash
-# Build the project (once src/Driver exists)
+# Build the project
 dotnet build src/Driver/Driver
 
 # Run tests
 dotnet test
 
-# Server mode
-dotnet run --project src/Driver/Driver -- --mudlib ./mudlib --port 4000
+# Server mode (uses ./mudlib by default)
+dotnet run --project src/Driver/Driver -- --server
+
+# Server with options
+dotnet run --project src/Driver/Driver -- --server --port 4000 --mudlib ./mudlib
 
 # Interactive REPL
 dotnet run --project src/Driver/Driver -- --repl
 
 # Evaluate single expression
 dotnet run --project src/Driver/Driver -- --eval "5 + 3 * 2"
-
-# Run LPC file with specific function
-dotnet run --project src/Driver/Driver -- --mudlib ./mudlib --run test.c --call test_func
-
-# Run LPC test suite
-dotnet run --project src/Driver/Driver -- --mudlib ./mudlib --test ./lpc-tests/
 ```
 
 ## Architecture
@@ -48,10 +45,15 @@ dotnet run --project src/Driver/Driver -- --mudlib ./mudlib --test ./lpc-tests/
 
 | Directory | Purpose |
 |-----------|---------|
-| `/std/` | Base classes: `object.c`, `room.c`, `living.c`, `player.c`, `monster.c` |
-| `/obj/` | Clonable items and monsters |
-| `/room/` | World areas |
-| `/cmds/` | Player commands |
+| `/std/` | **Core lib** - Base classes (don't modify): `object.c`, `room.c`, `player.c`, `weapon.c` |
+| `/cmds/std/` | Standard commands available to all players |
+| `/cmds/player/` | Player-only commands (future) |
+| `/cmds/wizard/` | Wizard commands (future) |
+| `/world/rooms/` | Reference world rooms organized by area (town/, castle/, wilderness/) |
+| `/world/items/` | Reference world items (weapons/, armor/, misc/) |
+| `/world/mobs/` | Reference world NPCs/monsters (future) |
+| `/wizards/` | Wizard home directories (future) |
+| `/secure/` | Security-critical code (future): `master.c`, `simul_efun.c` |
 
 ### Inheritance Hierarchy
 

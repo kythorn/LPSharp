@@ -48,13 +48,18 @@ int PrintUsage()
           driver --tokenize <file>     Tokenize an LPC file and print tokens
           driver --eval "<expression>" Evaluate an LPC expression
           driver --repl                Start interactive REPL
-          driver --server [port]       Start telnet server (default port: 4000)
+          driver --server [options]    Start telnet server
           driver --help                Show this help message
+
+        Server options:
+          --port <port>                Port number (default: 4000)
+          --mudlib <path>              Mudlib directory (default: ./mudlib)
 
         Examples:
           driver --tokenize test.c
           driver --eval "5 + 3 * 2"
-          driver --server 4000
+          driver --server
+          driver --server --port 4000 --mudlib ./mudlib
         """);
     return 0;
 }

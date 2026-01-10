@@ -67,7 +67,7 @@ public class GameLoop
     /// <summary>
     /// The starting room path for new players.
     /// </summary>
-    public string StartingRoomPath { get; set; } = "/room/town_square";
+    public string StartingRoomPath { get; set; } = "/world/rooms/town/square";
 
     /// <summary>
     /// Initialize the interpreter. Must be called after ObjectManager.InitializeInterpreter().
@@ -386,7 +386,7 @@ public class GameLoop
         MudObject? cmdObj = null;
         try
         {
-            cmdObj = _objectManager.LoadObject($"/cmds/{verb}");
+            cmdObj = _objectManager.LoadObject($"/cmds/std/{verb}");
         }
         catch (ObjectManagerException)
         {

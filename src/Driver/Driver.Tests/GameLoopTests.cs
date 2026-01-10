@@ -14,7 +14,7 @@ public class GameLoopTests : IDisposable
         _testMudlibPath = Path.Combine(Path.GetTempPath(), $"mudlib_test_{Guid.NewGuid():N}");
         Directory.CreateDirectory(_testMudlibPath);
         Directory.CreateDirectory(Path.Combine(_testMudlibPath, "std"));
-        Directory.CreateDirectory(Path.Combine(_testMudlibPath, "cmds"));
+        Directory.CreateDirectory(Path.Combine(_testMudlibPath, "cmds", "std"));
 
         // Create a simple object.c
         File.WriteAllText(Path.Combine(_testMudlibPath, "std", "object.c"), @"
@@ -44,14 +44,14 @@ void create() {
 ");
 
         // Create a test command
-        File.WriteAllText(Path.Combine(_testMudlibPath, "cmds", "test.c"), @"
+        File.WriteAllText(Path.Combine(_testMudlibPath, "cmds", "std", "test.c"), @"
 void main(string args) {
     write(""Test: "" + args);
 }
 ");
 
         // Create a simple say command
-        File.WriteAllText(Path.Combine(_testMudlibPath, "cmds", "say.c"), @"
+        File.WriteAllText(Path.Combine(_testMudlibPath, "cmds", "std", "say.c"), @"
 void main(string args) {
     if (args == """" || args == 0) {
         write(""Say what?"");
