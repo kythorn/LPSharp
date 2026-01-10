@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## CRITICAL: Git Commit Rules
+
+**NEVER add Co-Authored-By trailers to commits. NEVER. The user is the sole author of all commits in this repository. This is non-negotiable.**
+
 ## Project Overview
 
 LPMud Revival is a modern reimplementation of the classic LPMud architecture in C#/.NET 9. The project follows a two-layer architecture:
@@ -210,4 +214,4 @@ Use descriptive commit messages that explain what changed and why:
 - Start with a short summary line (imperative mood)
 - Add bullet points for specific changes if needed
 - Keep authentic to classic LPMud/LDMud behavior when implementing language features
-- Do NOT add Co-Authored-By trailers - commits should be attributed to the user only
+- **NEVER add Co-Authored-By trailers** (see CRITICAL section at top of this file)
