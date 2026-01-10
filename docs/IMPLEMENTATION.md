@@ -585,6 +585,7 @@ void run_tests() {
 - Environment/contents containment model
 - `environment()`, `move_object()`, `tell_room()`, `all_inventory()` efuns
 - `call_other()` efun for inter-object function calls
+- `init()` hook called on destination and other objects when something enters
 - 20+ medieval fantasy rooms (town square, tavern, temple, market, castle, forest, ruins)
 - Direction shortcut commands (n, e, s, w, etc.)
 - Players start in town square on connect
@@ -605,7 +606,6 @@ void run_tests() {
 
 **Gameplay gaps (needed for Milestone 9+):**
 - No heartbeats or callouts (time-based callbacks)
-- No `init()` hook when entering rooms
 - No combat system
 
 **Execution Limits (Safety):**

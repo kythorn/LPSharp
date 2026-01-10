@@ -16,18 +16,59 @@ public class ExecutionContext
     private static ExecutionContext? _current;
 
     /// <summary>
+    /// Temporary context used for init() calls outside of command execution.
+    /// </summary>
+    [ThreadStatic]
+    private static ExecutionContext? _initContext;
+
+    /// <summary>
     /// Gets or sets the current execution context for this thread.
     /// </summary>
     public static ExecutionContext? Current
     {
-        get => _current;
+        get => _initContext ?? _current;
         set => _current = value;
     }
 
     /// <summary>
-    /// The player object executing the current command.
+    /// Set a temporary context for init() calls.
+    /// Used when move_object is called outside of a command context.
     /// </summary>
-    public MudObject? PlayerObject { get; init; }
+    public static void SetCurrentForInit(MudObject playerObject)
+    {
+        _initContext = new ExecutionContext { _playerObject = playerObject };
+    }
+
+    /// <summary>
+    /// Clear the temporary init() context.
+    /// </summary>
+    public static void ClearCurrentForInit()
+    {
+        _initContext = null;
+    }
+
+    /// <summary>
+    /// The player object executing the current command.
+    /// Can be temporarily overridden for init() calls.
+    /// </summary>
+    private MudObject? _playerObject;
+
+    /// <summary>
+    /// The player object for this context.
+    /// </summary>
+    public MudObject? PlayerObject
+    {
+        get => _playerObject;
+        init => _playerObject = value;
+    }
+
+    /// <summary>
+    /// Temporarily override the player object for init() calls.
+    /// </summary>
+    public void SetPlayerObjectForInit(MudObject? obj)
+    {
+        _playerObject = obj;
+    }
 
     /// <summary>
     /// The connection ID associated with this execution context.

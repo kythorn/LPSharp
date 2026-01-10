@@ -129,6 +129,19 @@ public class ObjectInterpreter
         _efuns.Register("find_object", FindObjectEfun);
         _efuns.Register("destruct", DestructEfun);
         _efuns.Register("call_other", CallOtherEfun);
+        _efuns.Register("move_object", MoveObjectEfun);
+    }
+
+    /// <summary>
+    /// Call an efun by name. Useful for testing.
+    /// </summary>
+    public object CallEfun(string name, List<object> args)
+    {
+        if (_efuns.TryGet(name, out var efun) && efun != null)
+        {
+            return efun(args);
+        }
+        throw new ObjectInterpreterException($"Unknown efun: {name}");
     }
 
     /// <summary>
@@ -1008,6 +1021,167 @@ public class ObjectInterpreter
         catch (Exception ex)
         {
             throw new EfunException($"call_other() failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// move_object(destination) or move_object(what, destination)
+    /// Moves an object to a new environment and calls init() hooks.
+    /// Single arg: moves this_object() (or this_player()) to destination
+    /// Two args: moves first arg to second arg
+    /// Returns 1 on success, 0 on failure.
+    ///
+    /// After a successful move, init() is called on:
+    /// 1. The destination (with this_player() = moving object)
+    /// 2. All other objects already in the destination (with this_player() = moving object)
+    /// </summary>
+    private object MoveObjectEfun(List<object> args)
+    {
+        MudObject? what;
+        MudObject? destination;
+
+        if (args.Count == 1)
+        {
+            // Single arg: move this_player() or this_object() to destination
+            var context = ExecutionContext.Current;
+            what = context?.PlayerObject ?? _currentObject;
+
+            if (args[0] is int i && i == 0)
+            {
+                destination = null; // Moving to null (remove from environment)
+            }
+            else if (args[0] is not MudObject dest)
+            {
+                throw new EfunException("move_object() destination must be an object");
+            }
+            else
+            {
+                destination = dest;
+            }
+        }
+        else if (args.Count == 2)
+        {
+            // Two args: move first to second
+            if (args[0] is not MudObject obj)
+            {
+                throw new EfunException("move_object() first argument must be an object");
+            }
+            what = obj;
+
+            if (args[1] is int i && i == 0)
+            {
+                destination = null; // Moving to null (remove from environment)
+            }
+            else if (args[1] is not MudObject dest)
+            {
+                throw new EfunException("move_object() destination must be an object");
+            }
+            else
+            {
+                destination = dest;
+            }
+        }
+        else
+        {
+            throw new EfunException("move_object() requires 1 or 2 arguments");
+        }
+
+        if (what == null)
+        {
+            return 0;
+        }
+
+        // Perform the move
+        var success = what.MoveTo(destination);
+        if (!success)
+        {
+            return 0;
+        }
+
+        // Call init() hooks if we moved to a valid destination
+        if (destination != null)
+        {
+            CallInitHooks(what, destination);
+        }
+
+        return 1;
+    }
+
+    /// <summary>
+    /// Call init() on destination and all other objects in the destination.
+    /// this_player() is set to the object that moved during these calls.
+    /// </summary>
+    private void CallInitHooks(MudObject movedObject, MudObject destination)
+    {
+        // Set up execution context with movedObject as this_player()
+        var context = ExecutionContext.Current;
+        var previousPlayer = context?.PlayerObject;
+
+        // Create a temporary context if none exists
+        var tempContext = context == null;
+        if (tempContext)
+        {
+            // For init() calls outside of a command context, we still want this_player() to work
+            ExecutionContext.SetCurrentForInit(movedObject);
+        }
+        else if (context != null)
+        {
+            // Save and replace the player object for init() calls
+            context.SetPlayerObjectForInit(movedObject);
+        }
+
+        try
+        {
+            // Call init() on the destination (e.g., room)
+            CallInitIfExists(destination);
+
+            // Call init() on all OTHER objects in the destination
+            foreach (var other in destination.Contents)
+            {
+                if (other != movedObject && !other.IsDestructed)
+                {
+                    CallInitIfExists(other);
+                }
+            }
+        }
+        finally
+        {
+            // Restore previous player object
+            if (tempContext)
+            {
+                ExecutionContext.ClearCurrentForInit();
+            }
+            else if (context != null && previousPlayer != null)
+            {
+                context.SetPlayerObjectForInit(previousPlayer);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Call init() on an object if it has that function defined.
+    /// Silently does nothing if the function doesn't exist.
+    /// </summary>
+    private void CallInitIfExists(MudObject obj)
+    {
+        var initFunc = obj.FindFunction("init");
+        if (initFunc == null)
+        {
+            return; // No init() function, nothing to do
+        }
+
+        try
+        {
+            CallFunctionOnObject(obj, "init", new List<object>());
+        }
+        catch (ReturnException)
+        {
+            // Normal return from init() - ignore
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail the move
+            Console.WriteLine($"Warning: init() in {obj.ObjectName} threw: {ex.Message}");
         }
     }
 

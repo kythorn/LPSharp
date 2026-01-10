@@ -162,3 +162,152 @@ void create() { ::create(); set_short(""a room""); }
         Assert.Contains(player2, room.Contents);
     }
 }
+
+/// <summary>
+/// Tests for init() hook being called when objects enter environments.
+/// </summary>
+public class InitHookTests : IDisposable
+{
+    private readonly string _testMudlibPath;
+    private readonly ObjectManager _objectManager;
+    private readonly ObjectInterpreter _interpreter;
+
+    public InitHookTests()
+    {
+        _testMudlibPath = Path.Combine(Path.GetTempPath(), $"mudlib_init_test_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(_testMudlibPath);
+        Directory.CreateDirectory(Path.Combine(_testMudlibPath, "std"));
+        Directory.CreateDirectory(Path.Combine(_testMudlibPath, "room"));
+
+        // Create minimal base object
+        File.WriteAllText(Path.Combine(_testMudlibPath, "std", "object.c"), @"
+string short_desc;
+void create() { short_desc = ""something""; }
+string query_short() { return short_desc; }
+void set_short(string s) { short_desc = s; }
+");
+
+        // Create player that tracks init calls
+        File.WriteAllText(Path.Combine(_testMudlibPath, "std", "player.c"), @"
+inherit ""/std/object"";
+int init_called;
+void create() { ::create(); init_called = 0; }
+void init() { init_called = init_called + 1; }
+int query_init_called() { return init_called; }
+");
+
+        // Create room that tracks init calls
+        File.WriteAllText(Path.Combine(_testMudlibPath, "room", "test_room.c"), @"
+inherit ""/std/object"";
+int init_called;
+object last_this_player;
+void create() { ::create(); init_called = 0; last_this_player = 0; }
+void init() {
+    init_called = init_called + 1;
+    last_this_player = this_player();
+}
+int query_init_called() { return init_called; }
+object query_last_this_player() { return last_this_player; }
+");
+
+        // Create NPC that tracks init calls
+        File.WriteAllText(Path.Combine(_testMudlibPath, "std", "npc.c"), @"
+inherit ""/std/object"";
+int init_called;
+void create() { ::create(); init_called = 0; }
+void init() { init_called = init_called + 1; }
+int query_init_called() { return init_called; }
+");
+
+        _objectManager = new ObjectManager(_testMudlibPath);
+        _objectManager.InitializeInterpreter();
+        _interpreter = new ObjectInterpreter(_objectManager);
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_testMudlibPath))
+        {
+            try { Directory.Delete(_testMudlibPath, true); }
+            catch { /* Ignore cleanup errors */ }
+        }
+    }
+
+    [Fact]
+    public void Init_CalledOnDestination_WhenObjectEnters()
+    {
+        var room = _objectManager.LoadObject("/room/test_room");
+        var player = _objectManager.CloneObject("/std/player");
+
+        // Verify init not called yet
+        var initCalled = _interpreter.CallFunctionOnObject(room, "query_init_called", new List<object>());
+        Assert.Equal(0, initCalled);
+
+        // Move player to room using move_object efun
+        _interpreter.CallFunctionOnObject(player, "create", new List<object>()); // Ensure created
+
+        // Use the efun to move (which should trigger init)
+        var moveResult = _interpreter.CallEfun("move_object", new List<object> { player, room });
+        Assert.Equal(1, moveResult);
+
+        // Verify init was called on the room
+        initCalled = _interpreter.CallFunctionOnObject(room, "query_init_called", new List<object>());
+        Assert.Equal(1, initCalled);
+    }
+
+    [Fact]
+    public void Init_ThisPlayer_IsMovingObject()
+    {
+        var room = _objectManager.LoadObject("/room/test_room");
+        var player = _objectManager.CloneObject("/std/player");
+
+        // Move player to room
+        _interpreter.CallEfun("move_object", new List<object> { player, room });
+
+        // Verify this_player() during init was the player
+        var lastThisPlayer = _interpreter.CallFunctionOnObject(room, "query_last_this_player", new List<object>());
+        Assert.Equal(player, lastThisPlayer);
+    }
+
+    [Fact]
+    public void Init_CalledOnOtherObjects_WhenObjectEnters()
+    {
+        var room = _objectManager.LoadObject("/room/test_room");
+        var npc = _objectManager.CloneObject("/std/npc");
+        var player = _objectManager.CloneObject("/std/player");
+
+        // Put NPC in room first (using direct MoveTo to avoid init complications)
+        npc.MoveTo(room);
+
+        // Verify NPC init not called yet
+        var npcInitCalled = _interpreter.CallFunctionOnObject(npc, "query_init_called", new List<object>());
+        Assert.Equal(0, npcInitCalled);
+
+        // Move player to room via efun
+        _interpreter.CallEfun("move_object", new List<object> { player, room });
+
+        // Verify init was called on the NPC (because player entered)
+        npcInitCalled = _interpreter.CallFunctionOnObject(npc, "query_init_called", new List<object>());
+        Assert.Equal(1, npcInitCalled);
+    }
+
+    [Fact]
+    public void Init_NotCalled_WhenMovingToNull()
+    {
+        var room = _objectManager.LoadObject("/room/test_room");
+        var player = _objectManager.CloneObject("/std/player");
+
+        // Put player in room first
+        player.MoveTo(room);
+
+        // Reset init counter
+        room.SetVariable("init_called", 0);
+
+        // Move player to null (remove from environment)
+        _interpreter.CallEfun("move_object", new List<object> { player, 0 });
+
+        // Verify init was NOT called on room
+        var initCalled = _interpreter.CallFunctionOnObject(room, "query_init_called", new List<object>());
+        Assert.Equal(0, initCalled);
+    }
+}

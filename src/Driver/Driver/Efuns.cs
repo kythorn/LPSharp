@@ -35,10 +35,9 @@ public class EfunRegistry
         Register("this_player", ThisPlayer);
         Register("tell_object", TellObject);
         Register("environment", Environment);
-        Register("move_object", MoveObject);
         Register("tell_room", TellRoom);
         Register("all_inventory", AllInventory);
-        // Note: load_object, clone_object, etc. are registered by ObjectInterpreter
+        // Note: load_object, clone_object, move_object, etc. are registered by ObjectInterpreter
     }
 
     public void Register(string name, Func<List<object>, object> implementation)
@@ -249,58 +248,6 @@ public class EfunRegistry
         }
 
         return target?.Environment ?? (object)0;
-    }
-
-    /// <summary>
-    /// move_object(destination) or move_object(what, destination)
-    /// Moves an object to a new environment.
-    /// Single arg: moves this_object() (or this_player() for now)
-    /// Two args: moves first arg to second arg
-    /// Returns 1 on success, 0 on failure.
-    /// </summary>
-    private static object MoveObject(List<object> args)
-    {
-        MudObject? what;
-        MudObject? destination;
-
-        if (args.Count == 1)
-        {
-            // Single arg: move this_player() to destination
-            var context = ExecutionContext.Current;
-            what = context?.PlayerObject;
-
-            if (args[0] is not MudObject dest)
-            {
-                throw new EfunException("move_object() destination must be an object");
-            }
-            destination = dest;
-        }
-        else if (args.Count == 2)
-        {
-            // Two args: move first to second
-            if (args[0] is not MudObject obj)
-            {
-                throw new EfunException("move_object() first argument must be an object");
-            }
-            what = obj;
-
-            if (args[1] is not MudObject dest)
-            {
-                throw new EfunException("move_object() destination must be an object");
-            }
-            destination = dest;
-        }
-        else
-        {
-            throw new EfunException("move_object() requires 1 or 2 arguments");
-        }
-
-        if (what == null)
-        {
-            return 0;
-        }
-
-        return what.MoveTo(destination) ? 1 : 0;
     }
 
     /// <summary>
