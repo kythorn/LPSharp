@@ -11,9 +11,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Commit after every major change.** Do not batch unrelated features together. Each feature should be a complete unit:
 
 1. Implement the feature
-2. Update documentation in `docs/` (e.g., `docs/LPC-REFERENCE.md`)
-3. Commit with a descriptive message
-4. Move on to the next task
+2. Add appropriate tests for the new functionality
+3. Run `dotnet test` and ensure all tests pass
+4. Update documentation in `docs/` (e.g., `docs/LPC-REFERENCE.md`)
+5. Commit with a descriptive message
+6. Move on to the next task
 
 **Documentation lives in `docs/`, not CLAUDE.md.** The `docs/` directory contains real documentation for users. CLAUDE.md is internal guidance for Claude Code only - it is not user-facing documentation.
 
