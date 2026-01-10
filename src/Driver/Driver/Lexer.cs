@@ -57,15 +57,25 @@ public class Lexer
         int startColumn = _column;
         char c = Advance();
 
-        // Single-character tokens that can't be part of multi-char tokens
+        // Single-character tokens (some may have multi-char variants)
         switch (c)
         {
-            case '(': return new Token(TokenType.LeftParen, "(", _line, startColumn);
+            case '(':
+                // Check for LPC array/mapping literals: ({ and ([
+                if (Match('{')) return new Token(TokenType.ArrayStart, "({", _line, startColumn);
+                if (Match('[')) return new Token(TokenType.MappingStart, "([", _line, startColumn);
+                return new Token(TokenType.LeftParen, "(", _line, startColumn);
             case ')': return new Token(TokenType.RightParen, ")", _line, startColumn);
             case '{': return new Token(TokenType.LeftBrace, "{", _line, startColumn);
-            case '}': return new Token(TokenType.RightBrace, "}", _line, startColumn);
+            case '}':
+                // Check for LPC array/mapping end: })
+                if (Match(')')) return new Token(TokenType.ArrayEnd, "})", _line, startColumn);
+                return new Token(TokenType.RightBrace, "}", _line, startColumn);
             case '[': return new Token(TokenType.LeftBracket, "[", _line, startColumn);
-            case ']': return new Token(TokenType.RightBracket, "]", _line, startColumn);
+            case ']':
+                // Check for LPC mapping end: ])
+                if (Match(')')) return new Token(TokenType.MappingEnd, "])", _line, startColumn);
+                return new Token(TokenType.RightBracket, "]", _line, startColumn);
             case ';': return new Token(TokenType.Semicolon, ";", _line, startColumn);
             case ',': return new Token(TokenType.Comma, ",", _line, startColumn);
             case '~': return new Token(TokenType.Tilde, "~", _line, startColumn);

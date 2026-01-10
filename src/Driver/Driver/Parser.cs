@@ -894,7 +894,7 @@ public class Parser
         return ParsePostfix();
     }
 
-    // Precedence 2: Postfix operators: ++ -- and function calls
+    // Precedence 2: Postfix operators: ++ -- function calls, and indexing
     private Expression ParsePostfix()
     {
         var expr = ParsePrimary();
@@ -919,33 +919,59 @@ public class Parser
                 throw new ParserException("Expected ')' after function arguments", Current());
             }
 
-            return new FunctionCall(id.Name, arguments)
+            expr = new FunctionCall(id.Name, arguments)
             {
                 Line = openParen.Line,
                 Column = openParen.Column
             };
         }
 
-        // Check for postfix ++/--
-        if (Match(TokenType.PlusPlus, TokenType.MinusMinus))
+        // Handle chained postfix operations: indexing and ++/--
+        while (true)
         {
-            var op = Previous();
-
-            // Operand must be an identifier
-            if (expr is not Identifier)
+            // Check for index expression: expr[index]
+            if (Match(TokenType.LeftBracket))
             {
-                throw new ParserException("Increment/decrement requires a variable", op);
+                var bracket = Previous();
+                var index = ParseExpression();
+
+                if (!Match(TokenType.RightBracket))
+                {
+                    throw new ParserException("Expected ']' after index expression", Current());
+                }
+
+                expr = new IndexExpression(expr, index)
+                {
+                    Line = bracket.Line,
+                    Column = bracket.Column
+                };
+                continue;
             }
 
-            var unaryOp = op.Type == TokenType.PlusPlus
-                ? UnaryOperator.PostIncrement
-                : UnaryOperator.PostDecrement;
-
-            return new UnaryOp(unaryOp, expr, IsPrefix: false)
+            // Check for postfix ++/--
+            if (Match(TokenType.PlusPlus, TokenType.MinusMinus))
             {
-                Line = op.Line,
-                Column = op.Column
-            };
+                var op = Previous();
+
+                // Operand must be an identifier
+                if (expr is not Identifier)
+                {
+                    throw new ParserException("Increment/decrement requires a variable", op);
+                }
+
+                var unaryOp = op.Type == TokenType.PlusPlus
+                    ? UnaryOperator.PostIncrement
+                    : UnaryOperator.PostDecrement;
+
+                expr = new UnaryOp(unaryOp, expr, IsPrefix: false)
+                {
+                    Line = op.Line,
+                    Column = op.Column
+                };
+                // Don't continue - ++/-- can only appear once
+            }
+
+            break;
         }
 
         return expr;
@@ -1032,6 +1058,32 @@ public class Parser
             {
                 Line = openParen.Line,
                 Column = openParen.Column
+            };
+        }
+
+        // Array literal: ({ expr, expr, ... })
+        if (Match(TokenType.ArrayStart))
+        {
+            var arrayStart = Previous();
+            var elements = new List<Expression>();
+
+            if (!Check(TokenType.ArrayEnd))
+            {
+                do
+                {
+                    elements.Add(ParseExpression());
+                } while (Match(TokenType.Comma));
+            }
+
+            if (!Match(TokenType.ArrayEnd))
+            {
+                throw new ParserException("Expected '})' after array elements", Current());
+            }
+
+            return new ArrayLiteral(elements)
+            {
+                Line = arrayStart.Line,
+                Column = arrayStart.Column
             };
         }
 

@@ -1115,4 +1115,97 @@ public class InterpreterTests
     }
 
     #endregion
+
+    #region Arrays
+
+    [Fact]
+    public void Evaluate_EmptyArrayLiteral()
+    {
+        var result = Eval("({ })");
+        Assert.IsType<List<object>>(result);
+        Assert.Empty((List<object>)result);
+    }
+
+    [Fact]
+    public void Evaluate_ArrayLiteralWithElements()
+    {
+        var result = Eval("({ 1, 2, 3 })");
+        var arr = Assert.IsType<List<object>>(result);
+        Assert.Equal(3, arr.Count);
+        Assert.Equal(1, arr[0]);
+        Assert.Equal(2, arr[1]);
+        Assert.Equal(3, arr[2]);
+    }
+
+    [Fact]
+    public void Evaluate_ArrayWithMixedTypes()
+    {
+        var result = Eval("({ 1, \"hello\", 42 })");
+        var arr = Assert.IsType<List<object>>(result);
+        Assert.Equal(3, arr.Count);
+        Assert.Equal(1, arr[0]);
+        Assert.Equal("hello", arr[1]);
+        Assert.Equal(42, arr[2]);
+    }
+
+    [Fact]
+    public void Evaluate_ArrayIndexing()
+    {
+        // Can't use variable declaration with array, so test directly
+        var result1 = Eval("({ 10, 20, 30 })[0]");
+        var result2 = Eval("({ 10, 20, 30 })[1]");
+        var result3 = Eval("({ 10, 20, 30 })[2]");
+        Assert.Equal(10, result1);
+        Assert.Equal(20, result2);
+        Assert.Equal(30, result3);
+    }
+
+    [Fact]
+    public void Evaluate_ArrayConcatenation()
+    {
+        var result = Eval("({ 1, 2 }) + ({ 3, 4 })");
+        var arr = Assert.IsType<List<object>>(result);
+        Assert.Equal(4, arr.Count);
+        Assert.Equal(1, arr[0]);
+        Assert.Equal(2, arr[1]);
+        Assert.Equal(3, arr[2]);
+        Assert.Equal(4, arr[3]);
+    }
+
+    [Fact]
+    public void Evaluate_SizeOfArray()
+    {
+        // Test sizeof directly on literal
+        Assert.Equal(5, Eval("sizeof(({ 1, 2, 3, 4, 5 }))"));
+    }
+
+    [Fact]
+    public void Evaluate_SizeOfEmptyArray()
+    {
+        Assert.Equal(0, Eval("sizeof(({ }))"));
+    }
+
+    [Fact]
+    public void Evaluate_NestedArrays()
+    {
+        var result = Eval("({ ({ 1, 2 }), ({ 3, 4 }) })");
+        var arr = Assert.IsType<List<object>>(result);
+        Assert.Equal(2, arr.Count);
+
+        var inner1 = Assert.IsType<List<object>>(arr[0]);
+        Assert.Equal(2, inner1.Count);
+        Assert.Equal(1, inner1[0]);
+        Assert.Equal(2, inner1[1]);
+    }
+
+    [Fact]
+    public void Evaluate_StringIndexing()
+    {
+        // String indexing returns the character code
+        Assert.Equal((int)'h', Eval("\"hello\"[0]"));
+        Assert.Equal((int)'e', Eval("\"hello\"[1]"));
+        Assert.Equal((int)'o', Eval("\"hello\"[4]"));
+    }
+
+    #endregion
 }

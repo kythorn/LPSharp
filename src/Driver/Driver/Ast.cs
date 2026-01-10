@@ -61,6 +61,16 @@ public record CompoundAssignment(string Name, BinaryOperator Operator, Expressio
 public record FunctionCall(string Name, List<Expression> Arguments, bool IsParentCall = false) : Expression;
 
 /// <summary>
+/// Array literal: ({ expr1, expr2, ... })
+/// </summary>
+public record ArrayLiteral(List<Expression> Elements) : Expression;
+
+/// <summary>
+/// Array/string indexing: expr[index]
+/// </summary>
+public record IndexExpression(Expression Target, Expression Index) : Expression;
+
+/// <summary>
 /// Binary operators with their precedence levels (higher = binds tighter).
 /// Follows authentic LDMud precedence where bitwise ops are below comparison.
 /// </summary>

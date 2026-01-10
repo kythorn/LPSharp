@@ -543,11 +543,12 @@ void run_tests() {
 - Variables: assignment (`x = 5`), compound (`x += 3`), increment/decrement (`++x`, `x--`)
 - All operators: arithmetic, comparison, logical, bitwise, ternary
 - String concatenation and comparison
+- Arrays: `({ 1, 2, 3 })` literals, indexing `arr[0]`, concatenation `+`, `sizeof()`
 - Control flow: if/else, while, for, break, continue, return
 - User-defined functions with parameters and return values
 - Local variables inside function bodies
-- Efuns: `write()`, `typeof()`, `strlen()`, `to_string()`, `to_int()`
-- 401+ unit tests passing
+- Efuns: `write()`, `typeof()`, `strlen()`, `sizeof()`, `to_string()`, `to_int()`
+- 414+ unit tests passing
 
 **Object Model (Milestone 5):**
 - Blueprint/clone architecture (singletons vs instances)
@@ -600,9 +601,8 @@ void run_tests() {
 ### What's NOT Working Yet
 
 **Language gaps:**
-- No arrays or mappings (syntax exists but not implemented)
+- No mappings (syntax exists but not implemented)
 - No `obj->func()` arrow syntax (use `call_other()` instead)
-- No mapping/array indexing and manipulation
 
 **Gameplay gaps (needed for Milestone 9+):**
 - No heartbeats or callouts (time-based callbacks)

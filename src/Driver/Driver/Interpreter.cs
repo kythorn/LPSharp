@@ -168,6 +168,7 @@ public class Interpreter
         {
             NumberLiteral n => n.Value,
             StringLiteral s => s.Value,
+            ArrayLiteral a => EvaluateArrayLiteral(a),
             GroupedExpression g => Evaluate(g.Inner),
             UnaryOp u => EvaluateUnary(u),
             BinaryOp b => EvaluateBinary(b),
@@ -176,8 +177,53 @@ public class Interpreter
             Assignment a => EvaluateAssignment(a),
             CompoundAssignment ca => EvaluateCompoundAssignment(ca),
             FunctionCall fc => EvaluateFunctionCall(fc),
+            IndexExpression ie => EvaluateIndex(ie),
             _ => throw new InterpreterException($"Unknown expression type: {expr.GetType().Name}", expr)
         };
+    }
+
+    private object EvaluateArrayLiteral(ArrayLiteral expr)
+    {
+        var elements = new List<object>();
+        foreach (var element in expr.Elements)
+        {
+            elements.Add(Evaluate(element));
+        }
+        return elements;
+    }
+
+    private object EvaluateIndex(IndexExpression expr)
+    {
+        var target = Evaluate(expr.Target);
+        var index = Evaluate(expr.Index);
+
+        if (target is string str)
+        {
+            if (index is not int i)
+            {
+                throw new InterpreterException("String index must be an integer", expr);
+            }
+            if (i < 0 || i >= str.Length)
+            {
+                throw new InterpreterException($"String index {i} out of bounds (length {str.Length})", expr);
+            }
+            return (int)str[i]; // Return character as int (LPC convention)
+        }
+
+        if (target is List<object> arr)
+        {
+            if (index is not int i)
+            {
+                throw new InterpreterException("Array index must be an integer", expr);
+            }
+            if (i < 0 || i >= arr.Count)
+            {
+                throw new InterpreterException($"Array index {i} out of bounds (size {arr.Count})", expr);
+            }
+            return arr[i];
+        }
+
+        throw new InterpreterException($"Cannot index into {target?.GetType().Name ?? "null"}", expr);
     }
 
     private object EvaluateIdentifier(Identifier expr)
@@ -440,6 +486,14 @@ public class Interpreter
         if (expr.Operator == BinaryOperator.Add && (leftVal is string || rightVal is string))
         {
             return ToString(leftVal) + ToString(rightVal);
+        }
+
+        // Array concatenation
+        if (expr.Operator == BinaryOperator.Add && leftVal is List<object> leftArr && rightVal is List<object> rightArr)
+        {
+            var result = new List<object>(leftArr);
+            result.AddRange(rightArr);
+            return result;
         }
 
         // String equality

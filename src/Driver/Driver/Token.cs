@@ -86,6 +86,12 @@ public enum TokenType
     Semicolon,      // ;
     Comma,          // ,
 
+    // LPC special delimiters
+    ArrayStart,     // ({
+    ArrayEnd,       // })
+    MappingStart,   // ([
+    MappingEnd,     // ])
+
     // Special
     Eof,
 }

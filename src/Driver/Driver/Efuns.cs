@@ -30,6 +30,7 @@ public class EfunRegistry
         Register("write", Write);
         Register("typeof", TypeOf);
         Register("strlen", Strlen);
+        Register("sizeof", SizeOf);
         Register("to_string", ToString);
         Register("to_int", ToInt);
         Register("this_player", ThisPlayer);
@@ -175,6 +176,26 @@ public class EfunRegistry
         }
 
         return s.Length;
+    }
+
+    /// <summary>
+    /// sizeof(array) - Returns the number of elements in an array.
+    /// Also works on strings (returns length) and mappings (returns key count).
+    /// </summary>
+    private static object SizeOf(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("sizeof() requires exactly 1 argument");
+        }
+
+        return args[0] switch
+        {
+            List<object> list => list.Count,
+            string s => s.Length,
+            Dictionary<object, object> dict => dict.Count,
+            _ => throw new EfunException($"sizeof() requires an array, string, or mapping, got {args[0]?.GetType().Name ?? "null"}")
+        };
     }
 
     /// <summary>
