@@ -23,15 +23,22 @@ The driver exposes a set of **efuns** (external functions) that LPC code can cal
 
 ## Project Status
 
-**Phase**: Milestone 4 (Functions & Variables) - In Progress
+**Phase**: Milestone 9 Complete - Heartbeats & Callouts
 
-Completed:
-- Milestone 1: Lexer - Full LPC tokenization
-- Milestone 2: Parser - Expression parsing with authentic LPC operator precedence
-- Milestone 3: Interpreter + REPL - Expression evaluation and interactive REPL
-- Variable assignment and retrieval in REPL
+| Milestone | Status |
+|-----------|--------|
+| 1. Lexer | Complete |
+| 2. Parser | Complete |
+| 3. Interpreter + REPL | Complete |
+| 4. Functions & Variables | Complete |
+| 5. Object Model | Complete |
+| 6. Telnet Server | Complete |
+| 7. Player & Commands | Complete |
+| 8. Rooms & Movement | Complete |
+| 9. Heartbeats & Callouts | Complete |
+| 10. Combat | Not Started |
 
-See [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) for the phased implementation plan.
+See [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) for the full implementation plan.
 
 ## Quick Start
 
@@ -52,19 +59,19 @@ dotnet run --project src/Driver/Driver -- --test ./lpc-tests/
 ## Project Structure
 
 ```
-/mud
-  /src
-    /Driver              # C# driver implementation
-      /Driver            # Main project
-      /Driver.Tests      # Unit and integration tests
-  /mudlib                # Game content (LPC)
-    /std                 # Base classes (object, room, living, player)
-    /obj                 # Items and monsters
-    /room                # World areas
-    /cmds                # Player commands
-  /test-mudlib           # Minimal mudlib for testing
-  /lpc-tests             # LPC test scripts
-  /docs                  # Documentation
+/src
+  /Driver
+    /Driver            # C# driver implementation
+    /Driver.Tests      # Unit and integration tests (420+ tests)
+/mudlib                # Game content (LPC)
+  /std                 # Base classes: object.c, room.c, player.c, weapon.c
+  /cmds/std            # Standard commands: say, look, quit, go, directions
+  /cmds/admin          # Admin commands: update
+  /world/rooms         # Game world organized by area (town, castle, wilderness)
+  /world/items         # Items: weapons, armor, misc
+/test-mudlib           # Minimal mudlib for automated testing
+/lpc-tests             # LPC test scripts using assert() efun
+/docs                  # Documentation
 ```
 
 ## Documentation
