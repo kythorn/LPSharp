@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Driver;
 
 /// <summary>
@@ -131,6 +133,51 @@ public class ObjectInterpreter
         _efuns.Register("call_other", CallOtherEfun);
         _efuns.Register("move_object", MoveObjectEfun);
         _efuns.Register("present", PresentEfun);
+
+        // Object metadata efuns
+        _efuns.Register("object_name", ObjectNameEfun);
+        _efuns.Register("file_name", FileNameEfun);
+        _efuns.Register("previous_object", PreviousObjectEfun);
+
+        // Living/Interactive efuns
+        _efuns.Register("set_living", SetLivingEfun);
+        _efuns.Register("living", LivingEfun);
+        _efuns.Register("set_living_name", SetLivingNameEfun);
+        _efuns.Register("query_living_name", QueryLivingNameEfun);
+        _efuns.Register("interactive", InteractiveEfun);
+        _efuns.Register("find_living", FindLivingEfun);
+        _efuns.Register("find_player", FindPlayerEfun);
+        _efuns.Register("users", UsersEfun);
+
+        // Heartbeat efuns
+        _efuns.Register("set_heart_beat", SetHeartBeatEfun);
+        _efuns.Register("query_heart_beat", QueryHeartBeatEfun);
+
+        // Callout efuns
+        _efuns.Register("call_out", CallOutEfun);
+        _efuns.Register("remove_call_out", RemoveCallOutEfun);
+        _efuns.Register("find_call_out", FindCallOutEfun);
+
+        // Array callback efuns (need interpreter access)
+        _efuns.Register("filter_array", FilterArrayEfun);
+        _efuns.Register("map_array", MapArrayEfun);
+
+        // File I/O efuns
+        _efuns.Register("read_file", ReadFileEfun);
+        _efuns.Register("write_file", WriteFileEfun);
+        _efuns.Register("file_size", FileSizeEfun);
+        _efuns.Register("rm", RmEfun);
+
+        // Object persistence efuns
+        _efuns.Register("save_object", SaveObjectEfun);
+        _efuns.Register("restore_object", RestoreObjectEfun);
+
+        // Hot-reload efuns
+        _efuns.Register("update", UpdateEfun);
+        _efuns.Register("inherits", InheritsEfun);
+
+        // Input handling efuns
+        _efuns.Register("input_to", InputToEfun);
     }
 
     /// <summary>
@@ -763,6 +810,12 @@ public class ObjectInterpreter
 
     private object EvaluateFunctionCall(FunctionCall expr)
     {
+        // Special handling for sscanf - needs raw variable identifiers
+        if (expr.Name == "sscanf")
+        {
+            return EvaluateSscanf(expr);
+        }
+
         // Evaluate all arguments first
         var args = expr.Arguments.Select(arg => Evaluate(arg)).ToList();
 
@@ -820,6 +873,271 @@ public class ObjectInterpreter
         }
 
         throw new ObjectInterpreterException($"Unknown function '{expr.Name}' in {_currentObject.ObjectName}");
+    }
+
+    /// <summary>
+    /// Special handling for sscanf() which needs to assign to variables.
+    /// sscanf(str, format, var1, var2, ...) - Parse a string according to format.
+    /// Format specifiers: %s (string), %d (int), %*s (skip string), %*d (skip int)
+    /// Returns the number of variables successfully assigned.
+    /// </summary>
+    private object EvaluateSscanf(FunctionCall expr)
+    {
+        if (expr.Arguments.Count < 2)
+        {
+            throw new ObjectInterpreterException("sscanf() requires at least 2 arguments");
+        }
+
+        // Evaluate only the first two arguments (string and format)
+        var inputStr = Evaluate(expr.Arguments[0]) as string
+            ?? throw new ObjectInterpreterException("sscanf() first argument must be a string");
+        var formatStr = Evaluate(expr.Arguments[1]) as string
+            ?? throw new ObjectInterpreterException("sscanf() second argument must be a format string");
+
+        // Collect the variable identifiers (not evaluated)
+        var varArgs = new List<Expression>();
+        for (int i = 2; i < expr.Arguments.Count; i++)
+        {
+            varArgs.Add(expr.Arguments[i]);
+        }
+
+        // Parse the format string and extract values
+        var values = ParseSscanfFormat(inputStr, formatStr);
+        int assigned = 0;
+
+        // Assign values to variables
+        for (int i = 0; i < values.Count && i < varArgs.Count; i++)
+        {
+            if (values[i] == null) continue; // Skip if this was a %* format
+
+            var varExpr = varArgs[i];
+            if (varExpr is Identifier id)
+            {
+                // Simple variable assignment
+                AssignToVariable(id.Name, values[i]!);
+                assigned++;
+            }
+            else if (varExpr is IndexExpression indexExpr)
+            {
+                // Array/mapping element assignment
+                SetIndexValue(indexExpr, values[i]!);
+                assigned++;
+            }
+            else
+            {
+                throw new ObjectInterpreterException("sscanf() variable arguments must be identifiers or indexable expressions");
+            }
+        }
+
+        return assigned;
+    }
+
+    /// <summary>
+    /// Parse a string using sscanf format specifiers.
+    /// Returns a list of parsed values (null for skipped %* patterns).
+    /// </summary>
+    private List<object?> ParseSscanfFormat(string input, string format)
+    {
+        var results = new List<object?>();
+        int inputPos = 0;
+        int formatPos = 0;
+
+        while (formatPos < format.Length && inputPos <= input.Length)
+        {
+            if (format[formatPos] == '%' && formatPos + 1 < format.Length)
+            {
+                formatPos++;
+                bool skip = false;
+
+                // Check for * (skip)
+                if (format[formatPos] == '*')
+                {
+                    skip = true;
+                    formatPos++;
+                }
+
+                if (formatPos >= format.Length) break;
+
+                char specifier = format[formatPos];
+                formatPos++;
+
+                // Look ahead in format to find the delimiter (next literal or end)
+                string? delimiter = null;
+                int nextLiteral = formatPos;
+                while (nextLiteral < format.Length)
+                {
+                    if (format[nextLiteral] == '%')
+                    {
+                        break;
+                    }
+                    delimiter = (delimiter ?? "") + format[nextLiteral];
+                    nextLiteral++;
+                }
+
+                switch (specifier)
+                {
+                    case 's':
+                        // Match string up to delimiter or end
+                        int endPos;
+                        if (!string.IsNullOrEmpty(delimiter))
+                        {
+                            endPos = input.IndexOf(delimiter, inputPos, StringComparison.Ordinal);
+                            if (endPos == -1) endPos = input.Length;
+                        }
+                        else
+                        {
+                            // No delimiter - for %s followed by %d, we need to stop at first digit
+                            // For now, take rest of string or until whitespace
+                            endPos = inputPos;
+                            while (endPos < input.Length && !char.IsWhiteSpace(input[endPos]))
+                            {
+                                endPos++;
+                            }
+                        }
+
+                        var strValue = input[inputPos..endPos];
+                        if (!skip)
+                        {
+                            results.Add(strValue);
+                        }
+                        inputPos = endPos;
+
+                        // Skip the delimiter if present
+                        if (!string.IsNullOrEmpty(delimiter) && input[inputPos..].StartsWith(delimiter))
+                        {
+                            inputPos += delimiter.Length;
+                            formatPos = nextLiteral;
+                        }
+                        break;
+
+                    case 'd':
+                        // Skip leading whitespace for %d
+                        while (inputPos < input.Length && char.IsWhiteSpace(input[inputPos]))
+                        {
+                            inputPos++;
+                        }
+
+                        // Match integer
+                        int intStart = inputPos;
+                        if (inputPos < input.Length && (input[inputPos] == '-' || input[inputPos] == '+'))
+                        {
+                            inputPos++;
+                        }
+                        while (inputPos < input.Length && char.IsDigit(input[inputPos]))
+                        {
+                            inputPos++;
+                        }
+
+                        if (intStart == inputPos)
+                        {
+                            // No digits found
+                            return results;
+                        }
+
+                        var intStr = input[intStart..inputPos];
+                        if (int.TryParse(intStr, out int intValue))
+                        {
+                            if (!skip)
+                            {
+                                results.Add(intValue);
+                            }
+                        }
+                        else
+                        {
+                            return results;
+                        }
+
+                        // Skip delimiter if present
+                        if (!string.IsNullOrEmpty(delimiter) && inputPos < input.Length &&
+                            input[inputPos..].StartsWith(delimiter))
+                        {
+                            inputPos += delimiter.Length;
+                            formatPos = nextLiteral;
+                        }
+                        break;
+
+                    default:
+                        throw new ObjectInterpreterException($"sscanf() unknown format specifier '%{specifier}'");
+                }
+            }
+            else
+            {
+                // Literal character - must match
+                if (inputPos >= input.Length || input[inputPos] != format[formatPos])
+                {
+                    // Mismatch - stop parsing
+                    break;
+                }
+                inputPos++;
+                formatPos++;
+            }
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Assign a value to a variable by name (handles locals and object variables).
+    /// </summary>
+    private void AssignToVariable(string name, object value)
+    {
+        // Try local scopes first
+        foreach (var scope in _localScopes)
+        {
+            if (scope.ContainsKey(name))
+            {
+                scope[name] = value;
+                return;
+            }
+        }
+
+        // Try object variables
+        if (_currentObject.Variables.ContainsKey(name))
+        {
+            _currentObject.Variables[name] = value;
+            return;
+        }
+
+        // Variable doesn't exist - create in local scope if we have one
+        if (_localScopes.Count > 0)
+        {
+            _localScopes.Peek()[name] = value;
+        }
+        else
+        {
+            // No local scope - this shouldn't normally happen
+            throw new ObjectInterpreterException($"Cannot assign to undefined variable '{name}'");
+        }
+    }
+
+    /// <summary>
+    /// Set a value at an index (for array/mapping element assignment).
+    /// </summary>
+    private void SetIndexValue(IndexExpression indexExpr, object value)
+    {
+        var target = Evaluate(indexExpr.Target);
+        var index = Evaluate(indexExpr.Index);
+
+        if (target is List<object> list)
+        {
+            var idx = Convert.ToInt32(index);
+            if (idx >= 0 && idx < list.Count)
+            {
+                list[idx] = value;
+            }
+            else
+            {
+                throw new ObjectInterpreterException($"Array index {idx} out of bounds");
+            }
+        }
+        else if (target is Dictionary<object, object> dict)
+        {
+            dict[index] = value;
+        }
+        else
+        {
+            throw new ObjectInterpreterException("Cannot index into non-array/mapping type");
+        }
     }
 
     private object? CallUserFunction(FunctionDefinition funcDef, List<object> args)
@@ -1584,6 +1902,1371 @@ public class ObjectInterpreter
             return false;
         }
     }
+
+    /// <summary>
+    /// object_name(obj) - Returns the full object name including clone number.
+    /// If no argument, returns name of this_object().
+    /// Examples: "/std/weapon", "/obj/sword#5"
+    /// </summary>
+    private object ObjectNameEfun(List<object> args)
+    {
+        MudObject? target;
+
+        if (args.Count == 0)
+        {
+            target = _currentObject;
+        }
+        else if (args.Count == 1)
+        {
+            if (args[0] is MudObject obj)
+            {
+                target = obj;
+            }
+            else if (args[0] is int i && i == 0)
+            {
+                return 0; // object_name(0) returns 0
+            }
+            else
+            {
+                throw new EfunException("object_name() argument must be an object");
+            }
+        }
+        else
+        {
+            throw new EfunException("object_name() takes 0 or 1 argument");
+        }
+
+        return target?.ObjectName ?? (object)0;
+    }
+
+    /// <summary>
+    /// file_name(obj) - Returns the file path of an object (without clone number).
+    /// If no argument, returns file path of this_object().
+    /// Example: "/std/weapon" (same for blueprint and clones)
+    /// </summary>
+    private object FileNameEfun(List<object> args)
+    {
+        MudObject? target;
+
+        if (args.Count == 0)
+        {
+            target = _currentObject;
+        }
+        else if (args.Count == 1)
+        {
+            if (args[0] is MudObject obj)
+            {
+                target = obj;
+            }
+            else if (args[0] is int i && i == 0)
+            {
+                return 0; // file_name(0) returns 0
+            }
+            else
+            {
+                throw new EfunException("file_name() argument must be an object");
+            }
+        }
+        else
+        {
+            throw new EfunException("file_name() takes 0 or 1 argument");
+        }
+
+        return target?.FilePath ?? (object)0;
+    }
+
+    /// <summary>
+    /// previous_object(n) - Returns the object that called the current function.
+    /// n=0 (default): immediate caller
+    /// n=1: caller's caller, etc.
+    /// Returns 0 if no such caller exists.
+    /// </summary>
+    private object PreviousObjectEfun(List<object> args)
+    {
+        int n = 0;
+
+        if (args.Count == 0)
+        {
+            n = 0;
+        }
+        else if (args.Count == 1)
+        {
+            if (args[0] is not int idx)
+            {
+                throw new EfunException("previous_object() argument must be an integer");
+            }
+            n = idx;
+        }
+        else
+        {
+            throw new EfunException("previous_object() takes 0 or 1 argument");
+        }
+
+        if (n < 0)
+        {
+            return 0;
+        }
+
+        // _callStack has the callers, with the most recent at the top
+        // Skip n entries to get the nth previous object
+        if (n >= _callStack.Count)
+        {
+            return 0;
+        }
+
+        // Convert stack to array to access by index
+        var callers = _callStack.ToArray();
+        return callers[n];
+    }
+
+    #region Living/Interactive Efuns
+
+    /// <summary>
+    /// set_living(flag) - Mark this_object() as living (1) or not living (0).
+    /// Living objects can receive heartbeats, be found by find_living(), etc.
+    /// </summary>
+    private object SetLivingEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("set_living() requires exactly 1 argument");
+        }
+
+        var flag = args[0] is int i ? i != 0 : false;
+        _currentObject.IsLiving = flag;
+        return flag ? 1 : 0;
+    }
+
+    /// <summary>
+    /// living(obj) - Test if an object is living.
+    /// Returns 1 if living, 0 if not.
+    /// </summary>
+    private object LivingEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("living() requires exactly 1 argument");
+        }
+
+        if (args[0] is MudObject obj)
+        {
+            return obj.IsLiving ? 1 : 0;
+        }
+
+        if (args[0] is int i && i == 0)
+        {
+            return 0; // living(0) returns 0
+        }
+
+        throw new EfunException("living() argument must be an object");
+    }
+
+    /// <summary>
+    /// set_living_name(name) - Set the living name for this_object().
+    /// The name is used for find_living() lookups.
+    /// </summary>
+    private object SetLivingNameEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("set_living_name() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string name)
+        {
+            throw new EfunException("set_living_name() argument must be a string");
+        }
+
+        _objectManager.SetLivingName(_currentObject, name);
+        return 1;
+    }
+
+    /// <summary>
+    /// query_living_name(obj) - Get the living name of an object.
+    /// Returns the name or 0 if not set.
+    /// </summary>
+    private object QueryLivingNameEfun(List<object> args)
+    {
+        MudObject? target;
+
+        if (args.Count == 0)
+        {
+            target = _currentObject;
+        }
+        else if (args.Count == 1)
+        {
+            if (args[0] is MudObject obj)
+            {
+                target = obj;
+            }
+            else if (args[0] is int i && i == 0)
+            {
+                return 0;
+            }
+            else
+            {
+                throw new EfunException("query_living_name() argument must be an object");
+            }
+        }
+        else
+        {
+            throw new EfunException("query_living_name() takes 0 or 1 argument");
+        }
+
+        return target?.LivingName ?? (object)0;
+    }
+
+    /// <summary>
+    /// interactive(obj) - Test if an object is an interactive player.
+    /// Returns 1 if connected player, 0 if not.
+    /// </summary>
+    private object InteractiveEfun(List<object> args)
+    {
+        MudObject? target;
+
+        if (args.Count == 0)
+        {
+            target = _currentObject;
+        }
+        else if (args.Count == 1)
+        {
+            if (args[0] is MudObject obj)
+            {
+                target = obj;
+            }
+            else if (args[0] is int i && i == 0)
+            {
+                return 0;
+            }
+            else
+            {
+                throw new EfunException("interactive() argument must be an object");
+            }
+        }
+        else
+        {
+            throw new EfunException("interactive() takes 0 or 1 argument");
+        }
+
+        return target?.IsInteractive == true ? 1 : 0;
+    }
+
+    /// <summary>
+    /// find_living(name) - Find a living object by its living name.
+    /// Returns the object or 0 if not found.
+    /// </summary>
+    private object FindLivingEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("find_living() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string name)
+        {
+            throw new EfunException("find_living() argument must be a string");
+        }
+
+        return _objectManager.FindLiving(name) ?? (object)0;
+    }
+
+    /// <summary>
+    /// find_player(name) - Find an interactive player by name.
+    /// Returns the player object or 0 if not found.
+    /// </summary>
+    private object FindPlayerEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("find_player() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string name)
+        {
+            throw new EfunException("find_player() argument must be a string");
+        }
+
+        return _objectManager.FindPlayer(name) ?? (object)0;
+    }
+
+    /// <summary>
+    /// users() - Get an array of all connected players.
+    /// Returns an array of player objects.
+    /// </summary>
+    private object UsersEfun(List<object> args)
+    {
+        if (args.Count != 0)
+        {
+            throw new EfunException("users() takes no arguments");
+        }
+
+        return _objectManager.GetUsers().Cast<object>().ToList();
+    }
+
+    #endregion
+
+    #region Heartbeat Efuns
+
+    /// <summary>
+    /// set_heart_beat(flag) - Enable or disable heartbeat for this_object().
+    /// When enabled, the object's heart_beat() function is called periodically.
+    /// Returns the previous heartbeat state.
+    /// </summary>
+    private object SetHeartBeatEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("set_heart_beat() requires exactly 1 argument");
+        }
+
+        var flag = Convert.ToInt32(args[0]);
+        var obj = _currentObject;
+        var wasEnabled = obj.HeartbeatEnabled;
+
+        if (flag != 0)
+        {
+            // Enable heartbeat
+            obj.HeartbeatEnabled = true;
+            GameLoop.Instance?.RegisterHeartbeat(obj);
+        }
+        else
+        {
+            // Disable heartbeat
+            obj.HeartbeatEnabled = false;
+            GameLoop.Instance?.UnregisterHeartbeat(obj);
+        }
+
+        return wasEnabled ? 1 : 0;
+    }
+
+    /// <summary>
+    /// query_heart_beat(obj) - Check if an object has heartbeat enabled.
+    /// Returns 1 if enabled, 0 if disabled.
+    /// If no argument, checks this_object().
+    /// </summary>
+    private object QueryHeartBeatEfun(List<object> args)
+    {
+        MudObject obj;
+
+        if (args.Count == 0)
+        {
+            obj = _currentObject;
+        }
+        else if (args.Count == 1)
+        {
+            if (args[0] is not MudObject mudObj)
+            {
+                throw new EfunException("query_heart_beat() argument must be an object");
+            }
+            obj = mudObj;
+        }
+        else
+        {
+            throw new EfunException("query_heart_beat() takes 0 or 1 argument");
+        }
+
+        return obj.HeartbeatEnabled ? 1 : 0;
+    }
+
+    #endregion
+
+    #region Callout Efuns
+
+    /// <summary>
+    /// call_out(func, delay, args...) - Schedule a delayed function call.
+    /// Returns the callout ID which can be used with remove_call_out().
+    /// </summary>
+    private object CallOutEfun(List<object> args)
+    {
+        if (args.Count < 2)
+        {
+            throw new EfunException("call_out() requires at least 2 arguments: function name and delay");
+        }
+
+        if (args[0] is not string function)
+        {
+            throw new EfunException("call_out() first argument must be a function name string");
+        }
+
+        var delay = Convert.ToInt32(args[1]);
+        if (delay < 0)
+        {
+            delay = 0;
+        }
+
+        // Collect any additional arguments to pass to the function
+        var callArgs = new List<object>();
+        for (int i = 2; i < args.Count; i++)
+        {
+            callArgs.Add(args[i]);
+        }
+
+        var gameLoop = GameLoop.Instance;
+        if (gameLoop == null)
+        {
+            throw new EfunException("call_out() requires an active game loop");
+        }
+
+        return gameLoop.ScheduleCallout(_currentObject, function, callArgs, delay);
+    }
+
+    /// <summary>
+    /// remove_call_out(func_or_id) - Cancel a pending callout.
+    /// If given a string, removes the first callout for that function on this_object().
+    /// If given an integer, removes the callout with that ID.
+    /// Returns the time remaining until the callout would have fired, or -1 if not found.
+    /// </summary>
+    private object RemoveCallOutEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("remove_call_out() requires exactly 1 argument");
+        }
+
+        var gameLoop = GameLoop.Instance;
+        if (gameLoop == null)
+        {
+            return -1;
+        }
+
+        if (args[0] is string function)
+        {
+            return gameLoop.RemoveCalloutByFunction(_currentObject, function);
+        }
+        else if (args[0] is int calloutId)
+        {
+            return gameLoop.RemoveCalloutById(calloutId);
+        }
+        else
+        {
+            var id = Convert.ToInt32(args[0]);
+            return gameLoop.RemoveCalloutById(id);
+        }
+    }
+
+    /// <summary>
+    /// find_call_out(func) - Find the time remaining until a callout fires.
+    /// Returns the seconds until the callout fires, or -1 if not found.
+    /// </summary>
+    private object FindCallOutEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("find_call_out() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string function)
+        {
+            throw new EfunException("find_call_out() argument must be a function name string");
+        }
+
+        var gameLoop = GameLoop.Instance;
+        if (gameLoop == null)
+        {
+            return -1;
+        }
+
+        return gameLoop.FindCallout(_currentObject, function);
+    }
+
+    #endregion
+
+    #region Array Callback Efuns
+
+    /// <summary>
+    /// filter_array(arr, func) - Filter an array using a callback function.
+    /// Returns a new array containing only elements where func(element) returns non-zero.
+    /// func can be a string (function name in this_object) or an object#function pair.
+    /// </summary>
+    private object FilterArrayEfun(List<object> args)
+    {
+        if (args.Count < 2)
+        {
+            throw new EfunException("filter_array() requires at least 2 arguments");
+        }
+
+        if (args[0] is not List<object> arr)
+        {
+            throw new EfunException("filter_array() first argument must be an array");
+        }
+
+        var result = new List<object>();
+        string funcName;
+        MudObject? targetObj = null;
+
+        // Parse the callback specification
+        if (args[1] is string fn)
+        {
+            funcName = fn;
+            targetObj = _currentObject;
+        }
+        else
+        {
+            throw new EfunException("filter_array() callback must be a function name string");
+        }
+
+        // Collect any extra arguments to pass to callback
+        var extraArgs = new List<object>();
+        for (int i = 2; i < args.Count; i++)
+        {
+            extraArgs.Add(args[i]);
+        }
+
+        // Filter each element
+        foreach (var item in arr)
+        {
+            var callArgs = new List<object> { item };
+            callArgs.AddRange(extraArgs);
+
+            try
+            {
+                var callResult = CallFunctionOnObject(targetObj, funcName, callArgs);
+
+                // Non-zero result means keep the element
+                bool keep = false;
+                if (callResult is int i)
+                {
+                    keep = i != 0;
+                }
+                else if (callResult != null)
+                {
+                    keep = true;
+                }
+
+                if (keep)
+                {
+                    result.Add(item);
+                }
+            }
+            catch (ReturnException ex)
+            {
+                // Handle return value
+                bool keep = false;
+                if (ex.Value is int i)
+                {
+                    keep = i != 0;
+                }
+                else if (ex.Value != null)
+                {
+                    keep = true;
+                }
+
+                if (keep)
+                {
+                    result.Add(item);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// map_array(arr, func) - Transform an array using a callback function.
+    /// Returns a new array where each element is the result of func(original_element).
+    /// func can be a string (function name in this_object).
+    /// </summary>
+    private object MapArrayEfun(List<object> args)
+    {
+        if (args.Count < 2)
+        {
+            throw new EfunException("map_array() requires at least 2 arguments");
+        }
+
+        if (args[0] is not List<object> arr)
+        {
+            throw new EfunException("map_array() first argument must be an array");
+        }
+
+        var result = new List<object>();
+        string funcName;
+        MudObject? targetObj = null;
+
+        // Parse the callback specification
+        if (args[1] is string fn)
+        {
+            funcName = fn;
+            targetObj = _currentObject;
+        }
+        else
+        {
+            throw new EfunException("map_array() callback must be a function name string");
+        }
+
+        // Collect any extra arguments to pass to callback
+        var extraArgs = new List<object>();
+        for (int i = 2; i < args.Count; i++)
+        {
+            extraArgs.Add(args[i]);
+        }
+
+        // Map each element
+        foreach (var item in arr)
+        {
+            var callArgs = new List<object> { item };
+            callArgs.AddRange(extraArgs);
+
+            try
+            {
+                var callResult = CallFunctionOnObject(targetObj, funcName, callArgs);
+                result.Add(callResult ?? 0);
+            }
+            catch (ReturnException ex)
+            {
+                result.Add(ex.Value ?? 0);
+            }
+        }
+
+        return result;
+    }
+
+    #endregion
+
+    #region File I/O Efuns
+
+    /// <summary>
+    /// Resolve a mudlib path to a full file system path.
+    /// Ensures the path stays within the mudlib directory for security.
+    /// </summary>
+    private string ResolveMudlibPath(string path)
+    {
+        // Normalize: remove leading / and .c extension if present
+        path = path.TrimStart('/');
+        if (!path.EndsWith(".c") && !Path.HasExtension(path))
+        {
+            // Don't add extension for file operations
+        }
+
+        // Get full path
+        var fullPath = Path.GetFullPath(Path.Combine(_objectManager.MudlibPath, path));
+
+        // Security check: ensure path is within mudlib directory
+        if (!fullPath.StartsWith(_objectManager.MudlibPath))
+        {
+            throw new EfunException("Security violation: path traversal attempt detected");
+        }
+
+        return fullPath;
+    }
+
+    /// <summary>
+    /// read_file(path, [start], [lines]) - Read contents of a file.
+    /// start: line to start at (1-based, default 1)
+    /// lines: number of lines to read (default all)
+    /// Returns the file contents as a string, or 0 if file doesn't exist.
+    /// </summary>
+    private object ReadFileEfun(List<object> args)
+    {
+        if (args.Count < 1 || args.Count > 3)
+        {
+            throw new EfunException("read_file() requires 1 to 3 arguments");
+        }
+
+        if (args[0] is not string path)
+        {
+            throw new EfunException("read_file() first argument must be a path string");
+        }
+
+        int startLine = 1;
+        int? numLines = null;
+
+        if (args.Count >= 2)
+        {
+            startLine = Convert.ToInt32(args[1]);
+            if (startLine < 1) startLine = 1;
+        }
+
+        if (args.Count >= 3)
+        {
+            numLines = Convert.ToInt32(args[2]);
+            if (numLines < 0) numLines = null;
+        }
+
+        try
+        {
+            var fullPath = ResolveMudlibPath(path);
+
+            if (!File.Exists(fullPath))
+            {
+                return 0;
+            }
+
+            var lines = File.ReadAllLines(fullPath);
+
+            // Apply line range
+            int skipLines = startLine - 1;
+            IEnumerable<string> selectedLines = lines.Skip(skipLines);
+
+            if (numLines.HasValue)
+            {
+                selectedLines = selectedLines.Take(numLines.Value);
+            }
+
+            return string.Join("\n", selectedLines);
+        }
+        catch (IOException)
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// write_file(path, text, [flag]) - Write text to a file.
+    /// flag: 0 = overwrite (default), 1 = append
+    /// Returns 1 on success, 0 on failure.
+    /// </summary>
+    private object WriteFileEfun(List<object> args)
+    {
+        if (args.Count < 2 || args.Count > 3)
+        {
+            throw new EfunException("write_file() requires 2 or 3 arguments");
+        }
+
+        if (args[0] is not string path)
+        {
+            throw new EfunException("write_file() first argument must be a path string");
+        }
+
+        if (args[1] is not string text)
+        {
+            throw new EfunException("write_file() second argument must be a string");
+        }
+
+        int flag = 0;
+        if (args.Count >= 3)
+        {
+            flag = Convert.ToInt32(args[2]);
+        }
+
+        try
+        {
+            var fullPath = ResolveMudlibPath(path);
+
+            // Ensure directory exists
+            var dir = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+
+            if (flag == 1)
+            {
+                // Append
+                File.AppendAllText(fullPath, text);
+            }
+            else
+            {
+                // Overwrite
+                File.WriteAllText(fullPath, text);
+            }
+
+            return 1;
+        }
+        catch (IOException)
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// file_size(path) - Get the size of a file in bytes.
+    /// Returns the file size, or -1 if file doesn't exist.
+    /// Returns -2 if path is a directory.
+    /// </summary>
+    private object FileSizeEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("file_size() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string path)
+        {
+            throw new EfunException("file_size() argument must be a path string");
+        }
+
+        try
+        {
+            var fullPath = ResolveMudlibPath(path);
+
+            if (Directory.Exists(fullPath))
+            {
+                return -2; // Is a directory
+            }
+
+            if (!File.Exists(fullPath))
+            {
+                return -1; // Doesn't exist
+            }
+
+            var info = new FileInfo(fullPath);
+            return (int)info.Length;
+        }
+        catch (IOException)
+        {
+            return -1;
+        }
+    }
+
+    /// <summary>
+    /// rm(path) - Delete a file.
+    /// Returns 1 on success, 0 on failure.
+    /// </summary>
+    private object RmEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("rm() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string path)
+        {
+            throw new EfunException("rm() argument must be a path string");
+        }
+
+        try
+        {
+            var fullPath = ResolveMudlibPath(path);
+
+            if (!File.Exists(fullPath))
+            {
+                return 0;
+            }
+
+            File.Delete(fullPath);
+            return 1;
+        }
+        catch (IOException)
+        {
+            return 0;
+        }
+    }
+
+    #endregion
+
+    #region Object Persistence Efuns
+
+    /// <summary>
+    /// save_object(path) - Save this_object()'s variables to a file.
+    /// Returns 1 on success, 0 on failure.
+    /// </summary>
+    private object SaveObjectEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("save_object() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string path)
+        {
+            throw new EfunException("save_object() argument must be a path string");
+        }
+
+        try
+        {
+            // Add .o extension if not present
+            if (!path.EndsWith(".o"))
+            {
+                path = path + ".o";
+            }
+
+            var fullPath = ResolveMudlibPath(path);
+
+            // Ensure directory exists
+            var dir = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+
+            var sb = new StringBuilder();
+
+            // Write each variable
+            foreach (var (name, value) in _currentObject.Variables)
+            {
+                // Skip null/default values
+                if (value == null) continue;
+                if (value is int i && i == 0) continue;
+
+                sb.Append(name);
+                sb.Append(' ');
+                sb.AppendLine(SerializeLpcValue(value));
+            }
+
+            File.WriteAllText(fullPath, sb.ToString());
+            return 1;
+        }
+        catch (Exception)
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// restore_object(path) - Restore this_object()'s variables from a file.
+    /// Returns 1 on success, 0 on failure.
+    /// </summary>
+    private object RestoreObjectEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("restore_object() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string path)
+        {
+            throw new EfunException("restore_object() argument must be a path string");
+        }
+
+        try
+        {
+            // Add .o extension if not present
+            if (!path.EndsWith(".o"))
+            {
+                path = path + ".o";
+            }
+
+            var fullPath = ResolveMudlibPath(path);
+
+            if (!File.Exists(fullPath))
+            {
+                return 0;
+            }
+
+            var lines = File.ReadAllLines(fullPath);
+
+            foreach (var line in lines)
+            {
+                if (string.IsNullOrWhiteSpace(line)) continue;
+
+                // Find the first space to separate name from value
+                var spaceIndex = line.IndexOf(' ');
+                if (spaceIndex <= 0) continue;
+
+                var name = line[..spaceIndex];
+                var valueStr = line[(spaceIndex + 1)..];
+
+                // Only restore if the variable exists in the object
+                if (_currentObject.Variables.ContainsKey(name))
+                {
+                    var value = DeserializeLpcValue(valueStr);
+                    _currentObject.Variables[name] = value;
+                }
+            }
+
+            return 1;
+        }
+        catch (Exception)
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Serialize an LPC value to string format.
+    /// </summary>
+    private string SerializeLpcValue(object? value)
+    {
+        if (value == null)
+        {
+            return "0";
+        }
+
+        return value switch
+        {
+            int i => i.ToString(),
+            string s => "\"" + EscapeString(s) + "\"",
+            List<object> arr => SerializeArray(arr),
+            Dictionary<object, object> map => SerializeMapping(map),
+            MudObject obj => obj.ObjectName, // Store object reference as path
+            _ => value.ToString() ?? "0"
+        };
+    }
+
+    private string EscapeString(string s)
+    {
+        return s.Replace("\\", "\\\\")
+                .Replace("\"", "\\\"")
+                .Replace("\n", "\\n")
+                .Replace("\r", "\\r")
+                .Replace("\t", "\\t");
+    }
+
+    private string SerializeArray(List<object> arr)
+    {
+        var sb = new StringBuilder();
+        sb.Append("({");
+        for (int i = 0; i < arr.Count; i++)
+        {
+            if (i > 0) sb.Append(',');
+            sb.Append(SerializeLpcValue(arr[i]));
+        }
+        sb.Append("})");
+        return sb.ToString();
+    }
+
+    private string SerializeMapping(Dictionary<object, object> map)
+    {
+        var sb = new StringBuilder();
+        sb.Append("([");
+        bool first = true;
+        foreach (var (key, value) in map)
+        {
+            if (!first) sb.Append(',');
+            first = false;
+            sb.Append(SerializeLpcValue(key));
+            sb.Append(':');
+            sb.Append(SerializeLpcValue(value));
+        }
+        sb.Append("])");
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Deserialize an LPC value from string format.
+    /// </summary>
+    private object? DeserializeLpcValue(string str)
+    {
+        str = str.Trim();
+
+        if (string.IsNullOrEmpty(str))
+        {
+            return 0;
+        }
+
+        // Integer
+        if (int.TryParse(str, out int intVal))
+        {
+            return intVal;
+        }
+
+        // String
+        if (str.StartsWith('"') && str.EndsWith('"'))
+        {
+            return UnescapeString(str[1..^1]);
+        }
+
+        // Array
+        if (str.StartsWith("({") && str.EndsWith("})"))
+        {
+            return DeserializeArray(str[2..^2]);
+        }
+
+        // Mapping
+        if (str.StartsWith("([") && str.EndsWith("])"))
+        {
+            return DeserializeMapping(str[2..^2]);
+        }
+
+        // Default: try to find as object, otherwise return as string
+        return str;
+    }
+
+    private string UnescapeString(string s)
+    {
+        var result = new StringBuilder();
+        bool escape = false;
+
+        foreach (char c in s)
+        {
+            if (escape)
+            {
+                result.Append(c switch
+                {
+                    'n' => '\n',
+                    'r' => '\r',
+                    't' => '\t',
+                    '\\' => '\\',
+                    '"' => '"',
+                    _ => c
+                });
+                escape = false;
+            }
+            else if (c == '\\')
+            {
+                escape = true;
+            }
+            else
+            {
+                result.Append(c);
+            }
+        }
+
+        return result.ToString();
+    }
+
+    private List<object> DeserializeArray(string content)
+    {
+        var result = new List<object>();
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return result;
+        }
+
+        // Simple parsing - split by commas at depth 0
+        var items = SplitAtDepthZero(content, ',');
+        foreach (var item in items)
+        {
+            var value = DeserializeLpcValue(item.Trim());
+            if (value != null)
+            {
+                result.Add(value);
+            }
+        }
+
+        return result;
+    }
+
+    private Dictionary<object, object> DeserializeMapping(string content)
+    {
+        var result = new Dictionary<object, object>();
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return result;
+        }
+
+        // Split by commas at depth 0
+        var pairs = SplitAtDepthZero(content, ',');
+        foreach (var pair in pairs)
+        {
+            // Split key:value
+            var colonIndex = FindAtDepthZero(pair, ':');
+            if (colonIndex > 0)
+            {
+                var keyStr = pair[..colonIndex].Trim();
+                var valueStr = pair[(colonIndex + 1)..].Trim();
+
+                var key = DeserializeLpcValue(keyStr);
+                var value = DeserializeLpcValue(valueStr);
+
+                if (key != null)
+                {
+                    result[key] = value ?? 0;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private List<string> SplitAtDepthZero(string content, char delimiter)
+    {
+        var result = new List<string>();
+        int depth = 0;
+        bool inString = false;
+        bool escape = false;
+        int start = 0;
+
+        for (int i = 0; i < content.Length; i++)
+        {
+            char c = content[i];
+
+            if (escape)
+            {
+                escape = false;
+                continue;
+            }
+
+            if (c == '\\')
+            {
+                escape = true;
+                continue;
+            }
+
+            if (c == '"')
+            {
+                inString = !inString;
+                continue;
+            }
+
+            if (inString) continue;
+
+            if (c == '(' || c == '[' || c == '{')
+            {
+                depth++;
+            }
+            else if (c == ')' || c == ']' || c == '}')
+            {
+                depth--;
+            }
+            else if (c == delimiter && depth == 0)
+            {
+                result.Add(content[start..i]);
+                start = i + 1;
+            }
+        }
+
+        if (start < content.Length)
+        {
+            result.Add(content[start..]);
+        }
+
+        return result;
+    }
+
+    private int FindAtDepthZero(string content, char target)
+    {
+        int depth = 0;
+        bool inString = false;
+        bool escape = false;
+
+        for (int i = 0; i < content.Length; i++)
+        {
+            char c = content[i];
+
+            if (escape)
+            {
+                escape = false;
+                continue;
+            }
+
+            if (c == '\\')
+            {
+                escape = true;
+                continue;
+            }
+
+            if (c == '"')
+            {
+                inString = !inString;
+                continue;
+            }
+
+            if (inString) continue;
+
+            if (c == '(' || c == '[' || c == '{')
+            {
+                depth++;
+            }
+            else if (c == ')' || c == ']' || c == '}')
+            {
+                depth--;
+            }
+            else if (c == target && depth == 0)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    #endregion
+
+    #region Hot-Reload Efuns
+
+    /// <summary>
+    /// update(path) - Hot-reload an object and all objects that depend on it.
+    /// Returns the number of objects successfully updated.
+    /// </summary>
+    private object UpdateEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("update() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string path)
+        {
+            throw new EfunException("update() argument must be a path string");
+        }
+
+        return _objectManager.UpdateObject(path);
+    }
+
+    /// <summary>
+    /// inherits(path) - Get an array of paths that the given object inherits from.
+    /// Returns an array of inherited object paths.
+    /// </summary>
+    private object InheritsEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("inherits() requires exactly 1 argument");
+        }
+
+        string path;
+        if (args[0] is string s)
+        {
+            path = s;
+        }
+        else if (args[0] is MudObject obj)
+        {
+            path = obj.FilePath;
+        }
+        else
+        {
+            throw new EfunException("inherits() argument must be a path string or object");
+        }
+
+        return _objectManager.GetInheritanceParents(path).Cast<object>().ToList();
+    }
+
+    #endregion
+
+    #region Input Handling Efuns
+
+    /// <summary>
+    /// input_to(func, [flags]) - Capture the next line of player input.
+    /// The input will be passed to the specified function instead of being
+    /// processed as a command.
+    ///
+    /// Flags:
+    /// 0 = normal (default)
+    /// 1 = no echo (hide input, for passwords)
+    ///
+    /// Returns 1 on success, 0 on failure.
+    /// </summary>
+    private object InputToEfun(List<object> args)
+    {
+        if (args.Count < 1 || args.Count > 2)
+        {
+            throw new EfunException("input_to() requires 1 or 2 arguments");
+        }
+
+        if (args[0] is not string function)
+        {
+            throw new EfunException("input_to() first argument must be a function name");
+        }
+
+        int flags = 0;
+        if (args.Count >= 2)
+        {
+            flags = Convert.ToInt32(args[1]);
+        }
+
+        // Get the current execution context to find the player's session
+        var context = ExecutionContext.Current;
+        if (context == null)
+        {
+            return 0; // No execution context
+        }
+
+        var gameLoop = GameLoop.Instance;
+        if (gameLoop == null)
+        {
+            return 0; // No game loop
+        }
+
+        // Find the session for this connection
+        var session = gameLoop.GetSession(context.ConnectionId);
+        if (session == null)
+        {
+            return 0; // No session
+        }
+
+        // Set up the input handler
+        session.PendingInputHandler = new InputHandler
+        {
+            Target = _currentObject,
+            Function = function,
+            Flags = flags
+        };
+
+        return 1;
+    }
+
+    #endregion
 
     #endregion
 }

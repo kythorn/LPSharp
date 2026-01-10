@@ -46,7 +46,31 @@ public class EfunRegistry
         Register("lower_case", LowerCase);
         Register("upper_case", UpperCase);
         Register("capitalize", Capitalize);
+        Register("time", Time);
+        Register("ctime", Ctime);
+
+        // Array functions
+        Register("sort_array", SortArray);
+        Register("unique_array", UniqueArray);
+
+        // Mapping functions
+        Register("m_indices", MIndices);
+        Register("m_values", MValues);
+        Register("m_delete", MDelete);
+        Register("mkmapping", MkMapping);
+        Register("keys", MIndices);  // Alias
+        Register("values", MValues); // Alias
+
+        // String functions
+        Register("strsrch", Strsrch);
+
+        // Inventory traversal
+        Register("first_inventory", FirstInventory);
+        Register("next_inventory", NextInventory);
+
         // Note: load_object, clone_object, move_object, etc. are registered by ObjectInterpreter
+        // Note: filter_array, map_array are in ObjectInterpreter (need callback support)
+        // Note: sscanf is in ObjectInterpreter (needs variable assignment)
     }
 
     public void Register(string name, Func<List<object>, object> implementation)
@@ -720,6 +744,347 @@ public class EfunRegistry
 
         return char.ToUpperInvariant(str[0]) + str.Substring(1);
     }
+
+    /// <summary>
+    /// time() - Returns the current Unix timestamp (seconds since 1970-01-01 00:00:00 UTC).
+    /// </summary>
+    private static object Time(List<object> args)
+    {
+        if (args.Count != 0)
+        {
+            throw new EfunException("time() takes no arguments");
+        }
+
+        return (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+    }
+
+    /// <summary>
+    /// ctime(time) - Converts a Unix timestamp to a human-readable string.
+    /// If no argument, uses current time.
+    /// Format: "Wed Jan 10 14:30:00 2024"
+    /// </summary>
+    private static object Ctime(List<object> args)
+    {
+        long timestamp;
+
+        if (args.Count == 0)
+        {
+            timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        }
+        else if (args.Count == 1)
+        {
+            if (args[0] is not int t)
+            {
+                throw new EfunException("ctime() argument must be an integer");
+            }
+            timestamp = t;
+        }
+        else
+        {
+            throw new EfunException("ctime() takes 0 or 1 argument");
+        }
+
+        var dateTime = DateTimeOffset.FromUnixTimeSeconds(timestamp).UtcDateTime;
+        // LPC classic format: "Wed Jan 10 14:30:00 2024"
+        return dateTime.ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    #region Array Functions
+
+    /// <summary>
+    /// sort_array(arr, direction) - Sort an array.
+    /// direction: 1 for ascending, -1 for descending.
+    /// Returns a new sorted array (does not modify original).
+    /// </summary>
+    private static object SortArray(List<object> args)
+    {
+        if (args.Count < 1 || args.Count > 2)
+        {
+            throw new EfunException("sort_array() requires 1 or 2 arguments");
+        }
+
+        if (args[0] is not List<object> arr)
+        {
+            throw new EfunException("sort_array() first argument must be an array");
+        }
+
+        int direction = 1; // Default ascending
+        if (args.Count == 2)
+        {
+            direction = Convert.ToInt32(args[1]);
+        }
+
+        // Create a copy for sorting
+        var result = new List<object>(arr);
+
+        result.Sort((a, b) =>
+        {
+            int cmp;
+            if (a is int ai && b is int bi)
+            {
+                cmp = ai.CompareTo(bi);
+            }
+            else if (a is string sa && b is string sb)
+            {
+                cmp = string.Compare(sa, sb, StringComparison.Ordinal);
+            }
+            else
+            {
+                // Mixed types: compare by string representation
+                cmp = string.Compare(a?.ToString() ?? "", b?.ToString() ?? "", StringComparison.Ordinal);
+            }
+
+            return direction >= 0 ? cmp : -cmp;
+        });
+
+        return result;
+    }
+
+    /// <summary>
+    /// unique_array(arr) - Remove duplicate elements from an array.
+    /// Returns a new array with duplicates removed, preserving order of first occurrence.
+    /// </summary>
+    private static object UniqueArray(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("unique_array() requires exactly 1 argument");
+        }
+
+        if (args[0] is not List<object> arr)
+        {
+            throw new EfunException("unique_array() argument must be an array");
+        }
+
+        var seen = new HashSet<object>();
+        var result = new List<object>();
+
+        foreach (var item in arr)
+        {
+            if (seen.Add(item))
+            {
+                result.Add(item);
+            }
+        }
+
+        return result;
+    }
+
+    #endregion
+
+    #region Mapping Functions
+
+    /// <summary>
+    /// m_indices(mapping) / keys(mapping) - Get all keys from a mapping as an array.
+    /// </summary>
+    private static object MIndices(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("m_indices() requires exactly 1 argument");
+        }
+
+        if (args[0] is not Dictionary<object, object> mapping)
+        {
+            throw new EfunException("m_indices() argument must be a mapping");
+        }
+
+        return mapping.Keys.ToList();
+    }
+
+    /// <summary>
+    /// m_values(mapping) / values(mapping) - Get all values from a mapping as an array.
+    /// </summary>
+    private static object MValues(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("m_values() requires exactly 1 argument");
+        }
+
+        if (args[0] is not Dictionary<object, object> mapping)
+        {
+            throw new EfunException("m_values() argument must be a mapping");
+        }
+
+        return mapping.Values.Cast<object>().ToList();
+    }
+
+    /// <summary>
+    /// m_delete(mapping, key) - Remove a key from a mapping.
+    /// Returns the modified mapping (LPC mappings are modified in place).
+    /// </summary>
+    private static object MDelete(List<object> args)
+    {
+        if (args.Count != 2)
+        {
+            throw new EfunException("m_delete() requires exactly 2 arguments");
+        }
+
+        if (args[0] is not Dictionary<object, object> mapping)
+        {
+            throw new EfunException("m_delete() first argument must be a mapping");
+        }
+
+        mapping.Remove(args[1]);
+        return mapping;
+    }
+
+    /// <summary>
+    /// mkmapping(keys, values) - Create a mapping from two arrays.
+    /// keys[i] maps to values[i].
+    /// </summary>
+    private static object MkMapping(List<object> args)
+    {
+        if (args.Count != 2)
+        {
+            throw new EfunException("mkmapping() requires exactly 2 arguments");
+        }
+
+        if (args[0] is not List<object> keys)
+        {
+            throw new EfunException("mkmapping() first argument must be an array");
+        }
+
+        if (args[1] is not List<object> values)
+        {
+            throw new EfunException("mkmapping() second argument must be an array");
+        }
+
+        if (keys.Count != values.Count)
+        {
+            throw new EfunException("mkmapping() requires arrays of equal length");
+        }
+
+        var result = new Dictionary<object, object>();
+        for (int i = 0; i < keys.Count; i++)
+        {
+            result[keys[i]] = values[i];
+        }
+
+        return result;
+    }
+
+    #endregion
+
+    #region Additional String Functions
+
+    /// <summary>
+    /// strsrch(str, substr, [start]) - Search for a substring in a string.
+    /// Returns the index of the first occurrence, or -1 if not found.
+    /// Optional start parameter specifies where to begin searching.
+    /// If start is negative, search is done from the end (right to left).
+    /// </summary>
+    private static object Strsrch(List<object> args)
+    {
+        if (args.Count < 2 || args.Count > 3)
+        {
+            throw new EfunException("strsrch() requires 2 or 3 arguments");
+        }
+
+        if (args[0] is not string str)
+        {
+            throw new EfunException("strsrch() first argument must be a string");
+        }
+
+        if (args[1] is not string substr)
+        {
+            throw new EfunException("strsrch() second argument must be a string");
+        }
+
+        int start = 0;
+        bool reverse = false;
+
+        if (args.Count == 3)
+        {
+            start = Convert.ToInt32(args[2]);
+            if (start < 0)
+            {
+                // Negative start means search from end
+                reverse = true;
+                start = str.Length + start;
+                if (start < 0) start = 0;
+            }
+        }
+
+        if (reverse)
+        {
+            // Search from end
+            return str.LastIndexOf(substr, start, StringComparison.Ordinal);
+        }
+        else
+        {
+            // Search from start
+            if (start >= str.Length) return -1;
+            return str.IndexOf(substr, start, StringComparison.Ordinal);
+        }
+    }
+
+    #endregion
+
+    #region Inventory Traversal
+
+    /// <summary>
+    /// first_inventory(obj) - Get the first item in an object's inventory.
+    /// Returns the first contained object, or 0 if empty.
+    /// </summary>
+    private static object FirstInventory(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("first_inventory() requires exactly 1 argument");
+        }
+
+        if (args[0] is not MudObject obj)
+        {
+            throw new EfunException("first_inventory() argument must be an object");
+        }
+
+        if (obj.Contents.Count > 0)
+        {
+            return obj.Contents[0];
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// next_inventory(obj) - Get the next sibling in the parent's inventory.
+    /// Returns the next object after this one in the same environment,
+    /// or 0 if this is the last object.
+    /// </summary>
+    private static object NextInventory(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("next_inventory() requires exactly 1 argument");
+        }
+
+        if (args[0] is not MudObject obj)
+        {
+            throw new EfunException("next_inventory() argument must be an object");
+        }
+
+        var env = obj.Environment;
+        if (env == null)
+        {
+            return 0;
+        }
+
+        // Find this object in parent's contents and return the next one
+        var contents = env.Contents;
+        for (int i = 0; i < contents.Count - 1; i++)
+        {
+            if (contents[i] == obj)
+            {
+                return contents[i + 1];
+            }
+        }
+
+        return 0;
+    }
+
+    #endregion
 
     #endregion
 }

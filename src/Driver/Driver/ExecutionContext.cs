@@ -193,4 +193,33 @@ public record PlayerSession
     /// When this session last had activity.
     /// </summary>
     public DateTime LastActivity { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Pending input handler (set by input_to efun).
+    /// If set, next input line goes to this handler instead of command parser.
+    /// </summary>
+    public InputHandler? PendingInputHandler { get; set; }
+}
+
+/// <summary>
+/// Handler for capturing player input via input_to().
+/// </summary>
+public record InputHandler
+{
+    /// <summary>
+    /// The object to call the function on.
+    /// </summary>
+    public required MudObject Target { get; init; }
+
+    /// <summary>
+    /// The function name to call with the input.
+    /// </summary>
+    public required string Function { get; init; }
+
+    /// <summary>
+    /// Flags controlling input behavior.
+    /// 0 = normal
+    /// 1 = no echo (for passwords)
+    /// </summary>
+    public int Flags { get; init; } = 0;
 }

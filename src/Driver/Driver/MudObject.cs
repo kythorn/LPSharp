@@ -66,6 +66,50 @@ public class MudObject
     /// </summary>
     public DateTime CreatedAt { get; }
 
+    #region Living/Interactive Properties
+
+    /// <summary>
+    /// Whether this object is "living" (can have HP, receive heartbeats, etc).
+    /// Set via set_living() efun. Typically true for players and NPCs.
+    /// </summary>
+    public bool IsLiving { get; set; }
+
+    /// <summary>
+    /// The "living name" for this object (used by find_living()).
+    /// Set via set_living_name() efun. Examples: "orc", "troll", "player_bob"
+    /// </summary>
+    public string? LivingName { get; set; }
+
+    /// <summary>
+    /// Whether this object is an interactive player (connected via telnet).
+    /// Set by GameLoop when player connects/disconnects.
+    /// </summary>
+    public bool IsInteractive { get; set; }
+
+    /// <summary>
+    /// The connection ID for interactive players.
+    /// Used to route output to the correct telnet session.
+    /// </summary>
+    public string? ConnectionId { get; set; }
+
+    #endregion
+
+    #region Heartbeat Properties
+
+    /// <summary>
+    /// Whether heartbeat is enabled for this object.
+    /// When true, heart_beat() is called periodically by the game loop.
+    /// </summary>
+    public bool HeartbeatEnabled { get; set; }
+
+    /// <summary>
+    /// Last time heart_beat() was called on this object.
+    /// Used to implement heartbeat frequency.
+    /// </summary>
+    public DateTime LastHeartbeat { get; set; } = DateTime.UtcNow;
+
+    #endregion
+
     /// <summary>
     /// The environment (container) this object is in.
     /// For players: typically a room.

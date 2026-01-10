@@ -12,23 +12,26 @@ LPMud Revival is a modern reimplementation of the classic LPMud architecture in 
 ## Build and Run Commands
 
 ```bash
-# Build the project
+# Build the project (once src/Driver exists)
 dotnet build src/Driver/Driver
 
 # Run tests
 dotnet test
 
-# Server mode (uses ./mudlib by default)
-dotnet run --project src/Driver/Driver -- --server
-
-# Server with options
-dotnet run --project src/Driver/Driver -- --server --port 4000 --mudlib ./mudlib
+# Server mode
+dotnet run --project src/Driver/Driver -- --mudlib ./mudlib --port 4000
 
 # Interactive REPL
 dotnet run --project src/Driver/Driver -- --repl
 
 # Evaluate single expression
 dotnet run --project src/Driver/Driver -- --eval "5 + 3 * 2"
+
+# Run LPC file with specific function
+dotnet run --project src/Driver/Driver -- --mudlib ./mudlib --run test.c --call test_func
+
+# Run LPC test suite
+dotnet run --project src/Driver/Driver -- --mudlib ./mudlib --test ./lpc-tests/
 ```
 
 ## Architecture
@@ -91,6 +94,104 @@ The project follows a 10-milestone phased approach (see docs/IMPLEMENTATION.md):
 - Mapping syntax: `([ "key": value ])`
 - Call parent function with `::`
 - Lifecycle hooks: `create()`, `init()`, `dest()`
+
+## Available Efuns
+
+### Object Management
+- `clone_object(path)` - Create a clone from a blueprint
+- `load_object(path)` - Load/get a blueprint object
+- `find_object(name)` - Find object by full name
+- `destruct(obj)` - Destroy an object
+- `this_object()` - Get the current executing object
+- `this_player()` - Get the current interactive player
+- `object_name(obj)` - Get full object name
+- `file_name(obj)` - Get object's file path
+- `previous_object(n)` - Get nth caller from call stack
+
+### Movement & Environment
+- `move_object(dest)` - Move this_object() to destination
+- `environment(obj)` - Get object's container
+- `all_inventory(obj)` - Get array of contents
+- `first_inventory(obj)` - Get first item in contents
+- `next_inventory(obj)` - Get next sibling in parent's contents
+- `present(str, obj)` - Find object by id in environment
+
+### Communication
+- `write(str)` - Write to current player
+- `tell_object(obj, str)` - Send message to object
+- `tell_room(room, str, exclude)` - Broadcast to room
+
+### Living/Interactive
+- `set_living(flag)` - Mark object as living
+- `living(obj)` - Test if object is living
+- `set_living_name(name)` - Set living name for lookups
+- `query_living_name(obj)` - Get living name
+- `find_living(name)` - Find object by living name
+- `find_player(name)` - Find connected player by name
+- `interactive(obj)` - Test if object is a player connection
+- `users()` - Get array of all connected players
+
+### Heartbeats & Callouts
+- `set_heart_beat(flag)` - Enable/disable heartbeat
+- `query_heart_beat(obj)` - Check heartbeat status
+- `call_out(func, delay, args...)` - Schedule delayed call
+- `remove_call_out(func_or_id)` - Cancel a callout
+- `find_call_out(func)` - Get time until callout fires
+
+### Input Handling
+- `input_to(func, [flags])` - Capture next line of input
+
+### Strings
+- `strlen(str)` - String length
+- `sprintf(fmt, args...)` - Formatted string
+- `explode(str, delim)` - Split string to array
+- `implode(arr, delim)` - Join array to string
+- `lower_case(str)` - Convert to lowercase
+- `upper_case(str)` - Convert to uppercase
+- `capitalize(str)` - Capitalize first letter
+- `strsrch(str, substr, [start])` - Find substring position
+- `sscanf(str, fmt, vars...)` - Parse formatted input
+
+### Arrays
+- `sizeof(arr)` - Array/mapping size
+- `member_array(elem, arr)` - Find element index
+- `sort_array(arr, dir)` - Sort array (1=asc, -1=desc)
+- `unique_array(arr)` - Remove duplicates
+- `filter_array(arr, func)` - Filter with callback
+- `map_array(arr, func)` - Transform with callback
+
+### Mappings
+- `m_indices(map)` / `keys(map)` - Get all keys
+- `m_values(map)` / `values(map)` - Get all values
+- `m_delete(map, key)` - Remove key from mapping
+- `mkmapping(keys, values)` - Create mapping from arrays
+
+### Time
+- `time()` - Unix timestamp
+- `ctime(t)` - Human-readable time string
+
+### Type Conversion
+- `typeof(x)` - Get type name
+- `to_string(x)` - Convert to string
+- `to_int(x)` - Convert to integer
+
+### File I/O
+- `read_file(path, [start], [lines])` - Read file contents
+- `write_file(path, text, [flag])` - Write/append to file
+- `file_size(path)` - Get file size (-1 if not found)
+- `rm(path)` - Delete a file
+
+### Persistence
+- `save_object(path)` - Save variables to file
+- `restore_object(path)` - Restore variables from file
+
+### Hot-Reload
+- `update(path)` - Reload object and dependents
+- `inherits(path)` - Get inherited object paths
+
+### Other
+- `random(n)` - Random number 0 to n-1
+- `call_other(obj, func, args...)` - Call function on another object
 
 ## Development Guidelines
 

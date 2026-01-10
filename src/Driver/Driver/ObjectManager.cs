@@ -48,6 +48,14 @@ public class ObjectManager
     private readonly object _inheritanceLock = new();
 
     /// <summary>
+    /// Living name registry: maps living names to objects.
+    /// Key: living name (lowercase), Value: object with that living name
+    /// Used by find_living() efun.
+    /// </summary>
+    private readonly Dictionary<string, MudObject> _livingNames = new();
+    private readonly object _livingNamesLock = new();
+
+    /// <summary>
     /// Object interpreter for executing LPC code within object contexts.
     /// </summary>
     private ObjectInterpreter? _interpreter;
@@ -326,6 +334,197 @@ public class ObjectManager
         }
     }
 
+    #region Hot-Reload System
+
+    /// <summary>
+    /// Update (hot-reload) an object and all objects that depend on it.
+    /// This recompiles the blueprint from source and updates the inheritance chain.
+    /// Existing clones keep their old code (conservative strategy).
+    /// Returns the number of objects successfully updated.
+    /// </summary>
+    public int UpdateObject(string path)
+    {
+        path = NormalizePath(path);
+
+        // Get all objects that need to be reloaded (this + all descendants in inheritance tree)
+        var toUpdate = GetDependencyChain(path);
+
+        // Sort so parents are updated before children (topological sort)
+        var sorted = TopologicalSort(toUpdate);
+
+        int updated = 0;
+
+        foreach (var objPath in sorted)
+        {
+            try
+            {
+                // Get old blueprint if it exists
+                _blueprints.TryGetValue(objPath, out var oldBlueprint);
+
+                // Remove from blueprint cache (forces recompile)
+                _blueprints.TryRemove(objPath, out _);
+
+                // Remove from all objects
+                if (oldBlueprint != null)
+                {
+                    _allObjects.TryRemove(objPath, out _);
+
+                    // Don't destruct clones - they keep working with old code
+                    // This is the "conservative" strategy
+                }
+
+                // Remove inheritance tracking for this path (will be re-added on compile)
+                lock (_inheritanceLock)
+                {
+                    foreach (var children in _inheritanceChildren.Values)
+                    {
+                        children.Remove(objPath);
+                    }
+                }
+
+                // Recompile by loading it fresh
+                var newBlueprint = LoadObject(objPath);
+
+                if (newBlueprint != null)
+                {
+                    updated++;
+                    Console.WriteLine($"Updated: {objPath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to update {objPath}: {ex.Message}");
+            }
+        }
+
+        return updated;
+    }
+
+    /// <summary>
+    /// Get all objects that depend on the given path (including the path itself).
+    /// This traverses the inheritance tree to find all descendants.
+    /// </summary>
+    private HashSet<string> GetDependencyChain(string path)
+    {
+        var result = new HashSet<string> { path };
+        var queue = new Queue<string>();
+        queue.Enqueue(path);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            var children = GetInheritanceChildren(current);
+
+            foreach (var child in children)
+            {
+                if (result.Add(child))
+                {
+                    queue.Enqueue(child);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Topological sort of objects so parents are before children.
+    /// </summary>
+    private List<string> TopologicalSort(HashSet<string> objects)
+    {
+        // For each object, count how many of its parents are in the set
+        var inDegree = new Dictionary<string, int>();
+        var parentMap = new Dictionary<string, HashSet<string>>();
+
+        foreach (var obj in objects)
+        {
+            inDegree[obj] = 0;
+            parentMap[obj] = new HashSet<string>();
+        }
+
+        // Build parent relationships
+        lock (_inheritanceLock)
+        {
+            foreach (var (parent, children) in _inheritanceChildren)
+            {
+                if (objects.Contains(parent))
+                {
+                    foreach (var child in children)
+                    {
+                        if (objects.Contains(child))
+                        {
+                            inDegree[child]++;
+                            parentMap[child].Add(parent);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Process objects with no dependencies first
+        var result = new List<string>();
+        var ready = new Queue<string>(objects.Where(o => inDegree[o] == 0));
+
+        while (ready.Count > 0)
+        {
+            var current = ready.Dequeue();
+            result.Add(current);
+
+            // Decrease in-degree for all children
+            var children = GetInheritanceChildren(current);
+            foreach (var child in children)
+            {
+                if (inDegree.ContainsKey(child))
+                {
+                    inDegree[child]--;
+                    if (inDegree[child] == 0)
+                    {
+                        ready.Enqueue(child);
+                    }
+                }
+            }
+        }
+
+        // If result doesn't contain all objects, there's a cycle (shouldn't happen)
+        if (result.Count < objects.Count)
+        {
+            // Just add remaining objects at the end
+            foreach (var obj in objects)
+            {
+                if (!result.Contains(obj))
+                {
+                    result.Add(obj);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Get all paths that the given object inherits from.
+    /// Used by the inherits() efun.
+    /// </summary>
+    public List<string> GetInheritanceParents(string path)
+    {
+        path = NormalizePath(path);
+
+        if (!_blueprints.TryGetValue(path, out var blueprint))
+        {
+            return new List<string>();
+        }
+
+        var result = new List<string>();
+        foreach (var parent in blueprint.Program.InheritedPrograms)
+        {
+            result.Add(parent.FilePath);
+        }
+
+        return result;
+    }
+
+    #endregion
+
     /// <summary>
     /// Get all loaded blueprints (for debugging/admin commands).
     /// </summary>
@@ -354,6 +553,112 @@ public class ObjectManager
             CloneCount = _allObjects.Values.Count(o => !o.IsBlueprint)
         };
     }
+
+    #region Living/Interactive Management
+
+    /// <summary>
+    /// Register or update a living name for an object.
+    /// Called when set_living_name() is used.
+    /// </summary>
+    public void SetLivingName(MudObject obj, string? name)
+    {
+        lock (_livingNamesLock)
+        {
+            // Remove old living name if present
+            if (obj.LivingName != null)
+            {
+                var oldKey = obj.LivingName.ToLowerInvariant();
+                if (_livingNames.TryGetValue(oldKey, out var existing) && existing == obj)
+                {
+                    _livingNames.Remove(oldKey);
+                }
+            }
+
+            // Set new living name
+            obj.LivingName = name;
+
+            // Register in lookup table if name is provided
+            if (name != null)
+            {
+                var key = name.ToLowerInvariant();
+                _livingNames[key] = obj;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Find a living object by its living name.
+    /// Returns null if not found.
+    /// </summary>
+    public MudObject? FindLiving(string name)
+    {
+        var key = name.ToLowerInvariant();
+        lock (_livingNamesLock)
+        {
+            if (_livingNames.TryGetValue(key, out var obj) && !obj.IsDestructed)
+            {
+                return obj;
+            }
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Find an interactive player by name (looks at living name).
+    /// Returns null if not found or not interactive.
+    /// </summary>
+    public MudObject? FindPlayer(string name)
+    {
+        var obj = FindLiving(name);
+        if (obj != null && obj.IsInteractive)
+        {
+            return obj;
+        }
+
+        // Also try searching all interactive objects
+        foreach (var candidate in _allObjects.Values)
+        {
+            if (candidate.IsInteractive && !candidate.IsDestructed)
+            {
+                // Check if living name matches
+                if (candidate.LivingName?.Equals(name, StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    return candidate;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Get all interactive (connected) players.
+    /// </summary>
+    public List<MudObject> GetUsers()
+    {
+        return _allObjects.Values
+            .Where(o => o.IsInteractive && !o.IsDestructed)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Remove a living name registration (called when object is destructed).
+    /// </summary>
+    public void RemoveLivingName(MudObject obj)
+    {
+        if (obj.LivingName == null) return;
+
+        lock (_livingNamesLock)
+        {
+            var key = obj.LivingName.ToLowerInvariant();
+            if (_livingNames.TryGetValue(key, out var existing) && existing == obj)
+            {
+                _livingNames.Remove(key);
+            }
+        }
+    }
+
+    #endregion
 
     /// <summary>
     /// Call the create() lifecycle hook on an object.
