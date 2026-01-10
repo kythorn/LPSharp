@@ -30,6 +30,76 @@ public class ObjectInterpreter
     /// </summary>
     private readonly Stack<Dictionary<string, object?>> _localScopes = new();
 
+    #region Execution Limits
+
+    /// <summary>
+    /// Current instruction count for this execution context.
+    /// Reset at the start of each top-level command execution.
+    /// </summary>
+    private int _instructionCount;
+
+    /// <summary>
+    /// Maximum instructions allowed per execution context.
+    /// Prevents infinite loops from hanging the game.
+    /// Default: 1,000,000 instructions (roughly 1-2 seconds of execution)
+    /// </summary>
+    public int MaxInstructions { get; set; } = 1_000_000;
+
+    /// <summary>
+    /// Maximum recursion depth (function call depth).
+    /// Prevents stack overflow from infinite recursion.
+    /// Default: 100 levels deep
+    /// </summary>
+    public int MaxRecursionDepth { get; set; } = 100;
+
+    /// <summary>
+    /// Whether execution limits are enabled.
+    /// Can be disabled for testing or specific admin commands.
+    /// </summary>
+    public bool LimitsEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Reset the instruction counter. Called at the start of each command execution.
+    /// </summary>
+    public void ResetInstructionCount()
+    {
+        _instructionCount = 0;
+    }
+
+    /// <summary>
+    /// Increment the instruction counter and check limits.
+    /// Called for each statement and expression evaluation.
+    /// </summary>
+    private void CountInstruction()
+    {
+        if (!LimitsEnabled) return;
+
+        _instructionCount++;
+        if (_instructionCount > MaxInstructions)
+        {
+            throw new ExecutionLimitException(
+                $"Execution limit exceeded: {MaxInstructions} instructions. " +
+                "This usually indicates an infinite loop.");
+        }
+    }
+
+    /// <summary>
+    /// Check recursion depth limit.
+    /// </summary>
+    private void CheckRecursionDepth()
+    {
+        if (!LimitsEnabled) return;
+
+        if (_localScopes.Count > MaxRecursionDepth)
+        {
+            throw new ExecutionLimitException(
+                $"Recursion limit exceeded: {MaxRecursionDepth} levels. " +
+                "This usually indicates infinite recursion.");
+        }
+    }
+
+    #endregion
+
     public ObjectInterpreter(ObjectManager objectManager, TextWriter? output = null)
     {
         _objectManager = objectManager;
@@ -122,6 +192,9 @@ public class ObjectInterpreter
 
     private object? Execute(Statement stmt)
     {
+        // Count each statement execution for limit checking
+        CountInstruction();
+
         return stmt switch
         {
             BlockStatement block => ExecuteBlock(block),
@@ -251,6 +324,9 @@ public class ObjectInterpreter
 
     private object Evaluate(Expression expr)
     {
+        // Count each expression evaluation for limit checking
+        CountInstruction();
+
         return expr switch
         {
             NumberLiteral num => num.Value,
@@ -423,6 +499,9 @@ public class ObjectInterpreter
         // Push local scope onto stack
         _localScopes.Push(localScope);
 
+        // Check recursion depth limit
+        CheckRecursionDepth();
+
         try
         {
             // Execute function body
@@ -478,6 +557,18 @@ public class ObjectInterpreter
                 BinaryOperator.NotEqual => !string.Equals(ls, rs) ? 1 : 0,
                 _ => throw new ObjectInterpreterException($"Cannot apply operator {expr.Operator} to strings")
             };
+        }
+
+        // Mixed type equality comparisons (string vs int, etc.) return false
+        // This matches authentic LPC behavior
+        if (expr.Operator == BinaryOperator.Equal || expr.Operator == BinaryOperator.NotEqual)
+        {
+            bool sameType = (leftValue is int && rightValue is int) ||
+                           (leftValue is string && rightValue is string);
+            if (!sameType)
+            {
+                return expr.Operator == BinaryOperator.Equal ? 0 : 1;
+            }
         }
 
         // Integer operations
@@ -776,4 +867,13 @@ public class ObjectInterpreterException : Exception
 {
     public ObjectInterpreterException(string message) : base(message) { }
     public ObjectInterpreterException(string message, Exception inner) : base(message, inner) { }
+}
+
+/// <summary>
+/// Exception thrown when execution limits are exceeded.
+/// This prevents infinite loops and infinite recursion from crashing the game.
+/// </summary>
+public class ExecutionLimitException : Exception
+{
+    public ExecutionLimitException(string message) : base(message) { }
 }

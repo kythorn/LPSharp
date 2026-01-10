@@ -211,18 +211,69 @@ int Repl()
 int Server(string[] args)
 {
     int port = 4000; // Default port
+    string mudlibPath = "./mudlib"; // Default mudlib path
 
-    if (args.Length >= 2)
+    // Parse arguments
+    for (int i = 1; i < args.Length; i++)
     {
-        if (!int.TryParse(args[1], out port) || port < 1 || port > 65535)
+        if (args[i] == "--mudlib" && i + 1 < args.Length)
         {
-            Console.Error.WriteLine($"Error: Invalid port number: {args[1]}");
-            return 1;
+            mudlibPath = args[++i];
+        }
+        else if (args[i] == "--port" && i + 1 < args.Length)
+        {
+            if (!int.TryParse(args[++i], out port) || port < 1 || port > 65535)
+            {
+                Console.Error.WriteLine($"Error: Invalid port number: {args[i]}");
+                return 1;
+            }
+        }
+        else if (int.TryParse(args[i], out var parsedPort) && parsedPort >= 1 && parsedPort <= 65535)
+        {
+            port = parsedPort;
         }
     }
 
-    using var server = new TelnetServer(port);
-    server.Run();
+    // Check mudlib path exists
+    if (!Directory.Exists(mudlibPath))
+    {
+        Console.Error.WriteLine($"Error: Mudlib directory not found: {mudlibPath}");
+        return 1;
+    }
+
+    Console.WriteLine($"Starting LPMud Revival...");
+    Console.WriteLine($"  Mudlib: {Path.GetFullPath(mudlibPath)}");
+    Console.WriteLine($"  Port: {port}");
+    Console.WriteLine();
+
+    // Create object manager
+    var objectManager = new ObjectManager(mudlibPath);
+    objectManager.InitializeInterpreter();
+
+    // Create game loop
+    var gameLoop = new GameLoop(objectManager);
+
+    // Get the interpreter from ObjectManager and pass it to GameLoop
+    // We need to access it via reflection or add a property
+    // For now, let's create our own interpreter instance
+    var interpreter = new ObjectInterpreter(objectManager);
+    gameLoop.InitializeInterpreter(interpreter);
+
+    // Start game loop
+    gameLoop.Start();
+
+    // Create and start telnet server
+    using var server = new TelnetServer(port, gameLoop);
+    try
+    {
+        server.Run();
+    }
+    finally
+    {
+        // Cleanup
+        gameLoop.Stop();
+    }
+
     return 0;
 }
 

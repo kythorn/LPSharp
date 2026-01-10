@@ -231,35 +231,52 @@ void create() {
 
 ## Milestone 6: Telnet Server
 
-**Goal**: Accept network connections and echo input.
+**Goal**: Single-threaded game loop architecture with proper command/output queuing.
 
 **What We're Building**:
-- `TelnetServer.cs` - TCP listener
-- `Connection.cs` - Per-client state
+- `GameLoop.cs` - Single-threaded game loop for all LPC execution
+- `ExecutionContext.cs` - Thread-local context for this_player() and output routing
+- `TelnetServer.cs` - TCP listener with output draining
+- `Connection.cs` - Per-client state with command queuing
 
 **Demo**:
 ```bash
-$ driver --mudlib ./mudlib --port 4000 &
+$ dotnet run --project src/Driver/Driver -- --server --mudlib ./mudlib --port 4000
 $ telnet localhost 4000
-Connected.
-> hello
-hello
-> test 123
-test 123
+Welcome to LPMud Revival!
+
+> say Hello, world!
+You say: Hello, world!
+> look
+You are in a void.
+There is nothing here yet.
+> quit
+Goodbye!
+Connection closed.
+```
+
+**Architecture**:
+```
+CURRENT: Connection → Interpreter (isolated)
+TARGET:  Connections → Command Queue → GameLoop (single thread) → Output Queue → Connections
 ```
 
 **Features**:
 - Listen on TCP port
 - Accept multiple connections
-- Line-based input buffering
-- Echo input back (for now)
+- Single-threaded game loop (no race conditions)
+- Command queue for player input
+- Output queue for message routing
+- ExecutionContext pattern for this_player() and write()
 - Graceful disconnect handling
 
 **Deliverables**:
-- [ ] TelnetServer.cs with async accept loop
-- [ ] Connection.cs with read/write handling
-- [ ] Basic telnet negotiation (or raw mode)
-- [ ] Integration test for connect/send/receive
+- [x] TelnetServer.cs with output queue draining
+- [x] Connection.cs with command queuing
+- [x] GameLoop.cs with single-threaded command processing
+- [x] ExecutionContext.cs for thread-local context
+- [x] Unit tests for GameLoop and ExecutionContext
+- [x] Integration tests for multi-connection scenarios
 
 ---
 
@@ -270,34 +287,40 @@ test 123
 **What We're Building**:
 - `/std/player.c` - Player base class
 - Command routing system
-- Basic commands: `say`, `quit`
+- Basic commands: `say`, `look`, `quit`
 
 **Demo**:
 ```
 $ telnet localhost 4000
-Welcome to the MUD!
+Welcome to LPMud Revival!
+
 > say Hello everyone!
 You say: Hello everyone!
+> look
+You are in a void.
+There is nothing here yet.
 > quit
 Goodbye!
 Connection closed.
 ```
 
 **Features**:
-- Create player object on connect
+- Create player object on connect (clone of /std/player.c)
 - Route input to command parser
 - Find command in `/cmds/` directory
-- Execute command with arguments
+- Execute command's main() with arguments
 - `tell_object()` for output to player
 - `this_player()` efun
+- Player object cleanup on disconnect
 
 **Deliverables**:
-- [ ] /std/player.c base class
-- [ ] Command lookup and dispatch
-- [ ] /cmds/say.c command
-- [ ] /cmds/quit.c command
-- [ ] tell_object() and this_player() efuns
-- [ ] Integration tests
+- [x] /std/player.c base class
+- [x] Command lookup and dispatch in GameLoop
+- [x] /cmds/say.c command
+- [x] /cmds/look.c command (basic version)
+- [x] /cmds/quit.c command
+- [x] tell_object() and this_player() efuns
+- [x] Integration tests
 
 ---
 
@@ -499,8 +522,8 @@ void run_tests() {
 | 3. Interpreter + REPL | ✅ Complete |
 | 4. Functions & Variables | ✅ Complete |
 | 5. Object Model | ✅ Complete |
-| 6. Telnet Server | 🔄 Partial (basic networking, see notes below) |
-| 7. Player & Commands | Not Started |
+| 6. Telnet Server | ✅ Complete |
+| 7. Player & Commands | ✅ Complete |
 | 8. Rooms & Movement | Not Started |
 | 9. Heartbeats & Callouts | Not Started |
 | 10. Combat | Not Started |
@@ -509,7 +532,7 @@ void run_tests() {
 
 ## Current State Notes
 
-### What's Working (as of Milestone 5 complete)
+### What's Working (as of Milestone 7 complete)
 
 **Interpreter/REPL:**
 - Full expression evaluation with correct operator precedence
@@ -519,7 +542,7 @@ void run_tests() {
 - Control flow: if/else, while, for, break, continue, return
 - User-defined functions with parameters and return values
 - Efuns: `write()`, `typeof()`, `strlen()`, `to_string()`, `to_int()`
-- 274+ unit tests passing
+- 374+ unit tests passing
 
 **Object Model (Milestone 5):**
 - Blueprint/clone architecture (singletons vs instances)
@@ -531,40 +554,46 @@ void run_tests() {
 - Local scope for function parameters
 - Object efuns: `clone_object()`, `this_object()`, `load_object()`, `find_object()`, `destruct()`
 - Thread-safe ObjectManager with concurrent blueprint caching
-- 16 ObjectManager tests passing
+
+**Single-Threaded Game Loop (Milestones 6+7):**
+- `GameLoop.cs` - Single-threaded command processing (avoids all race conditions)
+- `ExecutionContext.cs` - Thread-local context for `this_player()` and output routing
+- Command queue for player input from network threads
+- Output queue for message routing back to connections
+- Player objects created on connect (clone of /std/player.c)
+- Command routing: parse verb, load /cmds/{verb}.c, call main(args)
+- Player object cleanup on disconnect
 
 **Networking:**
 - Telnet server accepts multiple concurrent connections (`--server [port]`)
-- Each connection has isolated REPL context (variables don't cross sessions)
-- `write()` output goes only to the calling connection
+- Each connection gets its own player object
+- `write()` routes output to correct connection via ExecutionContext
+- `this_player()` returns the player executing the current command
+- `tell_object()` sends messages to specific players
 - Line buffering with basic telnet protocol handling
 - Graceful quit/exit and Ctrl+C shutdown
 
-### What's NOT Working Yet
+**Commands:**
+- `/cmds/say.c` - Say a message
+- `/cmds/look.c` - Look at surroundings (basic version)
+- `/cmds/quit.c` - Quit and disconnect
 
-**Networking gaps (needed for real players):**
-- No login system - connections drop directly into REPL
-- No player objects - connections need to be linked to player objects
-- No `this_player()` / `this_interactive()` context tracking
-- No `exec()` to transfer connections between objects
-- `write()` uses constructor-injected TextWriter, not `this_player()` lookup
-- No `tell_object()`, `tell_room()`, `say()` message routing
+### What's NOT Working Yet
 
 **Language gaps:**
 - No arrays or mappings (syntax exists but not implemented)
 - No call_other syntax (`obj->func()`)
 - No mapping/array indexing and manipulation
 
-### Architecture Decision Pending
+**Gameplay gaps (needed for Milestone 8+):**
+- No rooms - players exist in a void
+- No `environment()` or `move_object()` efuns
+- No `tell_room()` for room-wide messaging
+- No exits or movement
 
-The current `write()` implementation sends to a `TextWriter` injected at interpreter construction:
-```csharp
-var interpreter = new Interpreter(connectionOutputStream);
-```
-
-For real player support, `write()` needs to:
-1. Look up `this_player()` from execution context
-2. Find that object's attached connection
-3. Send to that connection's output stream
-
-This requires the object model (Milestone 5) and player/command system (Milestone 7) to be in place first.
+**Execution Limits (Safety):**
+- Instruction counter limits execution to 1,000,000 instructions per command (configurable)
+- Recursion depth limited to 100 levels (configurable)
+- Limits can be disabled for testing or admin commands
+- Commands that exceed limits are aborted with a clear error message
+- Player connection remains active after limit violation

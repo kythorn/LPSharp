@@ -21,6 +21,8 @@ public class EfunRegistry
         Register("strlen", Strlen);
         Register("to_string", ToString);
         Register("to_int", ToInt);
+        Register("this_player", ThisPlayer);
+        Register("tell_object", TellObject);
     }
 
     public void Register(string name, Func<List<object>, object> implementation)
@@ -38,7 +40,10 @@ public class EfunRegistry
     #region Built-in Efuns
 
     /// <summary>
-    /// write(value) - Output a value to the console. Returns 1.
+    /// write(value) - Output a value to the player's connection.
+    /// Uses ExecutionContext to route output correctly.
+    /// Falls back to console output for REPL/tests.
+    /// Returns 1.
     /// </summary>
     private object Write(List<object> args)
     {
@@ -55,7 +60,69 @@ public class EfunRegistry
             _ => value.ToString() ?? ""
         };
 
-        _output.WriteLine(output);
+        var context = ExecutionContext.Current;
+        if (context != null)
+        {
+            // Output to player's connection
+            context.SendOutput(output + "\r\n");
+        }
+        else
+        {
+            // Fallback for REPL/tests
+            _output.WriteLine(output);
+        }
+
+        return 1;
+    }
+
+    /// <summary>
+    /// this_player() - Returns the current player object.
+    /// Returns 0 if no player is executing (LPC convention).
+    /// </summary>
+    private static object ThisPlayer(List<object> args)
+    {
+        if (args.Count != 0)
+        {
+            throw new EfunException("this_player() takes no arguments");
+        }
+
+        var context = ExecutionContext.Current;
+        return context?.PlayerObject ?? (object)0;
+    }
+
+    /// <summary>
+    /// tell_object(target, message) - Send a message to a specific object.
+    /// For now, only works if target is the current player.
+    /// Returns 1.
+    /// </summary>
+    private static object TellObject(List<object> args)
+    {
+        if (args.Count != 2)
+        {
+            throw new EfunException("tell_object() requires 2 arguments");
+        }
+
+        if (args[0] is not MudObject target)
+        {
+            throw new EfunException("First argument must be an object");
+        }
+
+        if (args[1] is not string message)
+        {
+            throw new EfunException("Second argument must be a string");
+        }
+
+        var context = ExecutionContext.Current;
+        if (context != null)
+        {
+            // For MVP: only works if target is the current player
+            // TODO Milestone 8: Look up target's connection in GameLoop
+            if (target == context.PlayerObject)
+            {
+                context.SendOutput(message);
+            }
+        }
+
         return 1;
     }
 
