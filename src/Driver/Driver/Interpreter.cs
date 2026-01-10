@@ -44,6 +44,8 @@ public class Interpreter
             IfStatement ifStmt => ExecuteIf(ifStmt),
             WhileStatement whileStmt => ExecuteWhile(whileStmt),
             ForStatement forStmt => ExecuteFor(forStmt),
+            ForEachStatement foreachStmt => ExecuteForeach(foreachStmt),
+            SwitchStatement switchStmt => ExecuteSwitch(switchStmt),
             ReturnStatement ret => ExecuteReturn(ret),
             FunctionDefinition funcDef => ExecuteFunctionDefinition(funcDef),
             BreakStatement => throw new BreakException(),
@@ -138,6 +140,129 @@ public class Interpreter
             if (stmt.Increment != null)
             {
                 Evaluate(stmt.Increment);
+            }
+        }
+
+        return lastValue;
+    }
+
+    private object? ExecuteSwitch(SwitchStatement stmt)
+    {
+        var switchValue = Evaluate(stmt.Value);
+        object? lastValue = null;
+        bool matched = false;
+        int defaultIndex = -1;
+
+        // First, find if there's a matching case or a default
+        for (int i = 0; i < stmt.Cases.Count; i++)
+        {
+            var switchCase = stmt.Cases[i];
+
+            if (switchCase.Value == null)
+            {
+                // This is the default case
+                defaultIndex = i;
+            }
+            else if (!matched)
+            {
+                var caseValue = Evaluate(switchCase.Value);
+                if (ValuesEqual(switchValue, caseValue))
+                {
+                    matched = true;
+                }
+            }
+
+            // If we've matched, execute this case's statements (fall-through)
+            if (matched)
+            {
+                try
+                {
+                    foreach (var statement in switchCase.Statements)
+                    {
+                        lastValue = Execute(statement);
+                    }
+                }
+                catch (BreakException)
+                {
+                    return lastValue;
+                }
+            }
+        }
+
+        // If no case matched but there's a default, execute from default onwards
+        if (!matched && defaultIndex >= 0)
+        {
+            for (int i = defaultIndex; i < stmt.Cases.Count; i++)
+            {
+                var switchCase = stmt.Cases[i];
+                try
+                {
+                    foreach (var statement in switchCase.Statements)
+                    {
+                        lastValue = Execute(statement);
+                    }
+                }
+                catch (BreakException)
+                {
+                    return lastValue;
+                }
+            }
+        }
+
+        return lastValue;
+    }
+
+    private static bool ValuesEqual(object? a, object? b)
+    {
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+        if (a is int ia && b is int ib) return ia == ib;
+        if (a is string sa && b is string sb) return sa == sb;
+        return a.Equals(b);
+    }
+
+    private object? ExecuteForeach(ForEachStatement stmt)
+    {
+        var collection = Evaluate(stmt.Collection);
+        object? lastValue = null;
+
+        // Get items to iterate over
+        IEnumerable<object?> items;
+        if (collection is List<object> list)
+        {
+            items = list;
+        }
+        else if (collection is Dictionary<object, object> mapping)
+        {
+            // Iterate over keys for mappings
+            items = mapping.Keys;
+        }
+        else if (collection is string str)
+        {
+            // Iterate over characters for strings
+            items = str.Select(c => (object?)c.ToString());
+        }
+        else
+        {
+            throw new InterpreterException($"Cannot iterate over type: {collection?.GetType().Name ?? "null"}", stmt);
+        }
+
+        foreach (var item in items)
+        {
+            // Set the loop variable (null becomes 0 in LPC)
+            _variables[stmt.Variable] = item ?? 0;
+
+            try
+            {
+                lastValue = Execute(stmt.Body);
+            }
+            catch (BreakException)
+            {
+                break;
+            }
+            catch (ContinueException)
+            {
+                continue;
             }
         }
 

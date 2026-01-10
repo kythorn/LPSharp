@@ -117,7 +117,7 @@ public class Parser
         }
 
         return Current().Type is TokenType.If or TokenType.While or TokenType.For
-            or TokenType.Return or TokenType.Break or TokenType.Continue
+            or TokenType.Foreach or TokenType.Return or TokenType.Break or TokenType.Continue
             or TokenType.LeftBrace;
     }
 
@@ -207,6 +207,8 @@ public class Parser
         if (Match(TokenType.If)) return ParseIfStatement();
         if (Match(TokenType.While)) return ParseWhileStatement();
         if (Match(TokenType.For)) return ParseForStatement();
+        if (Match(TokenType.Foreach)) return ParseForeachStatement();
+        if (Match(TokenType.Switch)) return ParseSwitchStatement();
         if (Match(TokenType.Return)) return ParseReturnStatement();
         if (Match(TokenType.Break)) return ParseBreakStatement();
         if (Match(TokenType.Continue)) return ParseContinueStatement();
@@ -468,6 +470,123 @@ public class Parser
             Line = forToken.Line,
             Column = forToken.Column
         };
+    }
+
+    private ForEachStatement ParseForeachStatement()
+    {
+        var foreachToken = Previous();
+
+        if (!Match(TokenType.LeftParen))
+        {
+            throw new ParserException("Expected '(' after 'foreach'", Current());
+        }
+
+        if (!Match(TokenType.Identifier))
+        {
+            throw new ParserException("Expected variable name in foreach", Current());
+        }
+        var variable = Previous().Lexeme;
+
+        if (!Match(TokenType.In))
+        {
+            throw new ParserException("Expected 'in' after foreach variable", Current());
+        }
+
+        var collection = ParseExpression();
+
+        if (!Match(TokenType.RightParen))
+        {
+            throw new ParserException("Expected ')' after foreach collection", Current());
+        }
+
+        var body = ParseStatement();
+
+        return new ForEachStatement(variable, collection, body)
+        {
+            Line = foreachToken.Line,
+            Column = foreachToken.Column
+        };
+    }
+
+    private SwitchStatement ParseSwitchStatement()
+    {
+        var switchToken = Previous();
+
+        if (!Match(TokenType.LeftParen))
+        {
+            throw new ParserException("Expected '(' after 'switch'", Current());
+        }
+
+        var value = ParseExpression();
+
+        if (!Match(TokenType.RightParen))
+        {
+            throw new ParserException("Expected ')' after switch expression", Current());
+        }
+
+        if (!Match(TokenType.LeftBrace))
+        {
+            throw new ParserException("Expected '{' after switch", Current());
+        }
+
+        var cases = new List<SwitchCase>();
+
+        while (!Check(TokenType.RightBrace) && !IsAtEnd())
+        {
+            if (Match(TokenType.Case))
+            {
+                var caseValue = ParseExpression();
+
+                if (!Match(TokenType.Colon))
+                {
+                    throw new ParserException("Expected ':' after case value", Current());
+                }
+
+                var statements = ParseCaseStatements();
+                cases.Add(new SwitchCase(caseValue, statements));
+            }
+            else if (Match(TokenType.Default))
+            {
+                if (!Match(TokenType.Colon))
+                {
+                    throw new ParserException("Expected ':' after 'default'", Current());
+                }
+
+                var statements = ParseCaseStatements();
+                cases.Add(new SwitchCase(null, statements)); // null means default
+            }
+            else
+            {
+                throw new ParserException("Expected 'case' or 'default' in switch body", Current());
+            }
+        }
+
+        if (!Match(TokenType.RightBrace))
+        {
+            throw new ParserException("Expected '}' after switch body", Current());
+        }
+
+        return new SwitchStatement(value, cases)
+        {
+            Line = switchToken.Line,
+            Column = switchToken.Column
+        };
+    }
+
+    /// <summary>
+    /// Parse statements until we hit another case/default or the end of switch.
+    /// </summary>
+    private List<Statement> ParseCaseStatements()
+    {
+        var statements = new List<Statement>();
+
+        while (!Check(TokenType.Case) && !Check(TokenType.Default) &&
+               !Check(TokenType.RightBrace) && !IsAtEnd())
+        {
+            statements.Add(ParseStatement());
+        }
+
+        return statements;
     }
 
     private ReturnStatement ParseReturnStatement()

@@ -41,6 +41,11 @@ public class EfunRegistry
         Register("random", Random);
         Register("member_array", MemberArray);
         Register("sprintf", Sprintf);
+        Register("explode", Explode);
+        Register("implode", Implode);
+        Register("lower_case", LowerCase);
+        Register("upper_case", UpperCase);
+        Register("capitalize", Capitalize);
         // Note: load_object, clone_object, move_object, etc. are registered by ObjectInterpreter
     }
 
@@ -593,6 +598,127 @@ public class EfunRegistry
             MudObject obj => obj.FilePath,
             _ => value.ToString() ?? "0"
         };
+    }
+
+    /// <summary>
+    /// explode(string, delimiter) - Split a string into an array by delimiter.
+    /// Returns an array of strings.
+    /// </summary>
+    private static object Explode(List<object> args)
+    {
+        if (args.Count != 2)
+        {
+            throw new EfunException("explode() requires exactly 2 arguments");
+        }
+
+        if (args[0] is not string str)
+        {
+            throw new EfunException("explode() first argument must be a string");
+        }
+
+        if (args[1] is not string delimiter)
+        {
+            throw new EfunException("explode() second argument must be a string");
+        }
+
+        if (string.IsNullOrEmpty(delimiter))
+        {
+            // Split into individual characters
+            return str.Select(c => (object)c.ToString()).ToList();
+        }
+
+        var parts = str.Split(delimiter);
+        return parts.Select(p => (object)p).ToList();
+    }
+
+    /// <summary>
+    /// implode(array, delimiter) - Join an array into a string with delimiter.
+    /// Returns a string.
+    /// </summary>
+    private static object Implode(List<object> args)
+    {
+        if (args.Count != 2)
+        {
+            throw new EfunException("implode() requires exactly 2 arguments");
+        }
+
+        if (args[0] is not List<object> arr)
+        {
+            throw new EfunException("implode() first argument must be an array");
+        }
+
+        if (args[1] is not string delimiter)
+        {
+            throw new EfunException("implode() second argument must be a string");
+        }
+
+        var strings = arr.Select(item => item switch
+        {
+            string s => s,
+            int i => i.ToString(),
+            _ => item?.ToString() ?? ""
+        });
+
+        return string.Join(delimiter, strings);
+    }
+
+    /// <summary>
+    /// lower_case(string) - Convert string to lowercase.
+    /// </summary>
+    private static object LowerCase(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("lower_case() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string str)
+        {
+            throw new EfunException("lower_case() argument must be a string");
+        }
+
+        return str.ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// upper_case(string) - Convert string to uppercase.
+    /// </summary>
+    private static object UpperCase(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("upper_case() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string str)
+        {
+            throw new EfunException("upper_case() argument must be a string");
+        }
+
+        return str.ToUpperInvariant();
+    }
+
+    /// <summary>
+    /// capitalize(string) - Capitalize the first letter of the string.
+    /// </summary>
+    private static object Capitalize(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("capitalize() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string str)
+        {
+            throw new EfunException("capitalize() argument must be a string");
+        }
+
+        if (string.IsNullOrEmpty(str))
+        {
+            return str;
+        }
+
+        return char.ToUpperInvariant(str[0]) + str.Substring(1);
     }
 
     #endregion

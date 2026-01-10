@@ -250,6 +250,8 @@ public class ObjectInterpreter
             IfStatement ifStmt => ExecuteIf(ifStmt),
             WhileStatement whileStmt => ExecuteWhile(whileStmt),
             ForStatement forStmt => ExecuteFor(forStmt),
+            ForEachStatement foreachStmt => ExecuteForeach(foreachStmt),
+            SwitchStatement switchStmt => ExecuteSwitch(switchStmt),
             ReturnStatement ret => ExecuteReturn(ret),
             BreakStatement => throw new BreakException(),
             ContinueStatement => throw new ContinueException(),
@@ -371,6 +373,152 @@ public class ObjectInterpreter
             if (stmt.Increment != null)
             {
                 Evaluate(stmt.Increment);
+            }
+        }
+
+        return lastValue;
+    }
+
+    private object? ExecuteSwitch(SwitchStatement stmt)
+    {
+        var switchValue = Evaluate(stmt.Value);
+        object? lastValue = null;
+        bool matched = false;
+        int defaultIndex = -1;
+
+        // First, find if there's a matching case or a default
+        for (int i = 0; i < stmt.Cases.Count; i++)
+        {
+            var switchCase = stmt.Cases[i];
+
+            if (switchCase.Value == null)
+            {
+                // This is the default case, remember its position
+                defaultIndex = i;
+            }
+            else if (!matched)
+            {
+                var caseValue = Evaluate(switchCase.Value);
+                if (ValuesEqual(switchValue, caseValue))
+                {
+                    matched = true;
+                }
+            }
+
+            // If we've matched, execute this case's statements (fall-through behavior)
+            if (matched)
+            {
+                try
+                {
+                    foreach (var statement in switchCase.Statements)
+                    {
+                        lastValue = Execute(statement);
+                    }
+                }
+                catch (BreakException)
+                {
+                    // Break exits the switch
+                    return lastValue;
+                }
+            }
+        }
+
+        // If no case matched but there's a default, execute from default onwards
+        if (!matched && defaultIndex >= 0)
+        {
+            for (int i = defaultIndex; i < stmt.Cases.Count; i++)
+            {
+                var switchCase = stmt.Cases[i];
+                try
+                {
+                    foreach (var statement in switchCase.Statements)
+                    {
+                        lastValue = Execute(statement);
+                    }
+                }
+                catch (BreakException)
+                {
+                    return lastValue;
+                }
+            }
+        }
+
+        return lastValue;
+    }
+
+    /// <summary>
+    /// Compare two values for equality (used in switch).
+    /// </summary>
+    private static bool ValuesEqual(object? a, object? b)
+    {
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+        if (a is int ia && b is int ib) return ia == ib;
+        if (a is string sa && b is string sb) return sa == sb;
+        return a.Equals(b);
+    }
+
+    private object? ExecuteForeach(ForEachStatement stmt)
+    {
+        var collection = Evaluate(stmt.Collection);
+        object? lastValue = null;
+
+        // Get items to iterate over
+        IEnumerable<object?> items;
+        if (collection is List<object> list)
+        {
+            items = list;
+        }
+        else if (collection is Dictionary<object, object> mapping)
+        {
+            // Iterate over keys for mappings
+            items = mapping.Keys;
+        }
+        else if (collection is string str)
+        {
+            // Iterate over characters for strings
+            items = str.Select(c => (object?)c.ToString());
+        }
+        else
+        {
+            throw new ObjectInterpreterException($"Cannot iterate over type: {collection?.GetType().Name ?? "null"}");
+        }
+
+        // Create a local scope for the loop variable if needed
+        bool createdScope = false;
+        if (_localScopes.Count == 0)
+        {
+            _localScopes.Push(new Dictionary<string, object?>());
+            createdScope = true;
+        }
+
+        try
+        {
+            var currentScope = _localScopes.Peek();
+            foreach (var item in items)
+            {
+                // Set the loop variable
+                currentScope[stmt.Variable] = item;
+
+                try
+                {
+                    lastValue = Execute(stmt.Body);
+                }
+                catch (BreakException)
+                {
+                    break;
+                }
+                catch (ContinueException)
+                {
+                    continue;
+                }
+            }
+        }
+        finally
+        {
+            if (createdScope)
+            {
+                _localScopes.Pop();
             }
         }
 

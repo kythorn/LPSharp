@@ -181,6 +181,21 @@ public record WhileStatement(Expression Condition, Statement Body) : Statement;
 public record ForStatement(Expression? Init, Expression? Condition, Expression? Increment, Statement Body) : Statement;
 
 /// <summary>
+/// Switch statement: switch (expr) { case val: ... default: ... }
+/// </summary>
+public record SwitchStatement(Expression Value, List<SwitchCase> Cases) : Statement;
+
+/// <summary>
+/// A case in a switch statement. Value is null for 'default:'.
+/// </summary>
+public record SwitchCase(Expression? Value, List<Statement> Statements);
+
+/// <summary>
+/// Foreach statement: foreach (variable in collection) body
+/// </summary>
+public record ForEachStatement(string Variable, Expression Collection, Statement Body) : Statement;
+
+/// <summary>
 /// Break statement: break;
 /// </summary>
 public record BreakStatement : Statement;
