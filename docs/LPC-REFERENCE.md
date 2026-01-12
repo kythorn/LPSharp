@@ -598,6 +598,29 @@ Efuns are functions provided by the driver, callable from any LPC code.
 
 **Note:** `catch(expr)` is a language construct, not an efun. See [Error Handling](#error-handling) section above.
 
+### Logging
+
+| Efun | Description |
+|------|-------------|
+| `syslog(message)` | Log a message to the system log (info level) |
+| `syslog(level, message)` | Log a message with specified level |
+
+**Log levels:** `"debug"`, `"info"`, `"warning"`, `"error"`
+
+```c
+// Simple logging (info level)
+syslog("Player entered room");
+
+// Log with explicit level
+syslog("debug", "Loading object: " + path);
+syslog("warning", "Combat function called with invalid target");
+syslog("error", "Critical error: database connection failed");
+```
+
+**Server configuration:**
+- `--log-level <level>` - Set minimum log level (debug/info/warning/error)
+- `--log-file <path>` - Also log to a file
+
 ### Action System
 
 The action system allows objects to register custom command handlers via `add_action()`.

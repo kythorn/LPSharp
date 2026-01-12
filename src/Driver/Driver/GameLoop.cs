@@ -268,7 +268,7 @@ public class GameLoop
         };
         _gameThread.Start();
 
-        Console.WriteLine("Game loop started.");
+        Logger.Info("Game loop started", LogCategory.System);
     }
 
     /// <summary>
@@ -278,7 +278,7 @@ public class GameLoop
     {
         _running = false;
         _gameThread?.Join(TimeSpan.FromSeconds(5));
-        Console.WriteLine("Game loop stopped.");
+        Logger.Info("Game loop stopped", LogCategory.System);
     }
 
     /// <summary>
@@ -287,7 +287,7 @@ public class GameLoop
     /// </summary>
     public void GracefulShutdown()
     {
-        Console.WriteLine("Initiating graceful shutdown...");
+        Logger.Info("Initiating graceful shutdown...", LogCategory.System);
 
         // Get all active sessions
         List<PlayerSession> sessions;
@@ -310,7 +310,7 @@ public class GameLoop
         // Save all players (includes linkdead)
         SaveAllPlayers();
 
-        Console.WriteLine("Graceful shutdown complete.");
+        Logger.Info("Graceful shutdown complete", LogCategory.System);
     }
 
     /// <summary>
@@ -357,7 +357,7 @@ public class GameLoop
             _sessions[connectionId] = session;
         }
 
-        Console.WriteLine($"Created login session for {connectionId}");
+        Logger.Debug($"Created login session for {connectionId}", LogCategory.Network);
 
         // Send welcome banner
         SendWelcomeBanner(connectionId);
@@ -411,7 +411,7 @@ public class GameLoop
 
                     _linkdeadSessions[session.AuthenticatedUsername] = session;
 
-                    Console.WriteLine($"Player {session.AuthenticatedUsername} went linkdead (15 min timeout)");
+                    Logger.Info($"Player {session.AuthenticatedUsername} went linkdead (15 min timeout)", LogCategory.Player);
 
                     // Announce to the room (use character name, not account name)
                     AnnounceToRoom(session.PlayerObject, $"{GetPlayerName(session.PlayerObject, session.AuthenticatedUsername)} has gone linkdead.\r\n");
@@ -432,11 +432,11 @@ public class GameLoop
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Warning: Error destructing player object: {ex.Message}");
+                Logger.Warning($"Error destructing player object: {ex.Message}", LogCategory.Object);
             }
         }
 
-        Console.WriteLine($"Removed player session for {connectionId}");
+        Logger.Debug($"Removed player session for {connectionId}", LogCategory.Network);
     }
 
     /// <summary>
@@ -472,7 +472,7 @@ public class GameLoop
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Warning: Error destructing player object: {ex.Message}");
+                Logger.Warning($"Error destructing player object: {ex.Message}", LogCategory.Object);
             }
         }
     }
@@ -570,7 +570,7 @@ public class GameLoop
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error saving player: {ex.Message}");
+            Logger.Error($"Error saving player: {ex.Message}", LogCategory.Player);
         }
 
         return false;
@@ -604,7 +604,7 @@ public class GameLoop
 
         if (saved > 0)
         {
-            Console.WriteLine($"Auto-saved {saved} player(s)");
+            Logger.Debug($"Auto-saved {saved} player(s)", LogCategory.Player);
         }
     }
 
@@ -627,14 +627,14 @@ public class GameLoop
 
         foreach (var session in expiredSessions)
         {
-            Console.WriteLine($"Linkdead session for {session.AuthenticatedUsername} expired - cleaning up");
+            Logger.Info($"Linkdead session for {session.AuthenticatedUsername} expired - cleaning up", LogCategory.Player);
 
             // Save player data before cleanup
             if (session.PlayerObject != null && !session.PlayerObject.IsDestructed)
             {
                 if (SavePlayerObject(session.PlayerObject))
                 {
-                    Console.WriteLine($"Saved player data for {session.AuthenticatedUsername}");
+                    Logger.Debug($"Saved player data for {session.AuthenticatedUsername}", LogCategory.Player);
                 }
 
                 // Announce to room before cleanup (use character name, not account name)
@@ -733,7 +733,7 @@ public class GameLoop
             OnPlayerDisconnect?.Invoke(connectionId);
         }
 
-        Console.WriteLine($"Kicked session: {reason}");
+        Logger.Info($"Kicked session: {reason}", LogCategory.Network);
     }
 
     /// <summary>
@@ -840,7 +840,7 @@ public class GameLoop
         ExecuteLookForPlayer(linkdeadSession);
         SendPrompt(linkdeadSession.ConnectionId);
 
-        Console.WriteLine($"Player {linkdeadSession.AuthenticatedUsername} reconnected from linkdead");
+        Logger.Info($"Player {linkdeadSession.AuthenticatedUsername} reconnected from linkdead", LogCategory.Player);
     }
 
     /// <summary>
@@ -901,7 +901,7 @@ public class GameLoop
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Game loop error: {ex.Message}");
+                Logger.Error($"Game loop error: {ex.Message}", LogCategory.System);
             }
         }
     }
@@ -1000,7 +1000,7 @@ public class GameLoop
             }
             catch (ExecutionLimitException ex)
             {
-                Console.WriteLine($"Heartbeat limit exceeded on {obj.ObjectName}: {ex.Message}");
+                Logger.Warning($"Heartbeat limit exceeded on {obj.ObjectName}: {ex.Message}", LogCategory.LPC);
                 // Disable heartbeat for misbehaving object
                 lock (_heartbeatLock)
                 {
@@ -1014,7 +1014,7 @@ public class GameLoop
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Heartbeat error on {obj.ObjectName}: {ex.Message}");
+                Logger.Warning($"Heartbeat error on {obj.ObjectName}: {ex.Message}", LogCategory.LPC);
             }
         }
     }
@@ -1174,7 +1174,7 @@ public class GameLoop
             // Skip if function doesn't exist
             if (entry.Target.FindFunction(entry.Function) == null)
             {
-                Console.WriteLine($"Callout warning: Function {entry.Function} not found on {entry.Target.ObjectName}");
+                Logger.Warning($"Callout warning: Function {entry.Function} not found on {entry.Target.ObjectName}", LogCategory.LPC);
                 continue;
             }
 
@@ -1188,7 +1188,7 @@ public class GameLoop
             }
             catch (ExecutionLimitException ex)
             {
-                Console.WriteLine($"Callout limit exceeded on {entry.Target.ObjectName}->{entry.Function}: {ex.Message}");
+                Logger.Warning($"Callout limit exceeded on {entry.Target.ObjectName}->{entry.Function}: {ex.Message}", LogCategory.LPC);
             }
             catch (ReturnException)
             {
@@ -1196,7 +1196,7 @@ public class GameLoop
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Callout error on {entry.Target.ObjectName}->{entry.Function}: {ex.Message}");
+                Logger.Error($"Callout error on {entry.Target.ObjectName}->{entry.Function}: {ex.Message}", LogCategory.LPC);
             }
         }
     }
@@ -1328,7 +1328,7 @@ public class GameLoop
         // Check if the function exists
         if (handler.Target.FindFunction(handler.Function) == null)
         {
-            Console.WriteLine($"input_to warning: Function {handler.Function} not found on {handler.Target.ObjectName}");
+            Logger.Warning($"input_to warning: Function {handler.Function} not found on {handler.Target.ObjectName}", LogCategory.LPC);
             return;
         }
 
@@ -1342,7 +1342,7 @@ public class GameLoop
         }
         catch (ExecutionLimitException ex)
         {
-            Console.WriteLine($"input_to limit exceeded on {handler.Target.ObjectName}->{handler.Function}: {ex.Message}");
+            Logger.Warning($"input_to limit exceeded on {handler.Target.ObjectName}->{handler.Function}: {ex.Message}", LogCategory.LPC);
         }
         catch (ReturnException)
         {
@@ -1350,7 +1350,7 @@ public class GameLoop
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"input_to error on {handler.Target.ObjectName}->{handler.Function}: {ex.Message}");
+            Logger.Error($"input_to error on {handler.Target.ObjectName}->{handler.Function}: {ex.Message}", LogCategory.LPC);
         }
     }
 
@@ -1674,7 +1674,7 @@ public class GameLoop
         // Check if the function exists
         if (target.FindFunction(action.Function) == null)
         {
-            Console.WriteLine($"add_action warning: Function {action.Function} not found on {target.ObjectName}");
+            Logger.Warning($"add_action warning: Function {action.Function} not found on {target.ObjectName}", LogCategory.LPC);
             return false;
         }
 
@@ -1992,7 +1992,7 @@ public class GameLoop
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Warning: Could not restore player data: {ex.Message}");
+                    Logger.Warning($"Could not restore player data: {ex.Message}", LogCategory.Player);
                 }
             }
 
@@ -2004,7 +2004,7 @@ public class GameLoop
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Warning: Could not load starting room: {ex.Message}");
+                Logger.Warning($"Could not load starting room: {ex.Message}", LogCategory.Object);
             }
 
             // Move player to starting room
@@ -2027,11 +2027,11 @@ public class GameLoop
 
             SendPrompt(session.ConnectionId);
 
-            Console.WriteLine($"Player {session.AuthenticatedUsername} logged in from {session.ConnectionId}");
+            Logger.Info($"Player {session.AuthenticatedUsername} logged in from {session.ConnectionId}", LogCategory.Player);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error completing login: {ex.Message}");
+            Logger.Error($"Error completing login: {ex.Message}", LogCategory.Player);
             SendToPlayer(session.ConnectionId, "Error entering game. Please reconnect.\r\n");
             OnPlayerDisconnect?.Invoke(session.ConnectionId);
         }

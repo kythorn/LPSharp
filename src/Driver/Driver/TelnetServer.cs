@@ -69,9 +69,8 @@ public class TelnetServer : IDisposable
         _listener.Start();
         _running = true;
 
-        Console.WriteLine($"LPMud Revival listening on port {_port}");
-        Console.WriteLine("Press Ctrl+C to stop.");
-        Console.WriteLine();
+        Logger.Info($"LPMud Revival listening on port {_port}", LogCategory.Network);
+        Logger.Info("Press Ctrl+C to stop", LogCategory.Network);
 
         // Handle Ctrl+C
         Console.CancelKeyPress += (_, e) =>
@@ -95,7 +94,7 @@ public class TelnetServer : IDisposable
             }
             catch (Exception ex) when (_running)
             {
-                Console.WriteLine($"Server error: {ex.Message}");
+                Logger.Error($"Server error: {ex.Message}", LogCategory.Network);
             }
         }
 
@@ -107,7 +106,7 @@ public class TelnetServer : IDisposable
     /// </summary>
     public void Stop()
     {
-        Console.WriteLine("\nShutting down...");
+        Logger.Info("Shutting down...", LogCategory.System);
 
         // Perform graceful shutdown (announce to players, save data)
         _gameLoop.GracefulShutdown();
@@ -129,14 +128,14 @@ public class TelnetServer : IDisposable
                     _connections.Add(connection);
                 }
 
-                Console.WriteLine($"New connection: {connection.Id} from {client.Client.RemoteEndPoint}");
+                Logger.Info($"New connection: {connection.Id} from {client.Client.RemoteEndPoint}", LogCategory.Network);
 
                 // Create player session in game loop (sends welcome banner)
                 _gameLoop.CreatePlayerSession(connection.Id);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error accepting connection: {ex.Message}");
+                Logger.Error($"Error accepting connection: {ex.Message}", LogCategory.Network);
             }
         }
     }
@@ -188,7 +187,7 @@ public class TelnetServer : IDisposable
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error processing {conn.Id}: {ex.Message}");
+                Logger.Error($"Error processing {conn.Id}: {ex.Message}", LogCategory.Network);
                 toRemove.Add(conn);
             }
         }
@@ -200,7 +199,7 @@ public class TelnetServer : IDisposable
             {
                 foreach (var conn in toRemove)
                 {
-                    Console.WriteLine($"Connection closed: {conn.Id}");
+                    Logger.Debug($"Connection closed: {conn.Id}", LogCategory.Network);
 
                     // Remove player session from game loop
                     _gameLoop.RemovePlayerSession(conn.Id);
@@ -251,7 +250,7 @@ public class TelnetServer : IDisposable
         }
 
         _listener.Stop();
-        Console.WriteLine("Server stopped.");
+        Logger.Info("Server stopped", LogCategory.Network);
     }
 
     public void Dispose()

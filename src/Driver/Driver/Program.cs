@@ -54,12 +54,15 @@ int PrintUsage()
         Server options:
           --port <port>                Port number (default: 4000)
           --mudlib <path>              Mudlib directory (default: ./mudlib)
+          --log-level <level>          Log level: debug, info, warning, error (default: info)
+          --log-file <path>            Log to file in addition to console
 
         Examples:
           driver --tokenize test.c
           driver --eval "5 + 3 * 2"
           driver --server
           driver --server --port 4000 --mudlib ./mudlib
+          driver --server --log-level debug --log-file game.log
         """);
     return 0;
 }
@@ -217,6 +220,7 @@ int Server(string[] args)
 {
     int port = 4000; // Default port
     string mudlibPath = "./mudlib"; // Default mudlib path
+    string? logFile = null;
 
     // Parse arguments
     for (int i = 1; i < args.Length; i++)
@@ -233,10 +237,32 @@ int Server(string[] args)
                 return 1;
             }
         }
+        else if (args[i] == "--log-level" && i + 1 < args.Length)
+        {
+            if (Logger.TryParseLevel(args[++i], out var level))
+            {
+                Logger.MinLevel = level;
+            }
+            else
+            {
+                Console.Error.WriteLine($"Error: Invalid log level. Use: debug, info, warning, error");
+                return 1;
+            }
+        }
+        else if (args[i] == "--log-file" && i + 1 < args.Length)
+        {
+            logFile = args[++i];
+        }
         else if (int.TryParse(args[i], out var parsedPort) && parsedPort >= 1 && parsedPort <= 65535)
         {
             port = parsedPort;
         }
+    }
+
+    // Set up log file if specified
+    if (logFile != null)
+    {
+        Logger.SetLogFile(logFile);
     }
 
     // Check mudlib path exists
@@ -246,10 +272,9 @@ int Server(string[] args)
         return 1;
     }
 
-    Console.WriteLine($"Starting LPMud Revival...");
-    Console.WriteLine($"  Mudlib: {Path.GetFullPath(mudlibPath)}");
-    Console.WriteLine($"  Port: {port}");
-    Console.WriteLine();
+    Logger.Info("Starting LPMud Revival...", LogCategory.System);
+    Logger.Info($"  Mudlib: {Path.GetFullPath(mudlibPath)}", LogCategory.System);
+    Logger.Info($"  Port: {port}", LogCategory.System);
 
     // Create object manager
     var objectManager = new ObjectManager(mudlibPath);

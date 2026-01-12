@@ -393,12 +393,12 @@ public class ObjectManager
                 if (newBlueprint != null)
                 {
                     updated++;
-                    Console.WriteLine($"Updated: {objPath}");
+                    Logger.Debug($"Updated: {objPath}", LogCategory.Object);
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to update {objPath}: {ex.Message}");
+                Logger.Warning($"Failed to update {objPath}: {ex.Message}", LogCategory.Object);
             }
         }
 

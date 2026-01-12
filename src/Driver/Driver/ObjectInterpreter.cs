@@ -444,6 +444,9 @@ public class ObjectInterpreter
         // Error handling efuns
         _efuns.Register("throw", ThrowEfun);
 
+        // Logging efuns
+        _efuns.Register("syslog", SyslogEfun);
+
         // Directory listing efun (for ls command)
         _efuns.Register("get_dir", GetDirEfun);
 
@@ -2171,7 +2174,7 @@ public class ObjectInterpreter
         catch (Exception ex)
         {
             // Log but don't fail the move
-            Console.WriteLine($"Warning: init() in {obj.ObjectName} threw: {ex.Message}");
+            Logger.Warning($"init() in {obj.ObjectName} threw: {ex.Message}", LogCategory.Object);
         }
     }
 
@@ -3469,7 +3472,7 @@ public class ObjectInterpreter
         var initiator = context?.PlayerObject != null
             ? GetPlayerName(context.PlayerObject)
             : "unknown";
-        Console.WriteLine($"Shutdown initiated by {initiator}");
+        Logger.Info($"Shutdown initiated by {initiator}", LogCategory.System);
 
         // Schedule shutdown on a separate thread to allow this command to complete
         Task.Run(() =>
@@ -3500,6 +3503,50 @@ public class ObjectInterpreter
         }
 
         throw new LpcThrowException(args[0] ?? "");
+    }
+
+    /// <summary>
+    /// syslog(level, message) - Log a message to the system log.
+    /// level: "debug", "info", "warning", "error"
+    /// message: The message to log
+    /// Returns: 1 on success, 0 on invalid level
+    /// </summary>
+    private object SyslogEfun(List<object> args)
+    {
+        if (args.Count < 1 || args.Count > 2)
+        {
+            throw new EfunException("syslog() requires 1 or 2 arguments: syslog(message) or syslog(level, message)");
+        }
+
+        string message;
+        LogLevel level = LogLevel.Info;
+
+        if (args.Count == 1)
+        {
+            // syslog(message) - default to Info level
+            message = args[0]?.ToString() ?? "";
+        }
+        else
+        {
+            // syslog(level, message)
+            var levelStr = args[0]?.ToString()?.ToLowerInvariant() ?? "info";
+            message = args[1]?.ToString() ?? "";
+
+            level = levelStr switch
+            {
+                "debug" => LogLevel.Debug,
+                "info" => LogLevel.Info,
+                "warning" or "warn" => LogLevel.Warning,
+                "error" => LogLevel.Error,
+                _ => LogLevel.Info
+            };
+        }
+
+        // Include the calling object in the log message
+        var prefix = $"[{_currentObject.ObjectName}]";
+        Logger.Log(level, LogCategory.LPC, $"{prefix} {message}");
+
+        return 1L;
     }
 
     /// <summary>
