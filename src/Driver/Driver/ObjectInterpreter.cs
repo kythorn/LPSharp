@@ -40,6 +40,65 @@ public class ObjectInterpreter
     /// </summary>
     private readonly Stack<LpcProgram> _executingPrograms = new();
 
+    #region Error Tracking
+
+    /// <summary>
+    /// Current file being executed (for error messages).
+    /// </summary>
+    private string _currentFile = "";
+
+    /// <summary>
+    /// Current line being executed (for error messages).
+    /// </summary>
+    private int _currentLine;
+
+    /// <summary>
+    /// Stack of (file, function) for building stack traces.
+    /// </summary>
+    private readonly Stack<(string File, string Function, int Line)> _traceStack = new();
+
+    /// <summary>
+    /// Create an error with file/line context.
+    /// </summary>
+    private LpcRuntimeException RuntimeError(string message)
+    {
+        return new LpcRuntimeException(message, _currentFile, _currentLine, BuildStackTrace());
+    }
+
+    /// <summary>
+    /// Create an error with file/line context from an expression.
+    /// </summary>
+    private LpcRuntimeException RuntimeError(string message, Expression expr)
+    {
+        return new LpcRuntimeException(message, _currentFile, expr.Line, BuildStackTrace());
+    }
+
+    /// <summary>
+    /// Create an error with file/line context from a statement.
+    /// </summary>
+    private LpcRuntimeException RuntimeError(string message, Statement stmt)
+    {
+        return new LpcRuntimeException(message, _currentFile, stmt.Line, BuildStackTrace());
+    }
+
+    /// <summary>
+    /// Build a stack trace string from the trace stack.
+    /// </summary>
+    private string BuildStackTrace()
+    {
+        if (_traceStack.Count == 0) return "";
+
+        var sb = new StringBuilder();
+        sb.AppendLine("Stack trace:");
+        foreach (var (file, func, line) in _traceStack.Reverse())
+        {
+            sb.AppendLine($"  {file}:{line} in {func}()");
+        }
+        return sb.ToString();
+    }
+
+    #endregion
+
     #region Execution Limits
 
     /// <summary>
@@ -89,7 +148,8 @@ public class ObjectInterpreter
         {
             throw new ExecutionLimitException(
                 $"Execution limit exceeded: {MaxInstructions} instructions. " +
-                "This usually indicates an infinite loop.");
+                "This usually indicates an infinite loop.",
+                _currentFile, _currentLine);
         }
     }
 
@@ -499,6 +559,9 @@ public class ObjectInterpreter
 
     private object? Execute(Statement stmt)
     {
+        // Track current line for error messages
+        _currentLine = stmt.Line;
+
         // Count each statement execution for limit checking
         CountInstruction();
 
@@ -515,7 +578,7 @@ public class ObjectInterpreter
             BreakStatement => throw new BreakException(),
             ContinueStatement => throw new ContinueException(),
             VariableDeclaration varDecl => ExecuteVariableDeclaration(varDecl),
-            _ => throw new ObjectInterpreterException($"Unknown statement type: {stmt.GetType().Name}")
+            _ => throw RuntimeError($"Unknown statement type: {stmt.GetType().Name}", stmt)
         };
     }
 
@@ -805,6 +868,9 @@ public class ObjectInterpreter
 
     private object Evaluate(Expression expr)
     {
+        // Track current line for error messages
+        _currentLine = expr.Line;
+
         // Count each expression evaluation for limit checking
         CountInstruction();
 
@@ -824,7 +890,7 @@ public class ObjectInterpreter
             FunctionCall call => EvaluateFunctionCall(call),
             ArrowCall arrow => EvaluateArrowCall(arrow),
             IndexExpression idx => EvaluateIndexExpression(idx),
-            _ => throw new ObjectInterpreterException($"Unknown expression type: {expr.GetType().Name}")
+            _ => throw RuntimeError($"Unknown expression type: {expr.GetType().Name}", expr)
         };
     }
 
@@ -1070,8 +1136,8 @@ public class ObjectInterpreter
             var parentFunc = searchFrom.FindParentFunction(expr.Name);
             if (parentFunc == null)
             {
-                throw new ObjectInterpreterException(
-                    $"Parent function '{expr.Name}' not found in inheritance chain");
+                throw RuntimeError(
+                    $"Parent function '{expr.Name}' not found in inheritance chain", expr);
             }
 
             // Find which program owns this parent function for correct nested parent calls
@@ -1098,11 +1164,11 @@ public class ObjectInterpreter
             }
             catch (EfunException ex)
             {
-                throw new ObjectInterpreterException(ex.Message);
+                throw RuntimeError(ex.Message, expr);
             }
         }
 
-        throw new ObjectInterpreterException($"Unknown function '{expr.Name}' in {_currentObject.ObjectName}");
+        throw RuntimeError($"Unknown function '{expr.Name}' in {_currentObject.ObjectName}", expr);
     }
 
     /// <summary>
@@ -1403,6 +1469,14 @@ public class ObjectInterpreter
             _executingPrograms.Push(owningProgram);
         }
 
+        // Track file/function for error messages and stack traces
+        var previousFile = _currentFile;
+        var previousLine = _currentLine;
+        var filePath = owningProgram?.FilePath ?? _currentObject.ObjectName;
+        _currentFile = filePath;
+        _currentLine = funcDef.Body.Line;
+        _traceStack.Push((filePath, funcDef.Name, funcDef.Body.Line));
+
         // Check recursion depth limit
         CheckRecursionDepth();
 
@@ -1418,6 +1492,11 @@ public class ObjectInterpreter
         }
         finally
         {
+            // Pop trace stack
+            _traceStack.Pop();
+            _currentFile = previousFile;
+            _currentLine = previousLine;
+
             // Pop local scope
             _localScopes.Pop();
 
@@ -4350,10 +4429,52 @@ public class ObjectInterpreterException : Exception
 }
 
 /// <summary>
+/// LPC runtime error with file, line, and stack trace information.
+/// </summary>
+public class LpcRuntimeException : Exception
+{
+    public string File { get; }
+    public int Line { get; }
+    public string LpcStackTrace { get; }
+
+    public LpcRuntimeException(string message, string file, int line, string lpcStackTrace = "")
+        : base(FormatMessage(message, file, line, lpcStackTrace))
+    {
+        File = file;
+        Line = line;
+        LpcStackTrace = lpcStackTrace;
+    }
+
+    private static string FormatMessage(string message, string file, int line, string lpcStackTrace)
+    {
+        var result = $"{file}:{line}: {message}";
+        if (!string.IsNullOrEmpty(lpcStackTrace))
+        {
+            result += "\n" + lpcStackTrace;
+        }
+        return result;
+    }
+}
+
+/// <summary>
 /// Exception thrown when execution limits are exceeded.
 /// This prevents infinite loops and infinite recursion from crashing the game.
 /// </summary>
 public class ExecutionLimitException : Exception
 {
-    public ExecutionLimitException(string message) : base(message) { }
+    public string File { get; }
+    public int Line { get; }
+
+    public ExecutionLimitException(string message) : base(message)
+    {
+        File = "";
+        Line = 0;
+    }
+
+    public ExecutionLimitException(string message, string file, int line)
+        : base($"{file}:{line}: {message}")
+    {
+        File = file;
+        Line = line;
+    }
 }

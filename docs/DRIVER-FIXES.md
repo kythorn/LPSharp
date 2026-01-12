@@ -99,9 +99,9 @@ This document tracks critical driver fixes needed before serious mudlib developm
 ## Lower Priority (Can defer)
 
 ### Better Error Reporting
-- Add line numbers to LPC errors
-- Show stack traces in debug mode
-- Structured logging with levels
+- [x] Add line numbers to LPC errors (implemented - LpcRuntimeException)
+- [x] Show stack traces (implemented - nested function calls show trace)
+- [ ] Structured logging with levels
 
 ### Inherit Security
 - Validate inherit paths at compile time
