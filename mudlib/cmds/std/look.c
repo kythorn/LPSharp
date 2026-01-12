@@ -1,4 +1,4 @@
-// /cmds/look.c
+// /cmds/std/look.c
 // Look command - examine surroundings or objects
 
 void main(string args) {
@@ -7,6 +7,8 @@ void main(string args) {
     string short_desc;
     string long_desc;
     string exits;
+    object *contents;
+    int i;
 
     player = this_player();
     if (player == 0) {
@@ -32,5 +34,31 @@ void main(string args) {
     write("");
     write(exits);
 
-    // TODO: Show other players and objects in room
+    // Show other players and livings in room
+    contents = all_inventory(room);
+    for (i = 0; i < sizeof(contents); i++) {
+        if (contents[i] != player) {
+            if (call_other(contents[i], "is_living")) {
+                string name;
+                name = call_other(contents[i], "query_short");
+                if (!name || name == "") {
+                    name = call_other(contents[i], "query_name");
+                }
+                if (name && name != "") {
+                    write(capitalize(name) + " is here.");
+                }
+            }
+        }
+    }
+
+    // Show items on the ground
+    for (i = 0; i < sizeof(contents); i++) {
+        if (contents[i] != player && !call_other(contents[i], "is_living")) {
+            string item_desc;
+            item_desc = call_other(contents[i], "query_short");
+            if (item_desc && item_desc != "") {
+                write(capitalize(item_desc) + " is lying here.");
+            }
+        }
+    }
 }
