@@ -48,6 +48,7 @@ public class EfunRegistry
         Register("capitalize", Capitalize);
         Register("time", Time);
         Register("ctime", Ctime);
+        Register("localtime", Localtime);
 
         // Array functions
         Register("sort_array", SortArray);
@@ -818,6 +819,62 @@ public class EfunRegistry
         var dateTime = DateTimeOffset.FromUnixTimeSeconds(timestamp).UtcDateTime;
         // LPC classic format: "Wed Jan 10 14:30:00 2024"
         return dateTime.ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// localtime(time) - Converts a Unix timestamp to an array of time components.
+    /// If no argument, uses current time.
+    /// Returns: ({ seconds, minutes, hours, day, month, year, weekday, yearday, isdst })
+    /// - seconds (0-59)
+    /// - minutes (0-59)
+    /// - hours (0-23)
+    /// - day of month (1-31)
+    /// - month (0-11, January = 0)
+    /// - year (years since 1900)
+    /// - day of week (0-6, Sunday = 0)
+    /// - day of year (0-365)
+    /// - DST flag (1 if daylight saving time)
+    /// </summary>
+    private static object Localtime(List<object> args)
+    {
+        long timestamp;
+
+        if (args.Count == 0)
+        {
+            timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        }
+        else if (args.Count == 1)
+        {
+            timestamp = args[0] switch
+            {
+                long l => l,
+                int i => i,
+                _ => throw new EfunException("localtime() argument must be an integer")
+            };
+        }
+        else
+        {
+            throw new EfunException("localtime() takes 0 or 1 argument");
+        }
+
+        // Convert to local time
+        var dateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(timestamp);
+        var local = dateTimeOffset.LocalDateTime;
+
+        var result = new List<object>
+        {
+            (long)local.Second,                           // [0] seconds
+            (long)local.Minute,                           // [1] minutes
+            (long)local.Hour,                             // [2] hours
+            (long)local.Day,                              // [3] day of month
+            (long)(local.Month - 1),                      // [4] month (0-11)
+            (long)(local.Year - 1900),                    // [5] year since 1900
+            (long)((int)local.DayOfWeek),                 // [6] day of week (Sunday = 0)
+            (long)(local.DayOfYear - 1),                  // [7] day of year (0-based)
+            local.IsDaylightSavingTime() ? 1L : 0L        // [8] DST flag
+        };
+
+        return result;
     }
 
     #region Array Functions

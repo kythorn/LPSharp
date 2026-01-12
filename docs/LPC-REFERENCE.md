@@ -816,6 +816,8 @@ int do_pull(string arg) {
 |------|-------------|
 | `random(n)` | Random integer from 0 to n-1 |
 | `time()` | Current Unix timestamp |
+| `ctime([t])` | Convert timestamp to human-readable string |
+| `localtime([t])` | Convert timestamp to array of time components |
 | `typeof(x)` | Get type name as string |
 
 ### Strings
