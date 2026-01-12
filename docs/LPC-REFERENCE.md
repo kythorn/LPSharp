@@ -490,6 +490,9 @@ Efuns are functions provided by the driver, callable from any LPC code.
 | `destruct(obj)` | Destroy an object |
 | `find_object(path)` | Find a loaded object by path |
 | `find_player(name)` | Find a player by name |
+| `users()` | Get array of all connected player objects |
+| `linkdead_users()` | Get array of linkdead player objects |
+| `query_linkdead(obj)` | Returns 1 if object is linkdead, 0 otherwise |
 
 ### Communication
 

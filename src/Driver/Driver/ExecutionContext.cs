@@ -193,8 +193,9 @@ public class PlayerSession
 {
     /// <summary>
     /// The connection ID for this session.
+    /// Mutable to support linkdead reconnection (new connection takes over session).
     /// </summary>
-    public string ConnectionId { get; init; } = string.Empty;
+    public string ConnectionId { get; set; } = string.Empty;
 
     /// <summary>
     /// The player object for this session.
@@ -256,6 +257,17 @@ public class PlayerSession
     /// </summary>
     public Dictionary<string, string> Aliases { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Whether this session is linkdead (connection lost but session preserved).
+    /// </summary>
+    public bool IsLinkdead { get; set; }
+
+    /// <summary>
+    /// When this session went linkdead. Null if not linkdead.
+    /// Used to determine when to clean up expired linkdead sessions.
+    /// </summary>
+    public DateTime? LinkdeadSince { get; set; }
 }
 
 /// <summary>

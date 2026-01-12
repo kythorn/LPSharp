@@ -46,7 +46,7 @@ public enum LoginState
     Authenticated,
 
     /// <summary>
-    /// Waiting for confirmation to take over existing session.
+    /// Waiting for confirmation to take over existing active session.
     /// </summary>
     ConfirmTakeover,
 

@@ -328,6 +328,8 @@ public class ObjectInterpreter
         _efuns.Register("find_living", FindLivingEfun);
         _efuns.Register("find_player", FindPlayerEfun);
         _efuns.Register("users", UsersEfun);
+        _efuns.Register("linkdead_users", LinkdeadUsersEfun);
+        _efuns.Register("query_linkdead", QueryLinkdeadEfun);
 
         // Heartbeat efuns
         _efuns.Register("set_heart_beat", SetHeartBeatEfun);
@@ -2470,6 +2472,56 @@ public class ObjectInterpreter
         }
 
         return _objectManager.GetUsers().Cast<object>().ToList();
+    }
+
+    /// <summary>
+    /// linkdead_users() - Return an array of all linkdead player objects.
+    /// These are players whose connection was lost but are still in the game.
+    /// </summary>
+    private object LinkdeadUsersEfun(List<object> args)
+    {
+        if (args.Count != 0)
+        {
+            throw new EfunException("linkdead_users() takes no arguments");
+        }
+
+        var gameLoop = GameLoop.Instance;
+        if (gameLoop == null)
+        {
+            return new List<object>();
+        }
+
+        return gameLoop.GetLinkdeadSessions()
+            .Where(s => s.PlayerObject != null && !s.PlayerObject.IsDestructed)
+            .Select(s => (object)s.PlayerObject!)
+            .ToList();
+    }
+
+    /// <summary>
+    /// query_linkdead(object) - Check if an object is a linkdead player.
+    /// Returns 1 if linkdead, 0 otherwise.
+    /// </summary>
+    private object QueryLinkdeadEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("query_linkdead() requires 1 argument (object)");
+        }
+
+        if (args[0] is not MudObject obj)
+        {
+            return 0L;
+        }
+
+        var gameLoop = GameLoop.Instance;
+        if (gameLoop == null)
+        {
+            return 0L;
+        }
+
+        // Check if this object is in the linkdead sessions
+        return gameLoop.GetLinkdeadSessions()
+            .Any(s => s.PlayerObject == obj) ? 1L : 0L;
     }
 
     #endregion

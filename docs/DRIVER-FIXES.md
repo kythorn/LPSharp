@@ -49,22 +49,24 @@ This document tracks critical driver fixes needed before serious mudlib developm
 
 ## Priority 3: Linkdead System
 
-**Status:** TODO
+**Status:** COMPLETE
 
 **Problem:** When connection drops, player object is immediately destructed. Player loses all progress.
 
-**Solution:**
-- On disconnect, mark player as "linkdead" instead of destructing
-- Player object persists for configurable time (default: 15 minutes)
-- Other players see "(linkdead)" status
-- If player reconnects within timeout, take over existing session
-- After timeout, save player data and destruct
-- Remove from combat on linkdead
+**Solution (implemented):**
+- On disconnect, Playing sessions move to linkdead instead of destructing
+- Player object persists for 15 minutes (configurable via `LinkdeadTimeout`)
+- Room receives announcement: "Name has gone linkdead." (using character name, not account)
+- If player reconnects within timeout, auto-reconnect to existing session (no prompt)
+- After timeout, announce "Name has disconnected (linkdead timeout)." and destruct
+- New efuns: `linkdead_users()`, `query_linkdead(object)`
+- Added `who` command that shows active and linkdead players
 
-**Files to modify:**
-- `GameLoop.cs` - RemovePlayerSession(), session management
-- `ExecutionContext.cs` - PlayerSession state
-- `AccountManager.cs` - player data persistence
+**Files modified:**
+- `ExecutionContext.cs` - Added `IsLinkdead`, `LinkdeadSince` to PlayerSession; made `ConnectionId` mutable
+- `GameLoop.cs` - Added `_linkdeadSessions` dictionary, `RemovePlayerSession()` moves to linkdead, `ReconnectToLinkdeadSession()`, `CleanupExpiredLinkdeadSessions()`, `GetPlayerName()` helper for character names
+- `ObjectInterpreter.cs` - Added `linkdead_users()` and `query_linkdead()` efuns
+- `mudlib/cmds/std/who.c` - New command showing players and linkdead status
 
 ---
 
@@ -113,7 +115,7 @@ This document tracks critical driver fixes needed before serious mudlib developm
 
 - [x] call_other security (function visibility)
 - [x] Duplicate login handling
-- [ ] Linkdead system with reconnection
+- [x] Linkdead system with reconnection
 - [ ] Graceful shutdown with player saves
 - [ ] (Optional) Better error reporting
 - [ ] (Optional) Inherit security at compile time

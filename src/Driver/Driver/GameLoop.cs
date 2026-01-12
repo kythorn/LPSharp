@@ -26,6 +26,20 @@ public class GameLoop
     /// Protected by lock for add/remove operations.
     /// </summary>
     private readonly Dictionary<string, PlayerSession> _sessions = new();
+
+    /// <summary>
+    /// Linkdead sessions mapped by username (case-insensitive).
+    /// These sessions have lost their connection but persist for reconnection.
+    /// Protected by _sessionLock.
+    /// </summary>
+    private readonly Dictionary<string, PlayerSession> _linkdeadSessions =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// How long linkdead sessions persist before being cleaned up.
+    /// </summary>
+    private static readonly TimeSpan LinkdeadTimeout = TimeSpan.FromMinutes(15);
+
     private readonly object _sessionLock = new();
     private readonly object _loginLock = new(); // Serialize login completion to prevent race conditions
 
@@ -328,6 +342,7 @@ public class GameLoop
 
     /// <summary>
     /// Remove a player session when connection closes.
+    /// If the player was actively playing, they go linkdead instead of being destroyed.
     /// Called from network thread.
     /// </summary>
     public void RemovePlayerSession(string connectionId)
@@ -339,12 +354,33 @@ public class GameLoop
             if (_sessions.TryGetValue(connectionId, out session))
             {
                 _sessions.Remove(connectionId);
+
+                // If player was actively playing, move to linkdead instead of destroying
+                if (session.LoginState == LoginState.Playing &&
+                    session.AuthenticatedUsername != null &&
+                    session.PlayerObject != null &&
+                    !session.PlayerObject.IsDestructed)
+                {
+                    session.IsLinkdead = true;
+                    session.LinkdeadSince = DateTime.UtcNow;
+                    session.ConnectionId = string.Empty; // No longer connected
+                    session.PlayerObject.IsInteractive = false;
+                    session.PlayerObject.ConnectionId = null;
+
+                    _linkdeadSessions[session.AuthenticatedUsername] = session;
+
+                    Console.WriteLine($"Player {session.AuthenticatedUsername} went linkdead (15 min timeout)");
+
+                    // Announce to the room (use character name, not account name)
+                    AnnounceToRoom(session.PlayerObject, $"{GetPlayerName(session.PlayerObject, session.AuthenticatedUsername)} has gone linkdead.\r\n");
+                    return;
+                }
             }
         }
 
+        // Non-playing session or no player object - just clean up
         if (session?.PlayerObject != null && !session.PlayerObject.IsDestructed)
         {
-            // Clear interactive status before destructing
             session.PlayerObject.IsInteractive = false;
             session.PlayerObject.ConnectionId = null;
 
@@ -362,6 +398,125 @@ public class GameLoop
     }
 
     /// <summary>
+    /// Force-remove a session completely (for kicks and cleanup).
+    /// Does not go linkdead - fully destroys the session.
+    /// </summary>
+    private void ForceRemoveSession(PlayerSession session)
+    {
+        lock (_sessionLock)
+        {
+            // Remove from active sessions if present
+            if (!string.IsNullOrEmpty(session.ConnectionId))
+            {
+                _sessions.Remove(session.ConnectionId);
+            }
+
+            // Remove from linkdead if present
+            if (session.AuthenticatedUsername != null)
+            {
+                _linkdeadSessions.Remove(session.AuthenticatedUsername);
+            }
+        }
+
+        // Destruct the player object
+        if (session.PlayerObject != null && !session.PlayerObject.IsDestructed)
+        {
+            session.PlayerObject.IsInteractive = false;
+            session.PlayerObject.ConnectionId = null;
+
+            try
+            {
+                _objectManager.DestructObject(session.PlayerObject);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Error destructing player object: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Get the display name for a player object.
+    /// Uses query_name() if available, otherwise falls back to capitalized username.
+    /// </summary>
+    private string GetPlayerName(MudObject? player, string? fallback = null)
+    {
+        if (player == null || player.IsDestructed)
+        {
+            return fallback != null ? Capitalize(fallback) : "Someone";
+        }
+
+        // Try to call query_name() on the object
+        if (_interpreter != null && player.FindFunction("query_name") != null)
+        {
+            try
+            {
+                var result = _interpreter.CallFunctionOnObject(player, "query_name", new List<object>());
+                if (result is string name && !string.IsNullOrEmpty(name))
+                {
+                    return name;
+                }
+            }
+            catch
+            {
+                // Fall through to fallback
+            }
+        }
+
+        return fallback != null ? Capitalize(fallback) : "Someone";
+    }
+
+    /// <summary>
+    /// Announce a message to all other players in the same room.
+    /// </summary>
+    private void AnnounceToRoom(MudObject player, string message)
+    {
+        var room = player.Environment;
+        if (room == null) return;
+
+        foreach (var obj in room.Contents.ToList())
+        {
+            if (obj != player && obj.IsInteractive && !string.IsNullOrEmpty(obj.ConnectionId))
+            {
+                SendToPlayer(obj.ConnectionId, message);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Clean up linkdead sessions that have exceeded the timeout.
+    /// Called periodically from the game loop.
+    /// </summary>
+    private void CleanupExpiredLinkdeadSessions()
+    {
+        var now = DateTime.UtcNow;
+        List<PlayerSession> expiredSessions;
+
+        lock (_sessionLock)
+        {
+            expiredSessions = _linkdeadSessions.Values
+                .Where(s => s.LinkdeadSince.HasValue &&
+                           (now - s.LinkdeadSince.Value) > LinkdeadTimeout)
+                .ToList();
+        }
+
+        foreach (var session in expiredSessions)
+        {
+            Console.WriteLine($"Linkdead session for {session.AuthenticatedUsername} expired - cleaning up");
+
+            // Announce to room before cleanup (use character name, not account name)
+            if (session.PlayerObject != null && !session.PlayerObject.IsDestructed)
+            {
+                AnnounceToRoom(session.PlayerObject,
+                    $"{GetPlayerName(session.PlayerObject, session.AuthenticatedUsername)} has disconnected (linkdead timeout).\r\n");
+            }
+
+            // Force remove (destroys player object)
+            ForceRemoveSession(session);
+        }
+    }
+
+    /// <summary>
     /// Get a player session by connection ID.
     /// </summary>
     public PlayerSession? GetSession(string connectionId)
@@ -373,13 +528,24 @@ public class GameLoop
     }
 
     /// <summary>
-    /// Get all active sessions.
+    /// Get all active sessions (not including linkdead).
     /// </summary>
     public List<PlayerSession> GetAllSessions()
     {
         lock (_sessionLock)
         {
             return _sessions.Values.ToList();
+        }
+    }
+
+    /// <summary>
+    /// Get all linkdead sessions.
+    /// </summary>
+    public List<PlayerSession> GetLinkdeadSessions()
+    {
+        lock (_sessionLock)
+        {
+            return _linkdeadSessions.Values.ToList();
         }
     }
 
@@ -400,44 +566,72 @@ public class GameLoop
     }
 
     /// <summary>
+    /// Find a linkdead session by username.
+    /// Returns null if no linkdead session exists for that username.
+    /// </summary>
+    private PlayerSession? FindLinkdeadSession(string username)
+    {
+        lock (_sessionLock)
+        {
+            return _linkdeadSessions.TryGetValue(username, out var session) ? session : null;
+        }
+    }
+
+    /// <summary>
     /// Kick an existing session (for duplicate login handling).
     /// Notifies the player, cleans up the session, and disconnects.
+    /// Does NOT go linkdead - fully destroys the session.
     /// </summary>
     private void KickSession(PlayerSession session, string reason)
     {
-        // Notify the player being kicked
-        SendToPlayer(session.ConnectionId, $"\r\n*** {reason} ***\r\n");
+        // Notify the player being kicked (if connected)
+        if (!string.IsNullOrEmpty(session.ConnectionId))
+        {
+            SendToPlayer(session.ConnectionId, $"\r\n*** {reason} ***\r\n");
+        }
 
         // Store connection ID before cleanup
         var connectionId = session.ConnectionId;
 
-        // Remove the session (this destructs the player object)
-        RemovePlayerSession(connectionId);
+        // Force remove the session (bypasses linkdead, fully destroys)
+        ForceRemoveSession(session);
 
-        // Disconnect the old connection
-        OnPlayerDisconnect?.Invoke(connectionId);
+        // Disconnect the old connection (if it was connected)
+        if (!string.IsNullOrEmpty(connectionId))
+        {
+            OnPlayerDisconnect?.Invoke(connectionId);
+        }
 
-        Console.WriteLine($"Kicked session {connectionId}: {reason}");
+        Console.WriteLine($"Kicked session: {reason}");
     }
 
     /// <summary>
-    /// Check if there's an existing session for the same username.
-    /// If so, prompt the user to confirm takeover.
-    /// Returns true if a prompt was shown (caller should wait for response),
-    /// false if no duplicate exists (caller can proceed with login).
+    /// Check if there's a linkdead or active session for the same username.
+    /// Linkdead sessions are automatically reconnected.
+    /// Active sessions prompt for confirmation.
+    /// Returns true if handled (caller should stop), false to proceed with new login.
     /// </summary>
-    private bool CheckAndPromptForDuplicateSession(PlayerSession session)
+    private bool CheckAndPromptForExistingSession(PlayerSession session)
     {
+        // Check for linkdead session first - auto-reconnect (no prompt)
+        var linkdeadSession = FindLinkdeadSession(session.AuthenticatedUsername!);
+        if (linkdeadSession != null)
+        {
+            ReconnectToLinkdeadSession(session, linkdeadSession);
+            return true; // Handled - don't create new session
+        }
+
+        // Check for active session (takeover prompt)
         var existingSession = FindSessionByUsername(session.AuthenticatedUsername!);
         if (existingSession != null && existingSession.ConnectionId != session.ConnectionId)
         {
-            // Duplicate exists - prompt for confirmation
             session.LoginState = LoginState.ConfirmTakeover;
             SendToPlayer(session.ConnectionId,
                 "You are already logged in from another location.\r\n" +
                 "Do you want to take over that session? (y/n): ");
             return true;
         }
+
         return false;
     }
 
@@ -451,27 +645,71 @@ public class GameLoop
         if (input == "y" || input == "yes")
         {
             // User confirmed - kick the old session if it still exists
-            // No lock needed: FindSessionByUsername and KickSession have their own synchronization
             var existingSession = FindSessionByUsername(session.AuthenticatedUsername!);
             if (existingSession != null && existingSession.ConnectionId != session.ConnectionId)
             {
                 KickSession(existingSession, "Another login detected - you have been disconnected");
             }
 
-            // Now complete the login (CompleteLogin has its own minimal lock for the state transition)
+            // Now complete the login
             CompleteLogin(session);
         }
         else if (input == "n" || input == "no")
         {
-            // User declined - disconnect them
             SendToPlayer(session.ConnectionId, "Login cancelled.\r\n");
             OnPlayerDisconnect?.Invoke(session.ConnectionId);
         }
         else
         {
-            // Invalid response - ask again
             SendToPlayer(session.ConnectionId, "Please enter 'y' or 'n': ");
         }
+    }
+
+    /// <summary>
+    /// Reconnect a new connection to a linkdead session.
+    /// Takes over the existing player object and session state.
+    /// </summary>
+    private void ReconnectToLinkdeadSession(PlayerSession newSession, PlayerSession linkdeadSession)
+    {
+        lock (_sessionLock)
+        {
+            // Remove from linkdead dictionary
+            _linkdeadSessions.Remove(linkdeadSession.AuthenticatedUsername!);
+
+            // Remove the new (empty) session from active sessions
+            _sessions.Remove(newSession.ConnectionId);
+
+            // Update linkdead session with new connection
+            linkdeadSession.ConnectionId = newSession.ConnectionId;
+            linkdeadSession.IsLinkdead = false;
+            linkdeadSession.LinkdeadSince = null;
+            linkdeadSession.LastActivity = DateTime.UtcNow;
+
+            // Restore interactive status on player object
+            if (linkdeadSession.PlayerObject != null)
+            {
+                linkdeadSession.PlayerObject.IsInteractive = true;
+                linkdeadSession.PlayerObject.ConnectionId = newSession.ConnectionId;
+            }
+
+            // Add to active sessions with new connection ID
+            _sessions[newSession.ConnectionId] = linkdeadSession;
+        }
+
+        // Announce reconnection to the room (use character name, not account name)
+        if (linkdeadSession.PlayerObject != null)
+        {
+            AnnounceToRoom(linkdeadSession.PlayerObject,
+                $"{GetPlayerName(linkdeadSession.PlayerObject, linkdeadSession.AuthenticatedUsername)} has reconnected.\r\n");
+        }
+
+        SendToPlayer(linkdeadSession.ConnectionId, "Reconnected!\r\n\r\n");
+
+        // Show the room
+        ExecuteLookForPlayer(linkdeadSession);
+        SendPrompt(linkdeadSession.ConnectionId);
+
+        Console.WriteLine($"Player {linkdeadSession.AuthenticatedUsername} reconnected from linkdead");
     }
 
     /// <summary>
@@ -506,6 +744,9 @@ public class GameLoop
                 {
                     _tickCount = 0;
                     ProcessHeartbeats();
+
+                    // Clean up expired linkdead sessions (check during heartbeat cycle)
+                    CleanupExpiredLinkdeadSessions();
                 }
 
                 // Process pending callouts every tick
@@ -1437,7 +1678,7 @@ public class GameLoop
             _accountManager.UpdateLastLogin(session.AuthenticatedUsername!);
 
             // Check for existing session before completing login
-            if (CheckAndPromptForDuplicateSession(session))
+            if (CheckAndPromptForExistingSession(session))
             {
                 // Duplicate exists, waiting for confirmation
                 return;
