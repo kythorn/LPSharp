@@ -123,7 +123,7 @@ public class Parser
 
     private bool IsFunctionDefinitionStart()
     {
-        // Function definition pattern: [visibility...] [varargs] type identifier(
+        // Function definition pattern: [visibility...] [varargs] type [*] identifier(
         // Skip any visibility modifiers and varargs first
         var offset = 0;
         while (_position + offset < _tokens.Count &&
@@ -138,17 +138,24 @@ public class Parser
         {
             return false;
         }
+        offset++; // Move past the type
+
+        // Check for array return type: type *identifier(
+        if (_position + offset < _tokens.Count && _tokens[_position + offset].Type == TokenType.Star)
+        {
+            offset++; // Move past the *
+        }
 
         // Look ahead for identifier followed by (
-        if (_position + offset + 2 >= _tokens.Count)
+        if (_position + offset + 1 >= _tokens.Count)
         {
             return false;
         }
 
-        var second = _tokens[_position + offset + 1];
-        var third = _tokens[_position + offset + 2];
+        var identToken = _tokens[_position + offset];
+        var parenToken = _tokens[_position + offset + 1];
 
-        return second.Type == TokenType.Identifier && third.Type == TokenType.LeftParen;
+        return identToken.Type == TokenType.Identifier && parenToken.Type == TokenType.LeftParen;
     }
 
     private static bool IsTypeName(TokenType type)
@@ -295,6 +302,13 @@ public class Parser
         // Capture return type
         var returnType = Current().Lexeme;
         Advance();
+
+        // Check for array return type (*)
+        if (Check(TokenType.Star))
+        {
+            returnType += " *";
+            Advance();
+        }
 
         // Function name
         if (!Match(TokenType.Identifier))
@@ -1141,18 +1155,64 @@ public class Parser
         // Handle chained postfix operations: indexing and ++/--
         while (true)
         {
-            // Check for index expression: expr[index]
+            // Check for index or range expression: expr[index] or expr[start..end]
             if (Match(TokenType.LeftBracket))
             {
                 var bracket = Previous();
-                var index = ParseExpression();
 
+                // Check for range starting with .. (e.g., [..end] or [..])
+                if (Match(TokenType.DotDot))
+                {
+                    Expression? endExpr = null;
+                    if (!Check(TokenType.RightBracket))
+                    {
+                        endExpr = ParseExpression();
+                    }
+
+                    if (!Match(TokenType.RightBracket))
+                    {
+                        throw new ParserException("Expected ']' after range expression", Current());
+                    }
+
+                    expr = new RangeExpression(expr, null, endExpr)
+                    {
+                        Line = bracket.Line,
+                        Column = bracket.Column
+                    };
+                    continue;
+                }
+
+                var startExpr = ParseExpression();
+
+                // Check for range expression: expr[start..end] or expr[start..]
+                if (Match(TokenType.DotDot))
+                {
+                    Expression? endExpr = null;
+                    if (!Check(TokenType.RightBracket))
+                    {
+                        endExpr = ParseExpression();
+                    }
+
+                    if (!Match(TokenType.RightBracket))
+                    {
+                        throw new ParserException("Expected ']' after range expression", Current());
+                    }
+
+                    expr = new RangeExpression(expr, startExpr, endExpr)
+                    {
+                        Line = bracket.Line,
+                        Column = bracket.Column
+                    };
+                    continue;
+                }
+
+                // Regular index expression
                 if (!Match(TokenType.RightBracket))
                 {
                     throw new ParserException("Expected ']' after index expression", Current());
                 }
 
-                expr = new IndexExpression(expr, index)
+                expr = new IndexExpression(expr, startExpr)
                 {
                     Line = bracket.Line,
                     Column = bracket.Column

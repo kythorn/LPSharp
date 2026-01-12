@@ -91,6 +91,7 @@ public enum TokenType
     Colon,          // :
     ColonColon,     // ::
     Arrow,          // ->
+    DotDot,         // .. (range operator)
 
     // Delimiters
     LeftParen,      // (

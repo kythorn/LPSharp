@@ -159,12 +159,22 @@ public class Lexer
             case ':':
                 if (Match(':')) return new Token(TokenType.ColonColon, "::", _line, startColumn);
                 return new Token(TokenType.Colon, ":", _line, startColumn);
+
+            case '.':
+                if (Match('.')) return new Token(TokenType.DotDot, "..", _line, startColumn);
+                throw new LexerException("Unexpected character '.'", _line, startColumn);
         }
 
         // String literals
         if (c == '"')
         {
             return ReadString(startColumn);
+        }
+
+        // Character literals (LPC: 'c' evaluates to ASCII value)
+        if (c == '\'')
+        {
+            return ReadCharLiteral(startColumn);
         }
 
         // Numbers
@@ -239,6 +249,52 @@ public class Lexer
 
         Advance(); // consume closing quote
         return new Token(TokenType.String, sb.ToString(), startLine, startColumn);
+    }
+
+    private Token ReadCharLiteral(int startColumn)
+    {
+        // LPC character literals: 'c' evaluates to the ASCII value
+        // Supports escape sequences like '\n', '\t', etc.
+        if (IsAtEnd())
+        {
+            throw new LexerException("Unterminated character literal", _line, startColumn);
+        }
+
+        char charValue;
+        if (Peek() == '\\')
+        {
+            // Escape sequence
+            Advance(); // consume backslash
+            if (IsAtEnd())
+            {
+                throw new LexerException("Unterminated character literal", _line, startColumn);
+            }
+            char escaped = Advance();
+            charValue = escaped switch
+            {
+                'n' => '\n',
+                't' => '\t',
+                'r' => '\r',
+                '\\' => '\\',
+                '\'' => '\'',
+                '0' => '\0',
+                _ => throw new LexerException($"Invalid escape sequence '\\{escaped}'", _line, _column - 1)
+            };
+        }
+        else
+        {
+            charValue = Advance();
+        }
+
+        // Expect closing quote
+        if (IsAtEnd() || Peek() != '\'')
+        {
+            throw new LexerException("Unterminated character literal (expected closing ')", _line, _column);
+        }
+        Advance(); // consume closing quote
+
+        // Return as a number token with the ASCII value
+        return new Token(TokenType.Number, ((int)charValue).ToString(), _line, startColumn);
     }
 
     private Token ReadIdentifier(int startColumn)

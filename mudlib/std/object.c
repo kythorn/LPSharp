@@ -76,7 +76,7 @@ string format_msg(string msg, object actor) {
 // Example:
 //   act(player, "You drink a mug of ale.", "$N drinks a mug of ale.");
 //
-void act(object actor, string actor_msg, string others_msg, varargs object room) {
+varargs void act(object actor, string actor_msg, string others_msg, object room) {
     object target_room;
     object *contents;
     int i;

@@ -931,6 +931,7 @@ public class ObjectInterpreter
             FunctionCall call => EvaluateFunctionCall(call),
             ArrowCall arrow => EvaluateArrowCall(arrow),
             IndexExpression idx => EvaluateIndexExpression(idx),
+            RangeExpression range => EvaluateRangeExpression(range),
             CatchExpression catchExpr => EvaluateCatch(catchExpr),
             _ => throw RuntimeError($"Unknown expression type: {expr.GetType().Name}", expr)
         };
@@ -1056,6 +1057,90 @@ public class ObjectInterpreter
         }
 
         throw new ObjectInterpreterException($"Cannot index into {target?.GetType().Name ?? "null"}");
+    }
+
+    private object EvaluateRangeExpression(RangeExpression expr)
+    {
+        var target = Evaluate(expr.Target);
+
+        // Evaluate start (null means from beginning)
+        int start = 0;
+        if (expr.Start != null)
+        {
+            var startObj = Evaluate(expr.Start);
+            if (startObj is long startLong)
+                start = (int)startLong;
+            else if (startObj is int startInt)
+                start = startInt;
+            else
+                throw new ObjectInterpreterException("Range start must be an integer");
+        }
+
+        if (target is string str)
+        {
+            // Evaluate end (null means to end of string)
+            int end = str.Length - 1;
+            if (expr.End != null)
+            {
+                var endObj = Evaluate(expr.End);
+                if (endObj is long endLong)
+                    end = (int)endLong;
+                else if (endObj is int endInt)
+                    end = endInt;
+                else
+                    throw new ObjectInterpreterException("Range end must be an integer");
+            }
+
+            // Handle negative indices (count from end)
+            if (start < 0) start = str.Length + start;
+            if (end < 0) end = str.Length + end;
+
+            // Clamp to valid range
+            if (start < 0) start = 0;
+            if (end >= str.Length) end = str.Length - 1;
+
+            if (start > end || start >= str.Length)
+            {
+                return ""; // Empty result for invalid range
+            }
+
+            // LPC range is inclusive on both ends
+            return str.Substring(start, end - start + 1);
+        }
+
+        if (target is List<object> list)
+        {
+            // Evaluate end (null means to end of list)
+            int end = list.Count - 1;
+            if (expr.End != null)
+            {
+                var endObj = Evaluate(expr.End);
+                if (endObj is long endLong)
+                    end = (int)endLong;
+                else if (endObj is int endInt)
+                    end = endInt;
+                else
+                    throw new ObjectInterpreterException("Range end must be an integer");
+            }
+
+            // Handle negative indices
+            if (start < 0) start = list.Count + start;
+            if (end < 0) end = list.Count + end;
+
+            // Clamp to valid range
+            if (start < 0) start = 0;
+            if (end >= list.Count) end = list.Count - 1;
+
+            if (start > end || start >= list.Count)
+            {
+                return new List<object>(); // Empty array for invalid range
+            }
+
+            // LPC range is inclusive on both ends
+            return list.GetRange(start, end - start + 1);
+        }
+
+        throw new ObjectInterpreterException($"Cannot apply range operator to {target?.GetType().Name ?? "null"}");
     }
 
     /// <summary>

@@ -110,6 +110,16 @@ public record MappingLiteral(List<(Expression Key, Expression Value)> Entries) :
 public record IndexExpression(Expression Target, Expression Index) : Expression;
 
 /// <summary>
+/// Array/string range slicing: expr[start..end]
+/// Returns a substring or subarray from start to end (inclusive).
+/// Start and End can be null for open-ended ranges:
+///   [start..] - from start to end of target
+///   [..end] - from beginning to end
+///   [..] - entire target (copy)
+/// </summary>
+public record RangeExpression(Expression Target, Expression? Start, Expression? End) : Expression;
+
+/// <summary>
 /// Catch expression: catch(expr)
 /// Evaluates expr and returns 0 on success, or error string if exception occurs.
 /// </summary>

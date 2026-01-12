@@ -12,7 +12,8 @@ int main(string args)
     string arg;
     mapping aliases;
     string *keys;
-    int i, count;
+    int i;
+    int count;
 
     args = trim(args);
 
@@ -94,7 +95,8 @@ int main(string args)
     }
 
     // Setting alias: alias <name> <command>
-    string name, cmd;
+    string name;
+    string cmd;
     name = trim(args[0..space-1]);
     cmd = trim(args[space+1..]);
 
