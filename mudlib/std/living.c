@@ -21,6 +21,9 @@ int max_hp;
 object attacker;
 int in_combat;
 
+// Regeneration (HP per heartbeat when not in combat)
+int regen_rate;
+
 // Equipment
 object wielded_weapon;
 mapping worn_armor;
@@ -44,6 +47,9 @@ void create() {
     // Combat state
     attacker = 0;
     in_combat = 0;
+
+    // Regeneration - 1 HP per heartbeat (2 seconds) when not in combat
+    regen_rate = 1;
 
     // Equipment
     wielded_weapon = 0;
@@ -307,7 +313,10 @@ void start_combat(object target) {
 void stop_combat() {
     in_combat = 0;
     attacker = 0;
-    set_heart_beat(0);
+    // Keep heartbeat running if we need to regenerate
+    if (hp >= max_hp) {
+        set_heart_beat(0);
+    }
 }
 
 // Receive damage from an attacker
@@ -331,6 +340,18 @@ int receive_damage(int amount, object from) {
     if (hp <= 0) {
         hp = 0;
         die();
+    } else {
+        // Show HP status to the damaged creature
+        int pct;
+        pct = (hp * 100) / max_hp;
+        if (pct <= 25) {
+            tell_object(this_object(), "[HP: " + hp + "/" + max_hp + " - Near death!]\n");
+        } else if (pct <= 50) {
+            tell_object(this_object(), "[HP: " + hp + "/" + max_hp + " - Badly wounded]\n");
+        } else if (pct <= 75) {
+            tell_object(this_object(), "[HP: " + hp + "/" + max_hp + "]\n");
+        }
+        // Don't spam at high HP
     }
 
     return actual;
@@ -415,13 +436,28 @@ void do_attack() {
 }
 
 // Heartbeat - called every 2 seconds
-// Handles combat rounds
+// Handles combat rounds and regeneration
 void heart_beat() {
     // If in combat, execute an attack
     if (in_combat && attacker) {
         do_attack();
+        return;
+    }
+
+    // Not in combat - regenerate HP
+    if (hp < max_hp && regen_rate > 0) {
+        hp = hp + regen_rate;
+        if (hp > max_hp) {
+            hp = max_hp;
+        }
+
+        // Notify player of healing (only when significant)
+        if (hp == max_hp) {
+            tell_object(this_object(), "You are fully healed.\n");
+            set_heart_beat(0);
+        }
     } else {
-        // Not in combat, disable heartbeat
+        // Full HP, disable heartbeat
         set_heart_beat(0);
     }
 }
