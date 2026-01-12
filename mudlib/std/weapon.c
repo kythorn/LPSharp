@@ -28,3 +28,8 @@ string query_weapon_type() {
 void set_weapon_type(string type) {
     weapon_type = type;
 }
+
+// Identify as a weapon
+int is_weapon() {
+    return 1;
+}
