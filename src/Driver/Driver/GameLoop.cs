@@ -56,6 +56,12 @@ public class GameLoop
     private readonly AccountManager _accountManager;
 
     /// <summary>
+    /// Rate limiter for preventing command flooding.
+    /// </summary>
+    public RateLimiter RateLimiter => _rateLimiter;
+    private readonly RateLimiter _rateLimiter = new();
+
+    /// <summary>
     /// The object interpreter for executing LPC code.
     /// </summary>
     private ObjectInterpreter? _interpreter;
@@ -435,6 +441,9 @@ public class GameLoop
                 Logger.Warning($"Error destructing player object: {ex.Message}", LogCategory.Object);
             }
         }
+
+        // Clean up rate limiter data for this connection
+        _rateLimiter.RemoveConnection(connectionId);
 
         Logger.Debug($"Removed player session for {connectionId}", LogCategory.Network);
     }
@@ -886,6 +895,9 @@ public class GameLoop
                 {
                     _lastPeriodicSave = now;
                     SaveAllPlayers();
+
+                    // Clean up rate limiter data periodically (every 5 min with saves)
+                    _rateLimiter.Cleanup();
                 }
 
                 // Process pending callouts every tick
@@ -1220,6 +1232,14 @@ public class GameLoop
 
             // Update last activity
             session.LastActivity = DateTime.UtcNow;
+        }
+
+        // Check rate limiting
+        if (!_rateLimiter.AllowCommand(cmd.ConnectionId))
+        {
+            SendToPlayer(cmd.ConnectionId, "You are sending commands too quickly. Please slow down.\r\n");
+            Logger.Warning($"Rate limited: {cmd.ConnectionId}", LogCategory.Network);
+            return;
         }
 
         // Handle login states before player object exists
@@ -1811,10 +1831,24 @@ public class GameLoop
         OnSetEchoMode?.Invoke(session.ConnectionId, true);
         SendToPlayer(session.ConnectionId, "\r\n");
 
+        // Check for login lockout
+        if (_rateLimiter.IsLoginLockedOut(session.ConnectionId))
+        {
+            var remaining = _rateLimiter.GetLoginLockoutRemaining(session.ConnectionId);
+            SendToPlayer(session.ConnectionId, $"Too many failed login attempts. Please wait {remaining} seconds.\r\n\r\n");
+            session.PendingUsername = null;
+            session.LoginState = LoginState.AwaitingName;
+            SendToPlayer(session.ConnectionId, "Enter your name, or type 'new': ");
+            return;
+        }
+
         if (_accountManager.ValidateCredentials(session.PendingUsername!, input))
         {
             session.AuthenticatedUsername = session.PendingUsername;
             _accountManager.UpdateLastLogin(session.AuthenticatedUsername!);
+
+            // Clear login attempts on success
+            _rateLimiter.ClearLoginAttempts(session.ConnectionId);
 
             // Check for existing session before completing login
             if (CheckAndPromptForExistingSession(session))
@@ -1827,6 +1861,9 @@ public class GameLoop
         }
         else
         {
+            // Record failed attempt
+            _rateLimiter.RecordLoginAttempt(session.ConnectionId);
+
             SendToPlayer(session.ConnectionId, "Invalid password.\r\n\r\n");
             session.PendingUsername = null;
             session.LoginState = LoginState.AwaitingName;

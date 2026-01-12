@@ -424,8 +424,23 @@ The driver provides a natural sandbox through the efun interface:
 │  - Which efuns are available                                        │
 │  - File paths LPC can access (sandboxed to mudlib)                  │
 │  - Resource limits (memory, recursion depth)                        │
+│  - Rate limiting (commands per second, login attempts)              │
 └─────────────────────────────────────────────────────────────────────┘
-```
+
+### Rate Limiting
+
+The driver includes built-in protection against command flooding and brute force attacks:
+
+**Command Rate Limiting:**
+- Default: 30 commands per 10 seconds
+- Prevents players from flooding the server with rapid commands
+- Configurable through `GameLoop.RateLimiter` properties
+
+**Login Rate Limiting:**
+- Default: 5 failed attempts before lockout
+- Lockout duration: 60 seconds
+- Prevents brute force password attacks
+- Tracks attempts per connection
 
 ## Connection and Session Management (Detailed)
 
