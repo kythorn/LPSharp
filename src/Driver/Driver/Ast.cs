@@ -78,6 +78,11 @@ public record Assignment(string Name, Expression Value) : Expression;
 public record CompoundAssignment(string Name, BinaryOperator Operator, Expression Value) : Expression;
 
 /// <summary>
+/// Index assignment: object[index] = value (arrays and mappings)
+/// </summary>
+public record IndexAssignment(Expression Object, Expression Index, Expression Value) : Expression;
+
+/// <summary>
 /// Function call: name(arg1, arg2, ...) or ::name(arg1, arg2, ...)
 /// IsParentCall=true indicates :: prefix (call parent/inherited version)
 /// </summary>

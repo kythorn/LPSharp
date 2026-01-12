@@ -81,15 +81,9 @@ public class Lexer
                 return new Token(TokenType.LeftParen, "(", _line, startColumn);
             case ')': return new Token(TokenType.RightParen, ")", _line, startColumn);
             case '{': return new Token(TokenType.LeftBrace, "{", _line, startColumn);
-            case '}':
-                // Check for LPC array/mapping end: })
-                if (Match(')')) return new Token(TokenType.ArrayEnd, "})", _line, startColumn);
-                return new Token(TokenType.RightBrace, "}", _line, startColumn);
+            case '}': return new Token(TokenType.RightBrace, "}", _line, startColumn);
             case '[': return new Token(TokenType.LeftBracket, "[", _line, startColumn);
-            case ']':
-                // Check for LPC mapping end: ])
-                if (Match(')')) return new Token(TokenType.MappingEnd, "])", _line, startColumn);
-                return new Token(TokenType.RightBracket, "]", _line, startColumn);
+            case ']': return new Token(TokenType.RightBracket, "]", _line, startColumn);
             case ';': return new Token(TokenType.Semicolon, ";", _line, startColumn);
             case ',': return new Token(TokenType.Comma, ",", _line, startColumn);
             case '~': return new Token(TokenType.Tilde, "~", _line, startColumn);

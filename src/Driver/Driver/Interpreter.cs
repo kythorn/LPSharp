@@ -305,6 +305,7 @@ public class Interpreter
             FunctionCall fc => EvaluateFunctionCall(fc),
             ArrowCall ac => throw new InterpreterException("Arrow calls (obj->func()) require object context; use --mudlib mode", ac),
             IndexExpression ie => EvaluateIndex(ie),
+            IndexAssignment ia => EvaluateIndexAssignment(ia),
             _ => throw new InterpreterException($"Unknown expression type: {expr.GetType().Name}", expr)
         };
     }
@@ -374,6 +375,36 @@ public class Interpreter
         }
 
         throw new InterpreterException($"Cannot index into {target?.GetType().Name ?? "null"}", expr);
+    }
+
+    private object EvaluateIndexAssignment(IndexAssignment expr)
+    {
+        var target = Evaluate(expr.Object);
+        var index = Evaluate(expr.Index);
+        var value = Evaluate(expr.Value);
+
+        if (target is List<object> arr)
+        {
+            if (!IsInteger(index))
+            {
+                throw new InterpreterException("Array index must be an integer", expr);
+            }
+            var i = ToLong(index);
+            if (i < 0 || i >= arr.Count)
+            {
+                throw new InterpreterException($"Array index {i} out of bounds (size {arr.Count})", expr);
+            }
+            arr[(int)i] = value;
+            return value;
+        }
+
+        if (target is Dictionary<object, object> dict)
+        {
+            dict[index] = value;
+            return value;
+        }
+
+        throw new InterpreterException($"Cannot assign to index on {target?.GetType().Name ?? "null"}", expr);
     }
 
     private object EvaluateIdentifier(Identifier expr)

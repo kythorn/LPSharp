@@ -167,7 +167,7 @@ public class Parser
 
     /// <summary>
     /// Check if we're looking at a local variable declaration.
-    /// Pattern: type identifier (not followed by '(' which would be a function)
+    /// Pattern: type identifier OR type *identifier (array type)
     /// </summary>
     private bool IsLocalVariableDeclaration()
     {
@@ -188,6 +188,31 @@ public class Parser
         if (!isTypeKeyword)
         {
             return false;
+        }
+
+        // Check for array type: type *identifier
+        if (next.Type == TokenType.Star)
+        {
+            // Need one more token for the identifier
+            if (_position + 2 >= _tokens.Count)
+            {
+                return false;
+            }
+            var afterStar = _tokens[_position + 2];
+            if (afterStar.Type != TokenType.Identifier)
+            {
+                return false;
+            }
+            // Make sure it's not a function: type *func()
+            if (_position + 3 < _tokens.Count)
+            {
+                var fourth = _tokens[_position + 3];
+                if (fourth.Type == TokenType.LeftParen)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         // Next must be an identifier (the variable name)
@@ -289,11 +314,23 @@ public class Parser
         {
             do
             {
-                // Skip parameter type if present
-                if (IsTypeName(Current().Type) && _position + 1 < _tokens.Count
-                    && _tokens[_position + 1].Type == TokenType.Identifier)
+                // Skip parameter type if present (handles "type name", "type *name", or just "name")
+                if (IsTypeName(Current().Type) && _position + 1 < _tokens.Count)
                 {
-                    Advance(); // Skip type
+                    var next = _tokens[_position + 1];
+                    // Pattern: type *name (array parameter)
+                    if (next.Type == TokenType.Star && _position + 2 < _tokens.Count
+                        && _tokens[_position + 2].Type == TokenType.Identifier)
+                    {
+                        Advance(); // Skip type
+                        Advance(); // Skip *
+                    }
+                    // Pattern: type name (typed parameter)
+                    else if (next.Type == TokenType.Identifier)
+                    {
+                        Advance(); // Skip type
+                    }
+                    // Otherwise, current identifier IS the parameter name (no type)
                 }
 
                 if (!Match(TokenType.Identifier))
@@ -357,6 +394,12 @@ public class Parser
         var typeToken = Current();
         var type = typeToken.Lexeme;
         Advance(); // consume type
+
+        // Check for array type: type *name
+        if (Match(TokenType.Star))
+        {
+            type = type + " *"; // Mark as array type (e.g., "object *")
+        }
 
         if (!Match(TokenType.Identifier))
         {
@@ -717,11 +760,22 @@ public class Parser
         {
             var equals = Previous();
 
-            // Left side must be an identifier for simple assignment
+            // Left side can be an identifier or index expression
             if (expr is Identifier id)
             {
                 var value = ParseAssignment(); // Right-to-left associativity
                 return new Assignment(id.Name, value)
+                {
+                    Line = equals.Line,
+                    Column = equals.Column
+                };
+            }
+
+            // Index assignment: arr[i] = value or map[key] = value
+            if (expr is IndexExpression indexExpr)
+            {
+                var value = ParseAssignment(); // Right-to-left associativity
+                return new IndexAssignment(indexExpr.Target, indexExpr.Index, value)
                 {
                     Line = equals.Line,
                     Column = equals.Column
@@ -1287,7 +1341,7 @@ public class Parser
             var arrayStart = Previous();
             var elements = new List<Expression>();
 
-            if (!Check(TokenType.ArrayEnd))
+            if (!Check(TokenType.RightBrace))
             {
                 do
                 {
@@ -1295,9 +1349,14 @@ public class Parser
                 } while (Match(TokenType.Comma));
             }
 
-            if (!Match(TokenType.ArrayEnd))
+            // Array end is }) which is RightBrace followed by RightParen
+            if (!Match(TokenType.RightBrace))
             {
-                throw new ParserException("Expected '})' after array elements", Current());
+                throw new ParserException("Expected '}' to end array", Current());
+            }
+            if (!Match(TokenType.RightParen))
+            {
+                throw new ParserException("Expected ')' after '}' to end array literal", Current());
             }
 
             return new ArrayLiteral(elements)
@@ -1313,7 +1372,7 @@ public class Parser
             var mappingStart = Previous();
             var entries = new List<(Expression Key, Expression Value)>();
 
-            if (!Check(TokenType.MappingEnd))
+            if (!Check(TokenType.RightBracket))
             {
                 do
                 {
@@ -1327,9 +1386,14 @@ public class Parser
                 } while (Match(TokenType.Comma));
             }
 
-            if (!Match(TokenType.MappingEnd))
+            // Mapping end is ]) which is RightBracket followed by RightParen
+            if (!Match(TokenType.RightBracket))
             {
-                throw new ParserException("Expected '])' after mapping entries", Current());
+                throw new ParserException("Expected ']' to end mapping", Current());
+            }
+            if (!Match(TokenType.RightParen))
+            {
+                throw new ParserException("Expected ')' after ']' to end mapping literal", Current());
             }
 
             return new MappingLiteral(entries)
