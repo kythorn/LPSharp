@@ -35,7 +35,9 @@ public class GameLoop
 
     /// <summary>
     /// The account manager for authentication.
+    /// Exposed for permission checks in efuns.
     /// </summary>
+    public AccountManager AccountManager => _accountManager;
     private readonly AccountManager _accountManager;
 
     /// <summary>
@@ -1010,18 +1012,45 @@ public class GameLoop
 
     /// <summary>
     /// Try to execute a /cmds/ file for the given verb.
+    /// Searches command directories based on access level:
+    /// - /cmds/admin/ (Admin only)
+    /// - /cmds/wizard/ (Wizard+)
+    /// - /cmds/std/ (all players)
     /// Returns true if the command file was found and executed.
     /// </summary>
     private bool ExecuteCmdFile(PlayerSession session, string verb, string args)
     {
-        MudObject? cmdObj = null;
-        try
+        // Build list of directories to search based on access level
+        var searchPaths = new List<string>();
+
+        if (session.AccessLevel >= AccessLevel.Admin)
         {
-            cmdObj = _objectManager.LoadObject($"/cmds/std/{verb}");
+            searchPaths.Add($"/cmds/admin/{verb}");
         }
-        catch (ObjectManagerException)
+        if (session.AccessLevel >= AccessLevel.Wizard)
         {
-            return false; // Command not found
+            searchPaths.Add($"/cmds/wizard/{verb}");
+        }
+        searchPaths.Add($"/cmds/std/{verb}");
+
+        // Try each path in order
+        MudObject? cmdObj = null;
+        foreach (var path in searchPaths)
+        {
+            try
+            {
+                cmdObj = _objectManager.LoadObject(path);
+                break; // Found it
+            }
+            catch (ObjectManagerException)
+            {
+                // Try next path
+            }
+        }
+
+        if (cmdObj == null)
+        {
+            return false; // Command not found in any directory
         }
 
         var mainFunc = cmdObj.FindFunction("main");
@@ -1380,6 +1409,9 @@ public class GameLoop
 
         try
         {
+            // Cache access level from account
+            session.AccessLevel = _accountManager.GetAccessLevel(session.AuthenticatedUsername!);
+
             // Clone a player object
             var playerObject = _objectManager.CloneObject("/std/player");
             playerObject.IsInteractive = true;
@@ -1413,7 +1445,14 @@ public class GameLoop
             session.PlayerObject = playerObject;
             session.LoginState = LoginState.Playing;
 
-            SendToPlayer(session.ConnectionId, $"Welcome, {Capitalize(session.AuthenticatedUsername!)}!\r\n\r\n");
+            // Show access level for non-player levels
+            var accessMsg = session.AccessLevel switch
+            {
+                AccessLevel.Admin => " [Admin]",
+                AccessLevel.Wizard => " [Wizard]",
+                _ => ""
+            };
+            SendToPlayer(session.ConnectionId, $"Welcome, {Capitalize(session.AuthenticatedUsername!)}{accessMsg}!\r\n\r\n");
 
             // Execute look command to show the room
             ExecuteLookForPlayer(session);

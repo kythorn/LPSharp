@@ -11,6 +11,7 @@ namespace Driver;
 public class AccountManager
 {
     private readonly string _accountsPath;
+    private readonly string _mudlibPath;
 
     // PBKDF2 parameters
     private const int SaltSize = 16;
@@ -19,6 +20,7 @@ public class AccountManager
 
     public AccountManager(string mudlibPath)
     {
+        _mudlibPath = mudlibPath;
         _accountsPath = Path.Combine(mudlibPath, "secure", "accounts");
         Directory.CreateDirectory(_accountsPath);
     }
@@ -34,6 +36,7 @@ public class AccountManager
 
     /// <summary>
     /// Create a new account with the given credentials.
+    /// First registered account automatically becomes Admin.
     /// </summary>
     /// <returns>True if account was created, false if username already exists.</returns>
     public bool CreateAccount(string username, string email, string password)
@@ -46,6 +49,10 @@ public class AccountManager
         var salt = RandomNumberGenerator.GetBytes(SaltSize);
         var hash = HashPassword(password, salt);
 
+        // First registered user becomes Admin
+        var isFirstAccount = !Directory.EnumerateFiles(_accountsPath, "*.json").Any();
+        var accessLevel = isFirstAccount ? AccessLevel.Admin : AccessLevel.Player;
+
         var account = new AccountData
         {
             Username = username.ToLowerInvariant(),
@@ -53,10 +60,18 @@ public class AccountManager
             PasswordHash = Convert.ToBase64String(salt) + ":" + Convert.ToBase64String(hash),
             CreatedAt = DateTime.UtcNow,
             LastLogin = DateTime.UtcNow,
-            LoginCount = 1
+            LoginCount = 1,
+            AccessLevel = accessLevel
         };
 
         SaveAccount(account);
+
+        // Create wizard home directory if Wizard or Admin
+        if (accessLevel >= AccessLevel.Wizard)
+        {
+            EnsureWizardHomeDirectory(username);
+        }
+
         return true;
     }
 
@@ -99,6 +114,66 @@ public class AccountManager
         account.LastLogin = DateTime.UtcNow;
         account.LoginCount++;
         SaveAccount(account);
+    }
+
+    /// <summary>
+    /// Get the access level for a username.
+    /// </summary>
+    /// <returns>The access level, or Guest if account doesn't exist.</returns>
+    public AccessLevel GetAccessLevel(string username)
+    {
+        var account = LoadAccount(username);
+        return account?.AccessLevel ?? AccessLevel.Guest;
+    }
+
+    /// <summary>
+    /// Set the access level for a username.
+    /// Creates wizard home directory if promoting to Wizard or higher.
+    /// </summary>
+    /// <returns>True if successful, false if account doesn't exist.</returns>
+    public bool SetAccessLevel(string username, AccessLevel level)
+    {
+        var account = LoadAccount(username);
+        if (account == null)
+        {
+            return false;
+        }
+
+        var previousLevel = account.AccessLevel;
+        account.AccessLevel = level;
+        SaveAccount(account);
+
+        // Create wizard home directory when promoting to Wizard or higher
+        if (level >= AccessLevel.Wizard && previousLevel < AccessLevel.Wizard)
+        {
+            EnsureWizardHomeDirectory(username);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Get the wizard home directory path for a username.
+    /// </summary>
+    public string GetWizardHomePath(string username)
+    {
+        var safe = username.ToLowerInvariant()
+            .Replace("..", "")
+            .Replace("/", "")
+            .Replace("\\", "");
+        return Path.Combine(_mudlibPath, "wizards", safe);
+    }
+
+    /// <summary>
+    /// Ensure the wizard home directory exists.
+    /// </summary>
+    private void EnsureWizardHomeDirectory(string username)
+    {
+        var homePath = GetWizardHomePath(username);
+        if (!Directory.Exists(homePath))
+        {
+            Directory.CreateDirectory(homePath);
+        }
     }
 
     private byte[] HashPassword(string password, byte[] salt)
@@ -162,4 +237,5 @@ public class AccountData
     public DateTime CreatedAt { get; set; }
     public DateTime LastLogin { get; set; }
     public int LoginCount { get; set; }
+    public AccessLevel AccessLevel { get; set; } = AccessLevel.Player;
 }

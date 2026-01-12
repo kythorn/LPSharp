@@ -610,6 +610,39 @@ void run_tests() {
 - Session state machine tracking login progress
 - Players always start in town square after login
 
+**Access Level System:**
+- Four tiers: Guest (0), Player (1), Wizard (2), Admin (3)
+- First registered user automatically becomes Admin
+- Access level stored in account JSON file
+
+| Level | Value | Capabilities |
+|-------|-------|--------------|
+| Guest | 0 | Login/registration only |
+| Player | 1 | Standard gameplay, `/cmds/std/` commands |
+| Wizard | 2 | + clone_object, destruct, load_object, home directory access, `/cmds/wizard/` |
+| Admin | 3 | No restrictions - all files, all commands, all efuns |
+
+- Wizard home directories: `/wizards/{username}/` with full filesystem access
+- Wizards can read public mudlib code (for learning) but only write to own home
+- Other wizards' directories are private by default
+- `/secure/` is admin-only
+
+**Wizard Commands** (`/cmds/wizard/`):
+- `ls [path]` - List directory contents
+- `clone <path>` - Clone an object into inventory
+- `dest <object_name>` - Destruct an object
+- `goto <room_path>` - Teleport to a room
+- `load <path>` - Load/reload an object
+
+**Admin Commands** (`/cmds/admin/`):
+- `promote <username> <level>` - Change access level (player/wizard/admin)
+
+**Access Level Efuns:**
+- `set_access_level(username, level)` - Admin only
+- `query_access_level([username])` - Self always, others need Wizard+
+- `homedir([username])` - Get wizard home directory path
+- `get_dir(path)` - Directory listing (Wizard+ with path access)
+
 **Commands:**
 - `/cmds/say.c` - Say a message
 - `/cmds/look.c` - Look at room (shows description, exits)

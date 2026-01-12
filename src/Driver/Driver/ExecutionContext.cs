@@ -242,6 +242,12 @@ public class PlayerSession
     /// Authenticated username after successful login.
     /// </summary>
     public string? AuthenticatedUsername { get; set; }
+
+    /// <summary>
+    /// Cached access level from account data.
+    /// Set during login, used for permission checks.
+    /// </summary>
+    public AccessLevel AccessLevel { get; set; } = AccessLevel.Guest;
 }
 
 /// <summary>

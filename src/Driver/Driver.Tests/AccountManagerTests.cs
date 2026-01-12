@@ -188,4 +188,96 @@ public class AccountManagerTests : IDisposable
         Assert.True(_accountManager.ValidateCredentials("testuser", unicodePassword));
         Assert.False(_accountManager.ValidateCredentials("testuser", "password123!"));
     }
+
+    [Fact]
+    public void FirstAccount_IsAdmin()
+    {
+        // First account should be Admin
+        _accountManager.CreateAccount("firstuser", "first@example.com", "password123");
+
+        Assert.Equal(AccessLevel.Admin, _accountManager.GetAccessLevel("firstuser"));
+    }
+
+    [Fact]
+    public void SecondAccount_IsPlayer()
+    {
+        // First account is Admin
+        _accountManager.CreateAccount("firstuser", "first@example.com", "password123");
+
+        // Second account should be Player
+        _accountManager.CreateAccount("seconduser", "second@example.com", "password123");
+
+        Assert.Equal(AccessLevel.Player, _accountManager.GetAccessLevel("seconduser"));
+    }
+
+    [Fact]
+    public void GetAccessLevel_NonExistent_ReturnsGuest()
+    {
+        Assert.Equal(AccessLevel.Guest, _accountManager.GetAccessLevel("nonexistent"));
+    }
+
+    [Fact]
+    public void SetAccessLevel_Success()
+    {
+        _accountManager.CreateAccount("testuser", "test@example.com", "password123");
+
+        var result = _accountManager.SetAccessLevel("testuser", AccessLevel.Wizard);
+
+        Assert.True(result);
+        Assert.Equal(AccessLevel.Wizard, _accountManager.GetAccessLevel("testuser"));
+    }
+
+    [Fact]
+    public void SetAccessLevel_NonExistent_ReturnsFalse()
+    {
+        var result = _accountManager.SetAccessLevel("nonexistent", AccessLevel.Wizard);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void SetAccessLevel_ToAdmin_Works()
+    {
+        _accountManager.CreateAccount("firstuser", "first@example.com", "password123");
+        _accountManager.CreateAccount("testuser", "test@example.com", "password123");
+
+        var result = _accountManager.SetAccessLevel("testuser", AccessLevel.Admin);
+
+        Assert.True(result);
+        Assert.Equal(AccessLevel.Admin, _accountManager.GetAccessLevel("testuser"));
+    }
+
+    [Fact]
+    public void SetAccessLevel_DemoteToPlayer_Works()
+    {
+        _accountManager.CreateAccount("testuser", "test@example.com", "password123");
+
+        // First user is Admin, demote to Player
+        var result = _accountManager.SetAccessLevel("testuser", AccessLevel.Player);
+
+        Assert.True(result);
+        Assert.Equal(AccessLevel.Player, _accountManager.GetAccessLevel("testuser"));
+    }
+
+    [Fact]
+    public void GetWizardHomePath_ReturnsCorrectPath()
+    {
+        var path = _accountManager.GetWizardHomePath("TestUser");
+
+        Assert.EndsWith("wizards/testuser", path.Replace("\\", "/"));
+    }
+
+    [Fact]
+    public void SetAccessLevel_CreatesWizardHomeDirectory()
+    {
+        _accountManager.CreateAccount("firstuser", "first@example.com", "password123");
+        _accountManager.CreateAccount("testuser", "test@example.com", "password123");
+
+        // Promote to Wizard
+        _accountManager.SetAccessLevel("testuser", AccessLevel.Wizard);
+
+        // Home directory should be created
+        var homePath = _accountManager.GetWizardHomePath("testuser");
+        Assert.True(Directory.Exists(homePath));
+    }
 }

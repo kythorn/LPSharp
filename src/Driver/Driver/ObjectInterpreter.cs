@@ -110,6 +110,186 @@ public class ObjectInterpreter
 
     #endregion
 
+    #region Permission System
+
+    /// <summary>
+    /// Get the access level of the current player executing code.
+    /// Returns Admin if no execution context (system-level operations like tests).
+    /// Returns Guest if there's a context but no valid session.
+    /// </summary>
+    private AccessLevel GetCurrentAccessLevel()
+    {
+        var context = ExecutionContext.Current;
+
+        // No execution context = system-level operation (tests, object init, etc.)
+        // These are allowed unrestricted access
+        if (context == null)
+        {
+            return AccessLevel.Admin;
+        }
+
+        // Execution context without player object = Guest
+        if (context.PlayerObject == null)
+        {
+            return AccessLevel.Guest;
+        }
+
+        // Find the session for this player
+        var gameLoop = GameLoop.Instance;
+        if (gameLoop == null)
+        {
+            // No game loop = probably a test, allow unrestricted
+            return AccessLevel.Admin;
+        }
+
+        var session = gameLoop.GetAllSessions()
+            .FirstOrDefault(s => s.PlayerObject == context.PlayerObject);
+
+        return session?.AccessLevel ?? AccessLevel.Guest;
+    }
+
+    /// <summary>
+    /// Get the username of the current player executing code.
+    /// Returns null if no player context.
+    /// </summary>
+    private string? GetCurrentUsername()
+    {
+        var context = ExecutionContext.Current;
+        if (context?.PlayerObject == null)
+        {
+            return null;
+        }
+
+        var gameLoop = GameLoop.Instance;
+        if (gameLoop == null)
+        {
+            return null;
+        }
+
+        var session = gameLoop.GetAllSessions()
+            .FirstOrDefault(s => s.PlayerObject == context.PlayerObject);
+
+        return session?.AuthenticatedUsername;
+    }
+
+    /// <summary>
+    /// Check if the path is within the /secure/ directory (admin-only).
+    /// </summary>
+    private bool IsSecurePath(string mudlibPath)
+    {
+        var normalized = mudlibPath.TrimStart('/').ToLowerInvariant();
+        return normalized.StartsWith("secure/") || normalized == "secure";
+    }
+
+    /// <summary>
+    /// Check if the path is within a wizard's home directory.
+    /// </summary>
+    private bool IsWizardHomePath(string mudlibPath, string username)
+    {
+        var normalized = mudlibPath.TrimStart('/').ToLowerInvariant();
+        var homePath = $"wizards/{username.ToLowerInvariant()}/";
+        return normalized.StartsWith(homePath) || normalized == $"wizards/{username.ToLowerInvariant()}";
+    }
+
+    /// <summary>
+    /// Check if the path is in another wizard's private directory.
+    /// </summary>
+    private bool IsOtherWizardHomePath(string mudlibPath, string currentUsername)
+    {
+        var normalized = mudlibPath.TrimStart('/').ToLowerInvariant();
+        if (!normalized.StartsWith("wizards/"))
+        {
+            return false;
+        }
+
+        // Extract wizard name from path: wizards/{name}/...
+        var parts = normalized.Split('/', 3);
+        if (parts.Length < 2)
+        {
+            return false;
+        }
+
+        var wizardName = parts[1];
+        return !string.Equals(wizardName, currentUsername, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Check if the current user can access a path for read or write operations.
+    /// </summary>
+    /// <param name="mudlibPath">The path relative to mudlib root (e.g., "/std/object.c")</param>
+    /// <param name="isWrite">True for write operations, false for read</param>
+    /// <returns>True if access is allowed</returns>
+    private bool CanAccessPath(string mudlibPath, bool isWrite)
+    {
+        var accessLevel = GetCurrentAccessLevel();
+        var username = GetCurrentUsername();
+
+        // Admin bypasses all permission checks
+        if (accessLevel >= AccessLevel.Admin)
+        {
+            return true;
+        }
+
+        // /secure/ is admin-only
+        if (IsSecurePath(mudlibPath))
+        {
+            return false;
+        }
+
+        // Players cannot access any filesystem
+        if (accessLevel < AccessLevel.Wizard)
+        {
+            return false;
+        }
+
+        // Wizard level
+        if (username == null)
+        {
+            return false;
+        }
+
+        // Wizards can always access their own home directory
+        if (IsWizardHomePath(mudlibPath, username))
+        {
+            return true;
+        }
+
+        // Other wizard's home directories are private
+        if (IsOtherWizardHomePath(mudlibPath, username))
+        {
+            return false;
+        }
+
+        // For public paths: wizards can read but not write
+        return !isWrite;
+    }
+
+    /// <summary>
+    /// Require access to a path, throwing an exception if denied.
+    /// </summary>
+    private void RequirePathAccess(string mudlibPath, string operation, bool isWrite = false)
+    {
+        if (!CanAccessPath(mudlibPath, isWrite))
+        {
+            var accessLevel = GetCurrentAccessLevel();
+            throw new EfunException($"Permission denied: {operation} on '{mudlibPath}' (access level: {accessLevel})");
+        }
+    }
+
+    /// <summary>
+    /// Require minimum access level for an operation.
+    /// </summary>
+    private void RequireAccessLevel(AccessLevel required, string operation)
+    {
+        var current = GetCurrentAccessLevel();
+        if (current < required)
+        {
+            throw new EfunException($"Permission denied: {operation} requires {required} access (you have {current})");
+        }
+    }
+
+    #endregion
+
     public ObjectInterpreter(ObjectManager objectManager, TextWriter? output = null)
     {
         _objectManager = objectManager;
@@ -190,6 +370,14 @@ public class ObjectInterpreter
         // Additional object efuns
         _efuns.Register("clonep", ClonepEfun);
         _efuns.Register("say", SayEfun);
+
+        // Access level efuns
+        _efuns.Register("set_access_level", SetAccessLevelEfun);
+        _efuns.Register("query_access_level", QueryAccessLevelEfun);
+        _efuns.Register("homedir", HomedirEfun);
+
+        // Directory listing efun (for ls command)
+        _efuns.Register("get_dir", GetDirEfun);
     }
 
     /// <summary>
@@ -1461,6 +1649,7 @@ public class ObjectInterpreter
 
     /// <summary>
     /// clone_object(path) - Create a new clone of an object.
+    /// Requires Wizard+ access level. Path access checked.
     /// Returns the clone object.
     /// </summary>
     private object CloneObjectEfun(List<object> args)
@@ -1474,6 +1663,10 @@ public class ObjectInterpreter
         {
             throw new EfunException("clone_object() requires a string path argument");
         }
+
+        // Permission check: require Wizard+ and path access
+        RequireAccessLevel(AccessLevel.Wizard, "clone_object");
+        RequirePathAccess(path, "clone_object", isWrite: false);
 
         try
         {
@@ -1501,6 +1694,7 @@ public class ObjectInterpreter
 
     /// <summary>
     /// load_object(path) - Load or get a blueprint object.
+    /// Requires Wizard+ access level. Path access checked.
     /// Returns the blueprint object.
     /// </summary>
     private object LoadObjectEfun(List<object> args)
@@ -1514,6 +1708,10 @@ public class ObjectInterpreter
         {
             throw new EfunException("load_object() requires a string path argument");
         }
+
+        // Permission check: require Wizard+ and path access
+        RequireAccessLevel(AccessLevel.Wizard, "load_object");
+        RequirePathAccess(path, "load_object", isWrite: false);
 
         try
         {
@@ -1548,6 +1746,7 @@ public class ObjectInterpreter
 
     /// <summary>
     /// destruct(object) - Destroy an object and remove it from the game.
+    /// Requires Wizard+ access level. Cannot destruct /secure/ objects without Admin.
     /// Returns 1 on success.
     /// </summary>
     private object DestructEfun(List<object> args)
@@ -1560,6 +1759,16 @@ public class ObjectInterpreter
         if (args[0] is not MudObject obj)
         {
             throw new EfunException("destruct() requires an object argument");
+        }
+
+        // Permission check: require Wizard+ access level
+        RequireAccessLevel(AccessLevel.Wizard, "destruct");
+
+        // Check if trying to destruct a /secure/ object (admin only)
+        var accessLevel = GetCurrentAccessLevel();
+        if (accessLevel < AccessLevel.Admin && IsSecurePath(obj.FilePath))
+        {
+            throw new EfunException("Permission denied: cannot destruct /secure/ objects without Admin access");
         }
 
         try
@@ -2584,6 +2793,7 @@ public class ObjectInterpreter
 
     /// <summary>
     /// read_file(path, [start], [lines]) - Read contents of a file.
+    /// Requires Wizard+ access level and path access.
     /// start: line to start at (1-based, default 1)
     /// lines: number of lines to read (default all)
     /// Returns the file contents as a string, or 0 if file doesn't exist.
@@ -2599,6 +2809,10 @@ public class ObjectInterpreter
         {
             throw new EfunException("read_file() first argument must be a path string");
         }
+
+        // Permission check: require Wizard+ and path access for reading
+        RequireAccessLevel(AccessLevel.Wizard, "read_file");
+        RequirePathAccess(path, "read_file", isWrite: false);
 
         int startLine = 1;
         int? numLines = null;
@@ -2645,6 +2859,7 @@ public class ObjectInterpreter
 
     /// <summary>
     /// write_file(path, text, [flag]) - Write text to a file.
+    /// Requires Wizard+ access level and write path access.
     /// flag: 0 = overwrite (default), 1 = append
     /// Returns 1 on success, 0 on failure.
     /// </summary>
@@ -2664,6 +2879,10 @@ public class ObjectInterpreter
         {
             throw new EfunException("write_file() second argument must be a string");
         }
+
+        // Permission check: require Wizard+ and path access for writing
+        RequireAccessLevel(AccessLevel.Wizard, "write_file");
+        RequirePathAccess(path, "write_file", isWrite: true);
 
         int flag = 0;
         if (args.Count >= 3)
@@ -2703,6 +2922,7 @@ public class ObjectInterpreter
 
     /// <summary>
     /// file_size(path) - Get the size of a file in bytes.
+    /// Requires Wizard+ access level and read path access.
     /// Returns the file size, or -1 if file doesn't exist.
     /// Returns -2 if path is a directory.
     /// </summary>
@@ -2717,6 +2937,10 @@ public class ObjectInterpreter
         {
             throw new EfunException("file_size() argument must be a path string");
         }
+
+        // Permission check: require Wizard+ and path access for reading
+        RequireAccessLevel(AccessLevel.Wizard, "file_size");
+        RequirePathAccess(path, "file_size", isWrite: false);
 
         try
         {
@@ -2743,6 +2967,7 @@ public class ObjectInterpreter
 
     /// <summary>
     /// rm(path) - Delete a file.
+    /// Requires Wizard+ access level and write path access.
     /// Returns 1 on success, 0 on failure.
     /// </summary>
     private object RmEfun(List<object> args)
@@ -2756,6 +2981,10 @@ public class ObjectInterpreter
         {
             throw new EfunException("rm() argument must be a path string");
         }
+
+        // Permission check: require Wizard+ and path access for writing
+        RequireAccessLevel(AccessLevel.Wizard, "rm");
+        RequirePathAccess(path, "rm", isWrite: true);
 
         try
         {
@@ -2773,6 +3002,223 @@ public class ObjectInterpreter
         {
             return 0;
         }
+    }
+
+    /// <summary>
+    /// get_dir(path) - Get directory listing.
+    /// Requires Wizard+ access level and read path access.
+    /// Returns an array of filenames in the directory.
+    /// If path is a file, returns ({ filename }) if it exists, or ({ }) if not.
+    /// </summary>
+    private object GetDirEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("get_dir() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string path)
+        {
+            throw new EfunException("get_dir() argument must be a path string");
+        }
+
+        // Permission check: require Wizard+ and path access for reading
+        RequireAccessLevel(AccessLevel.Wizard, "get_dir");
+        RequirePathAccess(path, "get_dir", isWrite: false);
+
+        try
+        {
+            var fullPath = ResolveMudlibPath(path);
+
+            if (File.Exists(fullPath))
+            {
+                // Return just the filename
+                return new List<object> { Path.GetFileName(fullPath) };
+            }
+
+            if (!Directory.Exists(fullPath))
+            {
+                return new List<object>();
+            }
+
+            var entries = new List<object>();
+
+            // Add directories (with trailing /)
+            foreach (var dir in Directory.GetDirectories(fullPath))
+            {
+                entries.Add(Path.GetFileName(dir) + "/");
+            }
+
+            // Add files
+            foreach (var file in Directory.GetFiles(fullPath))
+            {
+                entries.Add(Path.GetFileName(file));
+            }
+
+            entries.Sort();
+            return entries;
+        }
+        catch (IOException)
+        {
+            return new List<object>();
+        }
+    }
+
+    #endregion
+
+    #region Access Level Efuns
+
+    /// <summary>
+    /// set_access_level(username, level) - Set a user's access level.
+    /// Requires Admin access level.
+    /// Level can be "player", "wizard", or "admin" (case insensitive).
+    /// Returns 1 on success, 0 on failure.
+    /// </summary>
+    private object SetAccessLevelEfun(List<object> args)
+    {
+        if (args.Count != 2)
+        {
+            throw new EfunException("set_access_level() requires exactly 2 arguments");
+        }
+
+        if (args[0] is not string username)
+        {
+            throw new EfunException("set_access_level() first argument must be a username string");
+        }
+
+        // Permission check: Admin only
+        RequireAccessLevel(AccessLevel.Admin, "set_access_level");
+
+        // Parse the level
+        AccessLevel newLevel;
+        if (args[1] is string levelStr)
+        {
+            newLevel = levelStr.ToLowerInvariant() switch
+            {
+                "player" => AccessLevel.Player,
+                "wizard" => AccessLevel.Wizard,
+                "admin" => AccessLevel.Admin,
+                _ => throw new EfunException($"Invalid access level: {levelStr}. Use 'player', 'wizard', or 'admin'.")
+            };
+        }
+        else if (args[1] is long levelNum)
+        {
+            newLevel = levelNum switch
+            {
+                1 => AccessLevel.Player,
+                2 => AccessLevel.Wizard,
+                3 => AccessLevel.Admin,
+                _ => throw new EfunException($"Invalid access level: {levelNum}. Use 1 (player), 2 (wizard), or 3 (admin).")
+            };
+        }
+        else
+        {
+            throw new EfunException("set_access_level() second argument must be a level string or number");
+        }
+
+        var gameLoop = GameLoop.Instance;
+        if (gameLoop == null)
+        {
+            return 0;
+        }
+
+        return gameLoop.AccountManager.SetAccessLevel(username, newLevel) ? 1 : 0;
+    }
+
+    /// <summary>
+    /// query_access_level([username]) - Query a user's access level.
+    /// Without argument, returns current player's level.
+    /// With argument, requires Wizard+ to query other users.
+    /// Returns access level as integer: 0=guest, 1=player, 2=wizard, 3=admin.
+    /// </summary>
+    private object QueryAccessLevelEfun(List<object> args)
+    {
+        if (args.Count > 1)
+        {
+            throw new EfunException("query_access_level() takes 0 or 1 argument");
+        }
+
+        if (args.Count == 0)
+        {
+            // Query self
+            return (long)GetCurrentAccessLevel();
+        }
+
+        if (args[0] is not string username)
+        {
+            throw new EfunException("query_access_level() argument must be a username string");
+        }
+
+        // Querying another user requires Wizard+ access
+        var currentUsername = GetCurrentUsername();
+        if (!string.Equals(username, currentUsername, StringComparison.OrdinalIgnoreCase))
+        {
+            RequireAccessLevel(AccessLevel.Wizard, "query_access_level (other user)");
+        }
+
+        var gameLoop = GameLoop.Instance;
+        if (gameLoop == null)
+        {
+            return 0L;
+        }
+
+        return (long)gameLoop.AccountManager.GetAccessLevel(username);
+    }
+
+    /// <summary>
+    /// homedir([username]) - Get wizard home directory path.
+    /// Without argument, returns current player's home directory.
+    /// With argument, requires Wizard+ to query other users.
+    /// Returns the path as a string, or 0 if user is not a wizard.
+    /// </summary>
+    private object HomedirEfun(List<object> args)
+    {
+        if (args.Count > 1)
+        {
+            throw new EfunException("homedir() takes 0 or 1 argument");
+        }
+
+        string? targetUsername;
+
+        if (args.Count == 0)
+        {
+            targetUsername = GetCurrentUsername();
+        }
+        else if (args[0] is string username)
+        {
+            targetUsername = username;
+
+            // Querying another user requires Wizard+ access
+            var currentUsername = GetCurrentUsername();
+            if (!string.Equals(username, currentUsername, StringComparison.OrdinalIgnoreCase))
+            {
+                RequireAccessLevel(AccessLevel.Wizard, "homedir (other user)");
+            }
+        }
+        else
+        {
+            throw new EfunException("homedir() argument must be a username string");
+        }
+
+        if (string.IsNullOrEmpty(targetUsername))
+        {
+            return 0;
+        }
+
+        var gameLoop = GameLoop.Instance;
+        if (gameLoop == null)
+        {
+            return 0;
+        }
+
+        // Check if user has wizard+ access
+        var level = gameLoop.AccountManager.GetAccessLevel(targetUsername);
+        if (level < AccessLevel.Wizard)
+        {
+            return 0; // Not a wizard, no home directory
+        }
+
+        return $"/wizards/{targetUsername.ToLowerInvariant()}";
     }
 
     #endregion
@@ -3190,6 +3636,7 @@ public class ObjectInterpreter
 
     /// <summary>
     /// update(path) - Hot-reload an object and all objects that depend on it.
+    /// Requires Wizard+ access level and path access.
     /// Returns the number of objects successfully updated.
     /// </summary>
     private object UpdateEfun(List<object> args)
@@ -3203,6 +3650,10 @@ public class ObjectInterpreter
         {
             throw new EfunException("update() argument must be a path string");
         }
+
+        // Permission check: require Wizard+ and path access
+        RequireAccessLevel(AccessLevel.Wizard, "update");
+        RequirePathAccess(path, "update", isWrite: false);
 
         return _objectManager.UpdateObject(path);
     }
