@@ -6,6 +6,8 @@ inherit "/std/living";
 string monster_name;
 int aggressive;
 int xp_value;
+string *drop_items;
+int drop_chance;  // Percentage chance to drop (default 100)
 
 void create() {
     ::create();
@@ -13,6 +15,39 @@ void create() {
     monster_name = "monster";
     aggressive = 0;
     xp_value = 10;
+    drop_items = ({});
+    drop_chance = 100;
+}
+
+// Add an item that this monster drops on death
+void add_drop(string item_path) {
+    drop_items = drop_items + ({ item_path });
+}
+
+// Set multiple drops at once
+void set_drops(string *items) {
+    drop_items = items;
+}
+
+// Set drop chance percentage (0-100)
+void set_drop_chance(int chance) {
+    drop_chance = chance;
+}
+
+// Create drop items in monster's inventory (called after create)
+void setup_drops() {
+    int i;
+    object item;
+
+    for (i = 0; i < sizeof(drop_items); i++) {
+        // Check drop chance
+        if (random(100) < drop_chance) {
+            item = clone_object(drop_items[i]);
+            if (item) {
+                move_object(item, this_object());
+            }
+        }
+    }
 }
 
 string query_name() {
@@ -123,4 +158,13 @@ void die() {
 
     // Destruct the monster
     destruct(this_object());
+}
+
+// Called after create() - set up drops
+void reset() {
+    // Only set up drops if we don't have inventory yet
+    // (prevents re-creating drops on room reset)
+    if (sizeof(all_inventory(this_object())) == 0) {
+        setup_drops();
+    }
 }

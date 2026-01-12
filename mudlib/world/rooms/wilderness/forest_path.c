@@ -16,7 +16,7 @@ void create() {
     );
 
     add_exit("north", "/world/rooms/wilderness/crossroads");
-    add_exit("south", "/world/rooms/wilderness/deep_forest");
+    add_exit("south", "/world/rooms/wilderness/spider_nest");
 
     // Hidden exit - only those who look carefully might find it
     add_hidden_exit("west", "/world/rooms/wilderness/hidden_grove");

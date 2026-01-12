@@ -15,7 +15,8 @@ void create() {
         "distance - this is wild country, best traveled with caution."
     );
 
-    add_exit("north", "/world/rooms/wilderness/forest_path");
+    add_exit("northwest", "/world/rooms/wilderness/snake_pit");
+    add_exit("northeast", "/world/rooms/wilderness/wolf_den");
 
     // An aggressive orc guards these woods
     add_spawn("/world/mobs/orc");

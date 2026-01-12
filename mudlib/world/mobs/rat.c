@@ -24,4 +24,7 @@ void create() {
 
     // Small XP reward
     set_xp_value(5);
+
+    // Drop a rat tooth
+    add_drop("/world/items/weapons/rat_tooth");
 }
