@@ -269,3 +269,172 @@ int remove_armor_obj(object armor) {
 
     return 0;
 }
+
+// Start combat with a target
+void start_combat(object target) {
+    if (!target) {
+        return;
+    }
+
+    // Don't attack yourself
+    if (target == this_object()) {
+        return;
+    }
+
+    // Don't attack non-living things
+    if (!call_other(target, "is_living")) {
+        return;
+    }
+
+    // Already fighting this target
+    if (attacker == target && in_combat) {
+        return;
+    }
+
+    attacker = target;
+    in_combat = 1;
+
+    // Start heartbeat for combat rounds
+    set_heart_beat(1);
+
+    // Make target fight back
+    if (!call_other(target, "query_in_combat")) {
+        call_other(target, "start_combat", this_object());
+    }
+}
+
+// Stop combat
+void stop_combat() {
+    in_combat = 0;
+    attacker = 0;
+    set_heart_beat(0);
+}
+
+// Receive damage from an attacker
+// Returns actual damage taken
+int receive_damage(int amount, object from) {
+    int actual;
+    int armor_value;
+
+    // Apply armor reduction
+    armor_value = query_total_armor();
+    actual = amount - armor_value;
+
+    // Always do at least 1 damage
+    if (actual < 1) {
+        actual = 1;
+    }
+
+    hp = hp - actual;
+
+    // Check for death
+    if (hp <= 0) {
+        hp = 0;
+        die();
+    }
+
+    return actual;
+}
+
+// Execute one attack against current target
+void do_attack() {
+    int hit_roll;
+    int hit_chance;
+    int damage;
+    int actual_damage;
+    string my_name;
+    string target_name;
+    object room;
+
+    if (!attacker || !in_combat) {
+        stop_combat();
+        return;
+    }
+
+    // Check if attacker is still valid and in same room
+    if (!attacker || environment(attacker) != environment(this_object())) {
+        stop_combat();
+        return;
+    }
+
+    // Check if attacker is dead
+    if (call_other(attacker, "query_hp") <= 0) {
+        stop_combat();
+        return;
+    }
+
+    room = environment(this_object());
+    my_name = query_short();
+    target_name = call_other(attacker, "query_short");
+
+    // Roll to hit
+    hit_chance = query_hit_chance(attacker);
+    hit_roll = random(100);
+
+    if (hit_roll < hit_chance) {
+        // Hit!
+        damage = query_damage();
+        actual_damage = call_other(attacker, "receive_damage", damage, this_object());
+
+        // Messages
+        tell_object(this_object(), "You hit " + target_name + " for " + actual_damage + " damage.\n");
+        tell_object(attacker, capitalize(my_name) + " hits you for " + actual_damage + " damage.\n");
+
+        // Tell room (excluding combatants)
+        if (room) {
+            object *others;
+            int i;
+            others = all_inventory(room);
+            for (i = 0; i < sizeof(others); i++) {
+                if (others[i] != this_object() && others[i] != attacker) {
+                    if (call_other(others[i], "is_living")) {
+                        tell_object(others[i], capitalize(my_name) + " hits " + target_name + ".\n");
+                    }
+                }
+            }
+        }
+    } else {
+        // Miss!
+        tell_object(this_object(), "You miss " + target_name + ".\n");
+        tell_object(attacker, capitalize(my_name) + " misses you.\n");
+
+        // Tell room
+        if (room) {
+            object *others;
+            int i;
+            others = all_inventory(room);
+            for (i = 0; i < sizeof(others); i++) {
+                if (others[i] != this_object() && others[i] != attacker) {
+                    if (call_other(others[i], "is_living")) {
+                        tell_object(others[i], capitalize(my_name) + " misses " + target_name + ".\n");
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Heartbeat - called every 2 seconds
+// Handles combat rounds
+void heart_beat() {
+    // If in combat, execute an attack
+    if (in_combat && attacker) {
+        do_attack();
+    } else {
+        // Not in combat, disable heartbeat
+        set_heart_beat(0);
+    }
+}
+
+// Virtual die function - override in subclasses
+void die() {
+    // Base implementation - stop combat
+    stop_combat();
+
+    // Notify room
+    object room;
+    room = environment(this_object());
+    if (room) {
+        tell_room(room, capitalize(query_short()) + " dies.\n");
+    }
+}
