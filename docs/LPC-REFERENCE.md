@@ -853,6 +853,9 @@ int do_pull(string arg) {
 | `trim(str)` | Remove leading/trailing whitespace |
 | `strsrch(str, substr)` | Find position of substring (-1 if not found) |
 | `sscanf(str, fmt, vars...)` | Parse formatted string into variables (see below) |
+| `regexp(arr, pattern)` | Filter array by regex pattern |
+| `regmatch(str, pattern)` | Find regex match position (-1 if not found) |
+| `regexplode(str, pattern)` | Split string by regex (includes matches) |
 
 **sprintf format specifiers:**
 - `%s` - String

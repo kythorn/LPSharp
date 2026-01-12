@@ -50,6 +50,11 @@ public class EfunRegistry
         Register("ctime", Ctime);
         Register("localtime", Localtime);
 
+        // Regular expression functions
+        Register("regexp", Regexp);
+        Register("regmatch", Regmatch);
+        Register("regexplode", Regexplode);
+
         // Array functions
         Register("sort_array", SortArray);
         Register("unique_array", UniqueArray);
@@ -876,6 +881,155 @@ public class EfunRegistry
 
         return result;
     }
+
+    #region Regular Expression Functions
+
+    /// <summary>
+    /// regexp(array, pattern) - Filter an array by regex pattern.
+    /// Returns a new array containing only elements that match the pattern.
+    /// </summary>
+    private static object Regexp(List<object> args)
+    {
+        if (args.Count != 2)
+        {
+            throw new EfunException("regexp() requires exactly 2 arguments");
+        }
+
+        if (args[0] is not List<object> arr)
+        {
+            throw new EfunException("regexp() first argument must be an array");
+        }
+
+        if (args[1] is not string pattern)
+        {
+            throw new EfunException("regexp() second argument must be a pattern string");
+        }
+
+        try
+        {
+            var regex = new System.Text.RegularExpressions.Regex(pattern);
+            var result = new List<object>();
+
+            foreach (var item in arr)
+            {
+                var str = item?.ToString() ?? "";
+                if (regex.IsMatch(str))
+                {
+                    result.Add(item ?? 0);
+                }
+            }
+
+            return result;
+        }
+        catch (System.ArgumentException ex)
+        {
+            throw new EfunException($"Invalid regular expression: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// regmatch(string, pattern, [start]) - Find regex match position.
+    /// Returns the starting index of the first match, or -1 if no match.
+    /// Optional start parameter specifies where to begin searching.
+    /// </summary>
+    private static object Regmatch(List<object> args)
+    {
+        if (args.Count < 2 || args.Count > 3)
+        {
+            throw new EfunException("regmatch() requires 2 or 3 arguments");
+        }
+
+        if (args[0] is not string str)
+        {
+            throw new EfunException("regmatch() first argument must be a string");
+        }
+
+        if (args[1] is not string pattern)
+        {
+            throw new EfunException("regmatch() second argument must be a pattern string");
+        }
+
+        int start = 0;
+        if (args.Count == 3)
+        {
+            start = Convert.ToInt32(args[2]);
+            if (start < 0) start = 0;
+            if (start >= str.Length) return -1L;
+        }
+
+        try
+        {
+            var regex = new System.Text.RegularExpressions.Regex(pattern);
+            var match = regex.Match(str, start);
+
+            if (match.Success)
+            {
+                return (long)match.Index;
+            }
+
+            return -1L;
+        }
+        catch (System.ArgumentException ex)
+        {
+            throw new EfunException($"Invalid regular expression: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// regexplode(string, pattern) - Split a string by regex pattern.
+    /// Returns an array of strings split by the pattern.
+    /// The matched delimiters are included as separate array elements.
+    /// </summary>
+    private static object Regexplode(List<object> args)
+    {
+        if (args.Count != 2)
+        {
+            throw new EfunException("regexplode() requires exactly 2 arguments");
+        }
+
+        if (args[0] is not string str)
+        {
+            throw new EfunException("regexplode() first argument must be a string");
+        }
+
+        if (args[1] is not string pattern)
+        {
+            throw new EfunException("regexplode() second argument must be a pattern string");
+        }
+
+        try
+        {
+            var regex = new System.Text.RegularExpressions.Regex(pattern);
+            var result = new List<object>();
+            var lastEnd = 0;
+
+            foreach (System.Text.RegularExpressions.Match match in regex.Matches(str))
+            {
+                // Add text before the match
+                if (match.Index > lastEnd)
+                {
+                    result.Add(str.Substring(lastEnd, match.Index - lastEnd));
+                }
+                // Add the matched text
+                result.Add(match.Value);
+                lastEnd = match.Index + match.Length;
+            }
+
+            // Add remaining text after last match
+            if (lastEnd < str.Length)
+            {
+                result.Add(str.Substring(lastEnd));
+            }
+
+            return result;
+        }
+        catch (System.ArgumentException ex)
+        {
+            throw new EfunException($"Invalid regular expression: {ex.Message}");
+        }
+    }
+
+    #endregion
 
     #region Array Functions
 
