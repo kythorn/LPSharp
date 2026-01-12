@@ -220,6 +220,15 @@ public class AccountManager
 
             // Get/take aliases
             { "take", "get" },
+
+            // Combat aliases
+            { "k", "attack" },
+            { "kill", "attack" },
+
+            // Equipment aliases
+            { "eq", "score" },
+            { "stat", "score" },
+            { "stats", "score" },
         };
     }
 

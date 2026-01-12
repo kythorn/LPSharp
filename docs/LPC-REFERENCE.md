@@ -670,9 +670,16 @@ Efuns are functions provided by the driver, callable from any LPC code.
 | Efun | Description |
 |------|-------------|
 | `set_heart_beat(flag)` | Enable/disable heartbeat for this object |
+| `set_reset(seconds)` | Enable periodic reset() at interval (0 to disable) |
+| `query_reset(obj)` | Get reset interval for object (0 if disabled) |
 | `call_out(func, delay, args...)` | Schedule delayed function call |
 | `remove_call_out(func)` | Cancel pending callout |
 | `find_call_out(func)` | Get time until callout fires |
+
+**Reset System:**
+- `reset()` is called immediately after `create()` completes
+- Use `set_reset(seconds)` to enable periodic reset calls
+- Rooms use reset for monster spawning; default interval is 60 seconds
 
 ### Shadows
 
