@@ -1,6 +1,28 @@
 namespace Driver;
 
 /// <summary>
+/// Function visibility modifiers for access control (authentic LPC semantics).
+/// </summary>
+[Flags]
+public enum FunctionVisibility
+{
+    /// <summary>Default - callable via call_other and inherited</summary>
+    Public = 0,
+
+    /// <summary>Not callable via call_other AND not inherited (local only)</summary>
+    Private = 1,
+
+    /// <summary>Not callable via call_other, but IS inherited (LPC static != C++ static)</summary>
+    Static = 2,
+
+    /// <summary>Callable from within object and subclasses, but not via call_other</summary>
+    Protected = 4,
+
+    /// <summary>Cannot be overridden in inheriting objects</summary>
+    Nomask = 8,
+}
+
+/// <summary>
 /// Base class for all AST expression nodes.
 /// </summary>
 public abstract record Expression
@@ -224,8 +246,14 @@ public record InheritStatement(string Path) : Statement;
 public record VariableDeclaration(string Type, string Name, Expression? Initializer) : Statement;
 
 /// <summary>
-/// Function definition: type name(params) { body }
+/// Function definition: [visibility] type name(params) { body }
 /// Type is stored as string for now (int, string, void, object, etc.)
 /// Parameters are stored as strings for now (will add types later).
+/// Visibility defaults to Public if not specified.
 /// </summary>
-public record FunctionDefinition(string ReturnType, string Name, List<string> Parameters, Statement Body) : Statement;
+public record FunctionDefinition(
+    string ReturnType,
+    string Name,
+    List<string> Parameters,
+    Statement Body,
+    FunctionVisibility Visibility = FunctionVisibility.Public) : Statement;

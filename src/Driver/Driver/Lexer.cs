@@ -28,6 +28,12 @@ public class Lexer
         ["mapping"] = TokenType.Mapping,
         ["mixed"] = TokenType.Mixed,
         ["void"] = TokenType.Void,
+        // Visibility modifiers
+        ["public"] = TokenType.Public,
+        ["private"] = TokenType.Private,
+        ["protected"] = TokenType.Protected,
+        ["static"] = TokenType.Static,
+        ["nomask"] = TokenType.Nomask,
     };
 
     public Lexer(string source)

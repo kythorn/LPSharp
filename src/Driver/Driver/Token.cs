@@ -30,6 +30,13 @@ public enum TokenType
     Mixed,
     Void,
 
+    // Visibility modifiers
+    Public,
+    Private,
+    Protected,
+    Static,
+    Nomask,
+
     // Arithmetic operators
     Plus,           // +
     Minus,          // -

@@ -913,6 +913,19 @@ public class ObjectInterpreter
             args.Add(Evaluate(arg));
         }
 
+        // Find the function and check visibility (arrow is just syntactic sugar for call_other)
+        var func = targetObj.FindFunction(arrow.FunctionName);
+        if (func == null)
+        {
+            return 0L; // Function not found
+        }
+
+        // Security check: private, protected, and static functions cannot be called via arrow/call_other
+        if ((func.Visibility & (FunctionVisibility.Private | FunctionVisibility.Protected | FunctionVisibility.Static)) != 0)
+        {
+            return 0L; // Act as if function doesn't exist
+        }
+
         // Call the function on the target object
         try
         {
@@ -1828,6 +1841,13 @@ public class ObjectInterpreter
         if (func == null)
         {
             // LPC convention: return 0 if function not found
+            return 0;
+        }
+
+        // Security check: private, protected, and static functions cannot be called via call_other
+        if ((func.Visibility & (FunctionVisibility.Private | FunctionVisibility.Protected | FunctionVisibility.Static)) != 0)
+        {
+            // LPC convention: return 0 as if function doesn't exist (don't reveal existence)
             return 0;
         }
 

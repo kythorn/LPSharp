@@ -292,6 +292,118 @@ player->tell("Hello Bob!\n");
 call_other(player, "tell", "Hello!\n");
 ```
 
+### Function Visibility Modifiers
+
+Visibility modifiers control how functions can be accessed. These follow authentic LPC/LDMud semantics.
+
+| Modifier | call_other/`->` | Inherited? | Use Case |
+|----------|-----------------|------------|----------|
+| (none/public) | Yes | Yes | Public API for other objects |
+| `static` | **No** | Yes | Internal helper shared with children |
+| `private` | No | **No** | Implementation detail, not shared |
+| `protected` | No | Yes | Protected API for children only |
+| `nomask` | Yes | Yes | Cannot be overridden |
+
+**Important:** LPC `static` is different from C++! In LPC, `static` means "not callable externally" but still inherits to children.
+
+#### When to Use Each Modifier
+
+**public (default)** - Use for functions that other objects need to call:
+```c
+// /std/player.c
+// Other objects call player->tell() to send messages
+void tell(string msg) {
+    write(msg);
+}
+
+// Commands call player->set_hp() to modify health
+void set_hp(int hp) {
+    this_player()->hp = hp;
+}
+```
+
+**static** - Use for internal helpers that children should inherit but external code shouldn't call:
+```c
+// /std/living.c
+// Internal combat calculation - children inherit it, but not call_other accessible
+static int calculate_damage(int base, int modifier) {
+    return base * modifier / 100;
+}
+
+void attack(object target) {
+    int dmg = calculate_damage(strength, weapon_bonus);  // Internal call works
+    target->receive_damage(dmg);
+}
+
+// /std/monster.c
+inherit "/std/living";
+// Monster can call calculate_damage() because static is inherited
+void special_attack(object target) {
+    int dmg = calculate_damage(strength * 2, 150);
+    target->receive_damage(dmg);
+}
+```
+
+**private** - Use for implementation details that shouldn't be inherited at all:
+```c
+// /std/container.c
+// Implementation detail - only this file should know about it
+private void recalculate_weight() {
+    total_weight = 0;
+    foreach(object o in contents) {
+        total_weight += o->query_weight();
+    }
+}
+
+void add_item(object item) {
+    contents += ({ item });
+    recalculate_weight();  // Internal call works
+}
+
+// /obj/chest.c
+inherit "/std/container";
+// recalculate_weight() is NOT available here - it's private
+// If you try to call it, the call fails
+```
+
+**protected** - Use for functions children can override but external code shouldn't call:
+```c
+// /std/monster.c
+// Subclasses override this, but players can't call monster->get_loot_table()
+protected mixed *get_loot_table() {
+    return ({ "/obj/gold", "/obj/gem" });
+}
+
+void die() {
+    foreach(string path in get_loot_table()) {
+        clone_object(path)->move(environment());
+    }
+    destruct(this_object());
+}
+
+// /world/dragon.c
+inherit "/std/monster";
+// Override the protected function with dragon-specific loot
+protected mixed *get_loot_table() {
+    return ({ "/obj/dragon_scale", "/obj/treasure_chest" });
+}
+```
+
+**nomask** - Use for functions that must not be overridden (security-critical):
+```c
+// /std/player.c
+// Security: don't let wizard code override this to cheat
+nomask int query_level() {
+    return level;
+}
+
+// Inherited objects cannot override query_level()
+```
+
+#### Security Note
+
+The visibility check only applies to external calls via `call_other()` and the arrow operator (`->`). Code executing within the same object or inheritance chain can always call any function directly.
+
 ## Objects and Inheritance
 
 ### Inherit

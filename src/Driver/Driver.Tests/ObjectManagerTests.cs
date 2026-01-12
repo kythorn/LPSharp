@@ -442,4 +442,164 @@ void set_weapon_type(string type) {
             Directory.Delete(tempDir, true);
         }
     }
+
+    #region Function Visibility Tests
+
+    [Fact]
+    public void CallOther_PublicFunction_Succeeds()
+    {
+        var tempDir = CreateVisibilityMudlib();
+        var om = new ObjectManager(tempDir);
+        om.InitializeInterpreter();
+
+        var obj = om.LoadObject("/test/visibility");
+        // Use call_other efun: call_other(object, "function_name", args...)
+        var result = om.Interpreter!.CallEfun("call_other", new List<object> { obj, "public_func" });
+
+        Assert.Equal(1L, result);
+
+        CleanupTemp(tempDir);
+    }
+
+    [Fact]
+    public void CallOther_PrivateFunction_ReturnsZero()
+    {
+        var tempDir = CreateVisibilityMudlib();
+        var om = new ObjectManager(tempDir);
+        om.InitializeInterpreter();
+
+        var obj = om.LoadObject("/test/visibility");
+        var result = om.Interpreter!.CallEfun("call_other", new List<object> { obj, "private_func" });
+
+        Assert.Equal(0, result); // Returns 0 as if function doesn't exist
+
+        CleanupTemp(tempDir);
+    }
+
+    [Fact]
+    public void CallOther_StaticFunction_ReturnsZero()
+    {
+        var tempDir = CreateVisibilityMudlib();
+        var om = new ObjectManager(tempDir);
+        om.InitializeInterpreter();
+
+        var obj = om.LoadObject("/test/visibility");
+        var result = om.Interpreter!.CallEfun("call_other", new List<object> { obj, "static_func" });
+
+        Assert.Equal(0, result); // Static = not callable via call_other
+
+        CleanupTemp(tempDir);
+    }
+
+    [Fact]
+    public void CallOther_ProtectedFunction_ReturnsZero()
+    {
+        var tempDir = CreateVisibilityMudlib();
+        var om = new ObjectManager(tempDir);
+        om.InitializeInterpreter();
+
+        var obj = om.LoadObject("/test/visibility");
+        var result = om.Interpreter!.CallEfun("call_other", new List<object> { obj, "protected_func" });
+
+        Assert.Equal(0, result); // Protected = not callable via call_other
+
+        CleanupTemp(tempDir);
+    }
+
+    [Fact]
+    public void Inheritance_PrivateFunction_NotInherited()
+    {
+        var tempDir = CreateVisibilityMudlib();
+        var om = new ObjectManager(tempDir);
+        om.InitializeInterpreter();
+
+        // Load child object and try to call inherited private function
+        var obj = om.LoadObject("/test/child");
+
+        // Call test_private_inherited which tries to call private_func()
+        // Since private is not inherited, it should call the child's version (returns 100)
+        var result = om.Interpreter!.CallFunctionOnObject(obj, "test_private_inherited", new List<object>());
+
+        Assert.Equal(100L, result); // Child's version, not parent's (which would return 2)
+
+        CleanupTemp(tempDir);
+    }
+
+    [Fact]
+    public void Inheritance_StaticFunction_IsInherited()
+    {
+        var tempDir = CreateVisibilityMudlib();
+        var om = new ObjectManager(tempDir);
+        om.InitializeInterpreter();
+
+        // Load child object and try to call inherited static function
+        var obj = om.LoadObject("/test/child");
+
+        // Call test_static_inherited which tries to call static_func()
+        // Since static IS inherited (LPC semantics), it should find parent's version
+        var result = om.Interpreter!.CallFunctionOnObject(obj, "test_static_inherited", new List<object>());
+
+        Assert.Equal(3L, result); // Parent's static_func returns 3
+
+        CleanupTemp(tempDir);
+    }
+
+    private string CreateVisibilityMudlib()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "lpc_vis_test_" + Guid.NewGuid().ToString("N")[..8]);
+        Directory.CreateDirectory(tempDir);
+        Directory.CreateDirectory(Path.Combine(tempDir, "test"));
+
+        // Create /test/visibility.c with functions of different visibilities
+        File.WriteAllText(Path.Combine(tempDir, "test", "visibility.c"), @"
+int public_func() {
+    return 1;
+}
+
+private int private_func() {
+    return 2;
+}
+
+static int static_func() {
+    return 3;
+}
+
+protected int protected_func() {
+    return 4;
+}
+
+// Public function that can call the private ones from within
+int call_private_internal() {
+    return private_func();
+}
+
+int call_static_internal() {
+    return static_func();
+}
+");
+
+        // Create /test/child.c that inherits from visibility.c
+        File.WriteAllText(Path.Combine(tempDir, "test", "child.c"), @"
+inherit ""/test/visibility"";
+
+// Child's own private_func - should not conflict with parent's private one
+private int private_func() {
+    return 100;
+}
+
+// Test if private is inherited (it shouldn't be)
+int test_private_inherited() {
+    return private_func(); // Should call child's version (100), not parent's (2)
+}
+
+// Test if static is inherited (it should be in LPC)
+int test_static_inherited() {
+    return static_func(); // Should find parent's static_func (3)
+}
+");
+
+        return tempDir;
+    }
+
+    #endregion
 }

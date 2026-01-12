@@ -123,21 +123,28 @@ public class Parser
 
     private bool IsFunctionDefinitionStart()
     {
-        // Function definition pattern: type identifier(
-        // Type is either a keyword (int, string, void, etc.) or an identifier
-        if (!IsTypeName(Current().Type))
+        // Function definition pattern: [visibility...] type identifier(
+        // Skip any visibility modifiers first
+        var offset = 0;
+        while (_position + offset < _tokens.Count && IsVisibilityModifier(_tokens[_position + offset].Type))
+        {
+            offset++;
+        }
+
+        // Now check for type name
+        if (_position + offset >= _tokens.Count || !IsTypeName(_tokens[_position + offset].Type))
         {
             return false;
         }
 
         // Look ahead for identifier followed by (
-        if (_position + 2 >= _tokens.Count)
+        if (_position + offset + 2 >= _tokens.Count)
         {
             return false;
         }
 
-        var second = _tokens[_position + 1];
-        var third = _tokens[_position + 2];
+        var second = _tokens[_position + offset + 1];
+        var third = _tokens[_position + offset + 2];
 
         return second.Type == TokenType.Identifier && third.Type == TokenType.LeftParen;
     }
@@ -148,6 +155,12 @@ public class Parser
         return type is TokenType.Int or TokenType.StringType or TokenType.Void
             or TokenType.Object or TokenType.Mixed or TokenType.Mapping
             or TokenType.Identifier; // for user-defined types
+    }
+
+    private static bool IsVisibilityModifier(TokenType type)
+    {
+        return type is TokenType.Public or TokenType.Private
+            or TokenType.Protected or TokenType.Static or TokenType.Nomask;
     }
 
     /// <summary>
@@ -228,6 +241,22 @@ public class Parser
     {
         var startToken = Current();
 
+        // Parse visibility modifiers (can have multiple: "private static", "nomask public", etc.)
+        var visibility = FunctionVisibility.Public;
+        while (IsVisibilityModifier(Current().Type))
+        {
+            visibility |= Current().Type switch
+            {
+                TokenType.Public => FunctionVisibility.Public,
+                TokenType.Private => FunctionVisibility.Private,
+                TokenType.Protected => FunctionVisibility.Protected,
+                TokenType.Static => FunctionVisibility.Static,
+                TokenType.Nomask => FunctionVisibility.Nomask,
+                _ => FunctionVisibility.Public
+            };
+            Advance();
+        }
+
         // Capture return type
         var returnType = Current().Lexeme;
         Advance();
@@ -277,7 +306,7 @@ public class Parser
         }
         var body = ParseBlockStatement();
 
-        return new FunctionDefinition(returnType, name, parameters, body)
+        return new FunctionDefinition(returnType, name, parameters, body, visibility)
         {
             Line = startToken.Line,
             Column = startToken.Column

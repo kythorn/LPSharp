@@ -55,6 +55,7 @@ public class LpcProgram
     /// <summary>
     /// Finds a function in this program or its inheritance chain.
     /// Searches depth-first through inherited programs.
+    /// Private functions are not inherited (but static functions ARE inherited).
     /// </summary>
     /// <param name="name">Function name to find</param>
     /// <returns>Function definition or null if not found</returns>
@@ -66,10 +67,39 @@ public class LpcProgram
             return func;
         }
 
+        // Check inherited programs in order (private functions are NOT inherited)
+        foreach (var inherited in InheritedPrograms)
+        {
+            var result = inherited.FindFunctionExcludingPrivate(name);
+            if (result != null)
+            {
+                return result;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Finds a function excluding private functions (for inheritance lookup).
+    /// In LPC: private = not inherited, static = inherited but not call_other callable.
+    /// </summary>
+    private FunctionDefinition? FindFunctionExcludingPrivate(string name)
+    {
+        // Check this program first, but skip private functions
+        if (Functions.TryGetValue(name, out var func))
+        {
+            if ((func.Visibility & FunctionVisibility.Private) == 0)
+            {
+                return func;
+            }
+            // Private function found but not returned - keep searching parents
+        }
+
         // Check inherited programs in order
         foreach (var inherited in InheritedPrograms)
         {
-            var result = inherited.FindFunction(name);
+            var result = inherited.FindFunctionExcludingPrivate(name);
             if (result != null)
             {
                 return result;
@@ -83,6 +113,7 @@ public class LpcProgram
     /// Finds a function in this program or its inheritance chain,
     /// returning both the function and the program it was defined in.
     /// This is needed for correct :: (parent call) behavior.
+    /// Private functions are not inherited.
     /// </summary>
     /// <param name="name">Function name to find</param>
     /// <returns>Tuple of (function, owning program) or (null, null) if not found</returns>
@@ -94,10 +125,37 @@ public class LpcProgram
             return (func, this);
         }
 
+        // Check inherited programs in order (private functions are NOT inherited)
+        foreach (var inherited in InheritedPrograms)
+        {
+            var result = inherited.FindFunctionWithProgramExcludingPrivate(name);
+            if (result.Function != null)
+            {
+                return result;
+            }
+        }
+
+        return (null, null);
+    }
+
+    /// <summary>
+    /// Finds a function excluding private functions (for inheritance lookup with program).
+    /// </summary>
+    private (FunctionDefinition? Function, LpcProgram? OwningProgram) FindFunctionWithProgramExcludingPrivate(string name)
+    {
+        // Check this program first, but skip private functions
+        if (Functions.TryGetValue(name, out var func))
+        {
+            if ((func.Visibility & FunctionVisibility.Private) == 0)
+            {
+                return (func, this);
+            }
+        }
+
         // Check inherited programs in order
         foreach (var inherited in InheritedPrograms)
         {
-            var result = inherited.FindFunctionWithProgram(name);
+            var result = inherited.FindFunctionWithProgramExcludingPrivate(name);
             if (result.Function != null)
             {
                 return result;

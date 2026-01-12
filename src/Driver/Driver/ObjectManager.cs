@@ -60,6 +60,11 @@ public class ObjectManager
     /// </summary>
     private ObjectInterpreter? _interpreter;
 
+    /// <summary>
+    /// Public accessor for interpreter (for testing).
+    /// </summary>
+    public ObjectInterpreter? Interpreter => _interpreter;
+
     public ObjectManager(string mudlibPath)
     {
         MudlibPath = Path.GetFullPath(mudlibPath);
