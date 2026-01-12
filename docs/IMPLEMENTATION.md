@@ -599,6 +599,17 @@ void run_tests() {
 - Priority queue for efficient callout management
 - Used for: combat rounds, AI, regeneration, ambient effects, respawn timers
 
+**Login & Registration System:**
+- Full registration flow: username, email, password (with confirmation)
+- Login flow: username + password authentication
+- Password hashing with PBKDF2 (SHA256, 100,000 iterations)
+- Account data stored as JSON in `/secure/accounts/`
+- Telnet echo suppression for password input
+- Username validation (3-20 letters only)
+- Password validation (8+ characters minimum)
+- Session state machine tracking login progress
+- Players always start in town square after login
+
 **Commands:**
 - `/cmds/say.c` - Say a message
 - `/cmds/look.c` - Look at room (shows description, exits)

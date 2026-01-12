@@ -189,7 +189,7 @@ public record OutputMessage
 /// <summary>
 /// Tracks a player's session in the game.
 /// </summary>
-public record PlayerSession
+public class PlayerSession
 {
     /// <summary>
     /// The connection ID for this session.
@@ -198,8 +198,9 @@ public record PlayerSession
 
     /// <summary>
     /// The player object for this session.
+    /// Null until authentication is complete.
     /// </summary>
-    public MudObject? PlayerObject { get; init; }
+    public MudObject? PlayerObject { get; set; }
 
     /// <summary>
     /// When this session was created.
@@ -216,6 +217,31 @@ public record PlayerSession
     /// If set, next input line goes to this handler instead of command parser.
     /// </summary>
     public InputHandler? PendingInputHandler { get; set; }
+
+    /// <summary>
+    /// Current state in the login flow.
+    /// </summary>
+    public LoginState LoginState { get; set; } = LoginState.Welcome;
+
+    /// <summary>
+    /// Username being registered or logged in (before player object exists).
+    /// </summary>
+    public string? PendingUsername { get; set; }
+
+    /// <summary>
+    /// Email being registered (before account created).
+    /// </summary>
+    public string? PendingEmail { get; set; }
+
+    /// <summary>
+    /// Password being registered (cleared after use).
+    /// </summary>
+    public string? PendingPassword { get; set; }
+
+    /// <summary>
+    /// Authenticated username after successful login.
+    /// </summary>
+    public string? AuthenticatedUsername { get; set; }
 }
 
 /// <summary>

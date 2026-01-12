@@ -9,6 +9,12 @@ namespace Driver;
 /// </summary>
 public class Connection : IDisposable
 {
+    // Telnet protocol constants
+    private const byte IAC = 255;   // Interpret As Command
+    private const byte WILL = 251;  // Will do option
+    private const byte WONT = 252;  // Won't do option
+    private const byte ECHO = 1;    // Echo option
+
     private readonly TcpClient _client;
     private readonly NetworkStream _stream;
     private readonly StreamWriter _writer;
@@ -53,6 +59,32 @@ public class Connection : IDisposable
     public void SendLine(string message)
     {
         Send(message + "\r\n");
+    }
+
+    /// <summary>
+    /// Control local echo on the client side.
+    /// When disabled, typed characters won't be echoed (for password input).
+    /// </summary>
+    /// <param name="enabled">True to enable echo, false to suppress.</param>
+    public void SetEchoMode(bool enabled)
+    {
+        if (!IsConnected) return;
+
+        try
+        {
+            // IAC WILL ECHO = server will handle echo (client should not echo)
+            // IAC WONT ECHO = server won't handle echo (client should echo)
+            byte[] command = enabled
+                ? new byte[] { IAC, WONT, ECHO }
+                : new byte[] { IAC, WILL, ECHO };
+
+            _stream.Write(command, 0, command.Length);
+            _stream.Flush();
+        }
+        catch (IOException)
+        {
+            // Connection closed
+        }
     }
 
     /// <summary>

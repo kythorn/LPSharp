@@ -51,6 +51,13 @@ public class TelnetServer : IDisposable
                 _pendingDisconnect.Add(connectionId);
             }
         };
+
+        // Set up callback for echo mode changes (password input)
+        _gameLoop.OnSetEchoMode = (connectionId, enabled) =>
+        {
+            var conn = FindConnection(connectionId);
+            conn?.SetEchoMode(enabled);
+        };
     }
 
     /// <summary>
@@ -120,11 +127,8 @@ public class TelnetServer : IDisposable
 
                 Console.WriteLine($"New connection: {connection.Id} from {client.Client.RemoteEndPoint}");
 
-                // Create player session in game loop
+                // Create player session in game loop (sends welcome banner)
                 _gameLoop.CreatePlayerSession(connection.Id);
-
-                // Send welcome message
-                connection.SendWelcome();
             }
             catch (Exception ex)
             {

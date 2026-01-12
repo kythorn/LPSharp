@@ -255,8 +255,11 @@ int Server(string[] args)
     var objectManager = new ObjectManager(mudlibPath);
     objectManager.InitializeInterpreter();
 
+    // Create account manager
+    var accountManager = new AccountManager(mudlibPath);
+
     // Create game loop
-    var gameLoop = new GameLoop(objectManager);
+    var gameLoop = new GameLoop(objectManager, accountManager);
 
     // Get the interpreter from ObjectManager and pass it to GameLoop
     // We need to access it via reflection or add a property

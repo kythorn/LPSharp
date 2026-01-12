@@ -34,6 +34,11 @@ public class GameLoop
     private readonly ObjectManager _objectManager;
 
     /// <summary>
+    /// The account manager for authentication.
+    /// </summary>
+    private readonly AccountManager _accountManager;
+
+    /// <summary>
     /// The object interpreter for executing LPC code.
     /// </summary>
     private ObjectInterpreter? _interpreter;
@@ -133,9 +138,16 @@ public class GameLoop
     /// </summary>
     public Action<string>? OnPlayerDisconnect { get; set; }
 
-    public GameLoop(ObjectManager objectManager)
+    /// <summary>
+    /// Callback invoked to set echo mode on a connection.
+    /// Set by TelnetServer to handle password input.
+    /// </summary>
+    public Action<string, bool>? OnSetEchoMode { get; set; }
+
+    public GameLoop(ObjectManager objectManager, AccountManager accountManager)
     {
         _objectManager = objectManager;
+        _accountManager = accountManager;
     }
 
     /// <summary>
@@ -230,54 +242,18 @@ public class GameLoop
 
     /// <summary>
     /// Create a player session for a new connection.
+    /// Does NOT create a player object - that happens after authentication.
     /// Called from network thread.
     /// </summary>
     public void CreatePlayerSession(string connectionId)
     {
-        MudObject? playerObject = null;
-        MudObject? startingRoom = null;
-
-        try
-        {
-            // Clone a player object for this connection
-            playerObject = _objectManager.CloneObject("/std/player");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Warning: Could not create player object: {ex.Message}");
-            // Create session without player object (will use fallback behavior)
-        }
-
-        // Try to load the starting room
-        try
-        {
-            startingRoom = _objectManager.LoadObject(StartingRoomPath);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Warning: Could not load starting room {StartingRoomPath}: {ex.Message}");
-        }
-
-        // Mark player as interactive and set connection info
-        if (playerObject != null)
-        {
-            playerObject.IsInteractive = true;
-            playerObject.ConnectionId = connectionId;
-        }
-
-        // Move player to starting room
-        if (playerObject != null && startingRoom != null)
-        {
-            playerObject.MoveTo(startingRoom);
-            Console.WriteLine($"Moved player to {StartingRoomPath}");
-        }
-
         var session = new PlayerSession
         {
             ConnectionId = connectionId,
-            PlayerObject = playerObject,
+            PlayerObject = null,  // No player until authenticated
             CreatedAt = DateTime.UtcNow,
-            LastActivity = DateTime.UtcNow
+            LastActivity = DateTime.UtcNow,
+            LoginState = LoginState.Welcome
         };
 
         lock (_sessionLock)
@@ -285,8 +261,29 @@ public class GameLoop
             _sessions[connectionId] = session;
         }
 
-        Console.WriteLine($"Created player session for {connectionId}" +
-            (playerObject != null ? $" with player object {playerObject.ObjectName}" : ""));
+        Console.WriteLine($"Created login session for {connectionId}");
+
+        // Send welcome banner
+        SendWelcomeBanner(connectionId);
+    }
+
+    /// <summary>
+    /// Send the welcome banner and initial login prompt.
+    /// </summary>
+    private void SendWelcomeBanner(string connectionId)
+    {
+        SendToPlayer(connectionId, "\r\n");
+        SendToPlayer(connectionId, "========================================\r\n");
+        SendToPlayer(connectionId, "       Welcome to LPMud Revival!        \r\n");
+        SendToPlayer(connectionId, "========================================\r\n");
+        SendToPlayer(connectionId, "\r\n");
+        SendToPlayer(connectionId, "Enter your name, or type 'new' to create a character: ");
+
+        var session = GetSession(connectionId);
+        if (session != null)
+        {
+            session.LoginState = LoginState.AwaitingName;
+        }
     }
 
     /// <summary>
@@ -712,6 +709,13 @@ public class GameLoop
 
             // Update last activity
             session.LastActivity = DateTime.UtcNow;
+        }
+
+        // Handle login states before player object exists
+        if (session.LoginState != LoginState.Playing)
+        {
+            ProcessLoginInput(session, cmd.Input);
+            return;
         }
 
         // Check for pending input handler (set by input_to)
@@ -1178,4 +1182,280 @@ public class GameLoop
     {
         SendToPlayer(connectionId, "> ");
     }
+
+    #region Login State Machine
+
+    /// <summary>
+    /// Process input during login/registration flow.
+    /// </summary>
+    private void ProcessLoginInput(PlayerSession session, string input)
+    {
+        input = input.Trim();
+
+        switch (session.LoginState)
+        {
+            case LoginState.AwaitingName:
+                HandleAwaitingName(session, input);
+                break;
+
+            case LoginState.AwaitingPassword:
+                HandleAwaitingPassword(session, input);
+                break;
+
+            case LoginState.RegistrationName:
+                HandleRegistrationName(session, input);
+                break;
+
+            case LoginState.RegistrationEmail:
+                HandleRegistrationEmail(session, input);
+                break;
+
+            case LoginState.RegistrationPassword:
+                HandleRegistrationPassword(session, input);
+                break;
+
+            case LoginState.RegistrationConfirm:
+                HandleRegistrationConfirm(session, input);
+                break;
+
+            default:
+                // Shouldn't happen, but reset to awaiting name
+                session.LoginState = LoginState.AwaitingName;
+                SendToPlayer(session.ConnectionId, "Enter your name, or type 'new': ");
+                break;
+        }
+    }
+
+    private void HandleAwaitingName(PlayerSession session, string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            SendToPlayer(session.ConnectionId, "Enter your name, or type 'new': ");
+            return;
+        }
+
+        if (input.Equals("new", StringComparison.OrdinalIgnoreCase))
+        {
+            session.LoginState = LoginState.RegistrationName;
+            SendToPlayer(session.ConnectionId, "\r\nChoose a username (letters only, 3-20 characters): ");
+            return;
+        }
+
+        // Check if account exists
+        if (!_accountManager.AccountExists(input))
+        {
+            SendToPlayer(session.ConnectionId, "Unknown user. Type 'new' to create a new character.\r\n");
+            SendToPlayer(session.ConnectionId, "Enter your name, or type 'new': ");
+            return;
+        }
+
+        session.PendingUsername = input.ToLowerInvariant();
+        session.LoginState = LoginState.AwaitingPassword;
+
+        // Suppress echo for password
+        OnSetEchoMode?.Invoke(session.ConnectionId, false);
+        SendToPlayer(session.ConnectionId, "Password: ");
+    }
+
+    private void HandleAwaitingPassword(PlayerSession session, string input)
+    {
+        // Restore echo
+        OnSetEchoMode?.Invoke(session.ConnectionId, true);
+        SendToPlayer(session.ConnectionId, "\r\n");
+
+        if (_accountManager.ValidateCredentials(session.PendingUsername!, input))
+        {
+            session.AuthenticatedUsername = session.PendingUsername;
+            _accountManager.UpdateLastLogin(session.AuthenticatedUsername!);
+            CompleteLogin(session);
+        }
+        else
+        {
+            SendToPlayer(session.ConnectionId, "Invalid password.\r\n\r\n");
+            session.PendingUsername = null;
+            session.LoginState = LoginState.AwaitingName;
+            SendToPlayer(session.ConnectionId, "Enter your name, or type 'new': ");
+        }
+    }
+
+    private void HandleRegistrationName(PlayerSession session, string input)
+    {
+        if (!IsValidUsername(input))
+        {
+            SendToPlayer(session.ConnectionId, "Invalid username. Use 3-20 letters only.\r\n");
+            SendToPlayer(session.ConnectionId, "Choose a username: ");
+            return;
+        }
+
+        if (_accountManager.AccountExists(input))
+        {
+            SendToPlayer(session.ConnectionId, "That name is already taken.\r\n");
+            SendToPlayer(session.ConnectionId, "Choose a username: ");
+            return;
+        }
+
+        session.PendingUsername = input.ToLowerInvariant();
+        session.LoginState = LoginState.RegistrationEmail;
+        SendToPlayer(session.ConnectionId, "Enter your email address: ");
+    }
+
+    private void HandleRegistrationEmail(PlayerSession session, string input)
+    {
+        // Basic email validation
+        if (string.IsNullOrWhiteSpace(input) || !input.Contains('@'))
+        {
+            SendToPlayer(session.ConnectionId, "Please enter a valid email address: ");
+            return;
+        }
+
+        session.PendingEmail = input;
+        session.LoginState = LoginState.RegistrationPassword;
+
+        OnSetEchoMode?.Invoke(session.ConnectionId, false);
+        SendToPlayer(session.ConnectionId, "Choose a password (8+ characters): ");
+    }
+
+    private void HandleRegistrationPassword(PlayerSession session, string input)
+    {
+        if (input.Length < 8)
+        {
+            SendToPlayer(session.ConnectionId, "\r\nPassword must be at least 8 characters.\r\n");
+            SendToPlayer(session.ConnectionId, "Choose a password: ");
+            return;
+        }
+
+        session.PendingPassword = input;
+        session.LoginState = LoginState.RegistrationConfirm;
+        SendToPlayer(session.ConnectionId, "\r\nConfirm password: ");
+    }
+
+    private void HandleRegistrationConfirm(PlayerSession session, string input)
+    {
+        OnSetEchoMode?.Invoke(session.ConnectionId, true);
+        SendToPlayer(session.ConnectionId, "\r\n");
+
+        if (input != session.PendingPassword)
+        {
+            SendToPlayer(session.ConnectionId, "Passwords do not match. Let's try again.\r\n\r\n");
+            session.PendingPassword = null;
+            session.LoginState = LoginState.RegistrationPassword;
+            OnSetEchoMode?.Invoke(session.ConnectionId, false);
+            SendToPlayer(session.ConnectionId, "Choose a password (8+ characters): ");
+            return;
+        }
+
+        // Create the account
+        if (_accountManager.CreateAccount(session.PendingUsername!, session.PendingEmail!, session.PendingPassword!))
+        {
+            // Clear sensitive data
+            session.PendingPassword = null;
+
+            SendToPlayer(session.ConnectionId, "\r\nAccount created successfully!\r\n\r\n");
+            session.AuthenticatedUsername = session.PendingUsername;
+            CompleteLogin(session);
+        }
+        else
+        {
+            session.PendingPassword = null;
+            SendToPlayer(session.ConnectionId, "Failed to create account. Please try again.\r\n\r\n");
+            session.LoginState = LoginState.AwaitingName;
+            SendToPlayer(session.ConnectionId, "Enter your name, or type 'new': ");
+        }
+    }
+
+    /// <summary>
+    /// Complete the login process and enter the game.
+    /// </summary>
+    private void CompleteLogin(PlayerSession session)
+    {
+        session.LoginState = LoginState.Authenticated;
+
+        try
+        {
+            // Clone a player object
+            var playerObject = _objectManager.CloneObject("/std/player");
+            playerObject.IsInteractive = true;
+            playerObject.ConnectionId = session.ConnectionId;
+
+            // Set player name
+            if (_interpreter != null && playerObject.FindFunction("set_name") != null)
+            {
+                _interpreter.CallFunctionOnObject(playerObject, "set_name",
+                    new List<object> { Capitalize(session.AuthenticatedUsername!) });
+            }
+
+            // Load starting room
+            MudObject? startingRoom = null;
+            try
+            {
+                startingRoom = _objectManager.LoadObject(StartingRoomPath);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Could not load starting room: {ex.Message}");
+            }
+
+            // Move player to starting room
+            if (startingRoom != null)
+            {
+                playerObject.MoveTo(startingRoom);
+            }
+
+            // Update session
+            session.PlayerObject = playerObject;
+            session.LoginState = LoginState.Playing;
+
+            SendToPlayer(session.ConnectionId, $"Welcome, {Capitalize(session.AuthenticatedUsername!)}!\r\n\r\n");
+
+            // Execute look command to show the room
+            ExecuteLookForPlayer(session);
+
+            SendPrompt(session.ConnectionId);
+
+            Console.WriteLine($"Player {session.AuthenticatedUsername} logged in from {session.ConnectionId}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error completing login: {ex.Message}");
+            SendToPlayer(session.ConnectionId, "Error entering game. Please reconnect.\r\n");
+            OnPlayerDisconnect?.Invoke(session.ConnectionId);
+        }
+    }
+
+    /// <summary>
+    /// Execute the look command for a player who just logged in.
+    /// </summary>
+    private void ExecuteLookForPlayer(PlayerSession session)
+    {
+        if (session.PlayerObject == null) return;
+
+        var context = new ExecutionContext
+        {
+            PlayerObject = session.PlayerObject,
+            ConnectionId = session.ConnectionId,
+            OutputQueue = _outputQueue,
+            CurrentVerb = "look",
+            CurrentArgs = ""
+        };
+
+        context.Execute(() =>
+        {
+            ExecuteCmdFile(session, "look", "");
+        });
+    }
+
+    private static bool IsValidUsername(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return false;
+        if (name.Length < 3 || name.Length > 20) return false;
+        return name.All(char.IsLetter);
+    }
+
+    private static string Capitalize(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return s;
+        return char.ToUpper(s[0]) + s[1..].ToLower();
+    }
+
+    #endregion
 }
