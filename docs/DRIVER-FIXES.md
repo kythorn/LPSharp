@@ -34,13 +34,16 @@ This document tracks critical driver fixes needed before serious mudlib developm
 **Problem:** Same account can log in multiple times simultaneously, creating multiple player objects.
 
 **Solution (implemented):**
-- On login, check if username already has active session
-- New session wins: kick existing session with notification
-- Existing player gets message: "Another login detected - you have been disconnected"
-- Old session is properly cleaned up (player object destructed, connection closed)
+- On login, check if username already has active (Playing) session
+- Prompt new user: "You are already logged in... Do you want to take over? (y/n)"
+- Y: kick existing session (notified: "Another login detected"), complete new login
+- N: disconnect new session ("Login cancelled")
+- Race condition protection via minimal lock only for session state transition
+- Final safety check in CompleteLogin handles rare concurrent logins
 
 **Files modified:**
-- `GameLoop.cs` - Added `FindSessionByUsername()`, `KickSession()`, duplicate check in `CompleteLogin()`
+- `LoginState.cs` - Added `ConfirmTakeover` state
+- `GameLoop.cs` - Added `FindSessionByUsername()`, `KickSession()`, `CheckAndPromptForDuplicateSession()`, `HandleConfirmTakeover()`
 
 ---
 
