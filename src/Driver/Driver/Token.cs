@@ -36,6 +36,7 @@ public enum TokenType
     Protected,
     Static,
     Nomask,
+    Varargs,
 
     // Error handling
     Catch,

@@ -453,6 +453,35 @@ nomask int query_level() {
 
 The visibility check only applies to external calls via `call_other()` and the arrow operator (`->`). Code executing within the same object or inheritance chain can always call any function directly.
 
+### Varargs Functions
+
+The `varargs` modifier allows functions to accept variable numbers of arguments. Missing arguments default to 0.
+
+```c
+// All parameters become optional
+varargs void setup(string name, int level, string desc) {
+    // name defaults to 0 if not provided
+    // level defaults to 0 if not provided
+    // desc defaults to 0 if not provided
+}
+
+// Can combine with visibility
+private varargs int damage(int base, int bonus) {
+    return base + bonus;
+}
+```
+
+**Calling varargs functions:**
+
+```c
+setup();                           // name=0, level=0, desc=0
+setup("sword");                    // name="sword", level=0, desc=0
+setup("sword", 5);                 // name="sword", level=5, desc=0
+setup("sword", 5, "A fine blade"); // All args provided
+```
+
+**Note:** You can pass fewer arguments than declared, but not more. Passing extra arguments is an error.
+
 ## Objects and Inheritance
 
 ### Inherit

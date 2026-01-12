@@ -123,10 +123,12 @@ public class Parser
 
     private bool IsFunctionDefinitionStart()
     {
-        // Function definition pattern: [visibility...] type identifier(
-        // Skip any visibility modifiers first
+        // Function definition pattern: [visibility...] [varargs] type identifier(
+        // Skip any visibility modifiers and varargs first
         var offset = 0;
-        while (_position + offset < _tokens.Count && IsVisibilityModifier(_tokens[_position + offset].Type))
+        while (_position + offset < _tokens.Count &&
+               (IsVisibilityModifier(_tokens[_position + offset].Type) ||
+                _tokens[_position + offset].Type == TokenType.Varargs))
         {
             offset++;
         }
@@ -241,10 +243,18 @@ public class Parser
     {
         var startToken = Current();
 
-        // Parse visibility modifiers (can have multiple: "private static", "nomask public", etc.)
+        // Parse visibility modifiers and varargs (can have multiple: "private static", "nomask public varargs", etc.)
         var visibility = FunctionVisibility.Public;
-        while (IsVisibilityModifier(Current().Type))
+        var isVarargs = false;
+        while (IsVisibilityModifier(Current().Type) || Current().Type == TokenType.Varargs)
         {
+            if (Current().Type == TokenType.Varargs)
+            {
+                isVarargs = true;
+                Advance();
+                continue;
+            }
+
             visibility |= Current().Type switch
             {
                 TokenType.Public => FunctionVisibility.Public,
@@ -306,7 +316,7 @@ public class Parser
         }
         var body = ParseBlockStatement();
 
-        return new FunctionDefinition(returnType, name, parameters, body, visibility)
+        return new FunctionDefinition(returnType, name, parameters, body, visibility, isVarargs)
         {
             Line = startToken.Line,
             Column = startToken.Column

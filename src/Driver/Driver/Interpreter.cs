@@ -499,11 +499,25 @@ public class Interpreter
     private object CallUserFunction(FunctionDefinition funcDef, List<object> args, FunctionCall callSite)
     {
         // Check argument count
-        if (args.Count != funcDef.Parameters.Count)
+        if (funcDef.Varargs)
         {
-            throw new InterpreterException(
-                $"Function '{funcDef.Name}' expects {funcDef.Parameters.Count} arguments, got {args.Count}",
-                callSite);
+            // Varargs function: allow fewer arguments, but not more
+            if (args.Count > funcDef.Parameters.Count)
+            {
+                throw new InterpreterException(
+                    $"Varargs function '{funcDef.Name}' expects at most {funcDef.Parameters.Count} arguments, got {args.Count}",
+                    callSite);
+            }
+        }
+        else
+        {
+            // Non-varargs function: require exact count
+            if (args.Count != funcDef.Parameters.Count)
+            {
+                throw new InterpreterException(
+                    $"Function '{funcDef.Name}' expects {funcDef.Parameters.Count} arguments, got {args.Count}",
+                    callSite);
+            }
         }
 
         // Save only the parameter names that might shadow outer variables
@@ -520,10 +534,10 @@ public class Interpreter
             }
         }
 
-        // Bind parameters to arguments
+        // Bind parameters to arguments (use 0 for missing varargs parameters)
         for (int i = 0; i < funcDef.Parameters.Count; i++)
         {
-            _variables[funcDef.Parameters[i]] = args[i];
+            _variables[funcDef.Parameters[i]] = i < args.Count ? args[i] : 0;
         }
 
         try

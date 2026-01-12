@@ -252,14 +252,16 @@ public record InheritStatement(string Path) : Statement;
 public record VariableDeclaration(string Type, string Name, Expression? Initializer) : Statement;
 
 /// <summary>
-/// Function definition: [visibility] type name(params) { body }
+/// Function definition: [visibility] [varargs] type name(params) { body }
 /// Type is stored as string for now (int, string, void, object, etc.)
 /// Parameters are stored as strings for now (will add types later).
 /// Visibility defaults to Public if not specified.
+/// When Varargs is true, the function accepts variable number of arguments.
 /// </summary>
 public record FunctionDefinition(
     string ReturnType,
     string Name,
     List<string> Parameters,
     Statement Body,
-    FunctionVisibility Visibility = FunctionVisibility.Public) : Statement;
+    FunctionVisibility Visibility = FunctionVisibility.Public,
+    bool Varargs = false) : Statement;

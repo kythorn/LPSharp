@@ -1537,17 +1537,31 @@ public class ObjectInterpreter
     private object? CallUserFunctionWithProgram(FunctionDefinition funcDef, List<object> args, LpcProgram? owningProgram)
     {
         // Check argument count
-        if (args.Count != funcDef.Parameters.Count)
+        if (funcDef.Varargs)
         {
-            throw new ObjectInterpreterException(
-                $"Function '{funcDef.Name}' expects {funcDef.Parameters.Count} arguments, got {args.Count}");
+            // Varargs function: allow fewer arguments, but not more
+            if (args.Count > funcDef.Parameters.Count)
+            {
+                throw new ObjectInterpreterException(
+                    $"Varargs function '{funcDef.Name}' expects at most {funcDef.Parameters.Count} arguments, got {args.Count}");
+            }
+        }
+        else
+        {
+            // Non-varargs function: require exact count
+            if (args.Count != funcDef.Parameters.Count)
+            {
+                throw new ObjectInterpreterException(
+                    $"Function '{funcDef.Name}' expects {funcDef.Parameters.Count} arguments, got {args.Count}");
+            }
         }
 
         // Create local scope for function parameters
         var localScope = new Dictionary<string, object?>();
         for (int i = 0; i < funcDef.Parameters.Count; i++)
         {
-            localScope[funcDef.Parameters[i]] = args[i];
+            // Use provided argument, or 0 for missing varargs parameters
+            localScope[funcDef.Parameters[i]] = i < args.Count ? args[i] : 0;
         }
 
         // Push local scope onto stack

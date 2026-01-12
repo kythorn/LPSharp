@@ -34,6 +34,7 @@ public class Lexer
         ["protected"] = TokenType.Protected,
         ["static"] = TokenType.Static,
         ["nomask"] = TokenType.Nomask,
+        ["varargs"] = TokenType.Varargs,
         // Error handling
         ["catch"] = TokenType.Catch,
     };

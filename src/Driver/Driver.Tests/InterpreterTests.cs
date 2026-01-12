@@ -1114,6 +1114,60 @@ public class InterpreterTests
         Assert.Equal(2L, Evaluate(interpreter, "getValue()"));
     }
 
+    [Fact]
+    public void Execute_VarargsFunction_AllArgsProvided()
+    {
+        var interpreter = new Interpreter();
+
+        ExecStmt(interpreter, "varargs int add(int a, int b) { return a + b; }");
+
+        Assert.Equal(8L, Evaluate(interpreter, "add(3, 5)"));
+    }
+
+    [Fact]
+    public void Execute_VarargsFunction_OneArgMissing()
+    {
+        var interpreter = new Interpreter();
+
+        ExecStmt(interpreter, "varargs int add(int a, int b) { return a + b; }");
+
+        // b defaults to 0
+        Assert.Equal(3L, Evaluate(interpreter, "add(3)"));
+    }
+
+    [Fact]
+    public void Execute_VarargsFunction_AllArgsMissing()
+    {
+        var interpreter = new Interpreter();
+
+        ExecStmt(interpreter, "varargs int add(int a, int b) { return a + b; }");
+
+        // Both default to 0
+        Assert.Equal(0L, Evaluate(interpreter, "add()"));
+    }
+
+    [Fact]
+    public void Execute_VarargsFunction_TooManyArgs_ThrowsError()
+    {
+        var interpreter = new Interpreter();
+
+        ExecStmt(interpreter, "varargs int add(int a, int b) { return a + b; }");
+
+        var ex = Assert.Throws<InterpreterException>(() => Evaluate(interpreter, "add(1, 2, 3)"));
+        Assert.Contains("at most 2 arguments", ex.Message);
+    }
+
+    [Fact]
+    public void Execute_VarargsFunction_WithVisibilityModifier()
+    {
+        var interpreter = new Interpreter();
+
+        ExecStmt(interpreter, "private varargs int mult(int a, int b) { return a * b; }");
+
+        Assert.Equal(15L, Evaluate(interpreter, "mult(3, 5)"));
+        Assert.Equal(0L, Evaluate(interpreter, "mult(3)")); // b defaults to 0
+    }
+
     #endregion
 
     #region Arrays
