@@ -692,13 +692,41 @@ int do_pull(string arg) {
 | `capitalize(str)` | Capitalize first letter |
 | `lower_case(str)` | Convert to lowercase |
 | `upper_case(str)` | Convert to uppercase |
-| `sprintf(fmt, args...)` | Formatted string |
+| `sprintf(fmt, args...)` | Formatted string (see below) |
 | `explode(str, delim)` | Split string into array |
 | `implode(arr, delim)` | Join array into string |
 | `replace_string(str, from, to)` | Replace all occurrences of `from` with `to` |
 | `trim(str)` | Remove leading/trailing whitespace |
 | `strsrch(str, substr)` | Find position of substring (-1 if not found) |
-| `sscanf(str, fmt, vars...)` | Parse formatted string into variables |
+| `sscanf(str, fmt, vars...)` | Parse formatted string into variables (see below) |
+
+**sprintf format specifiers:**
+- `%s` - String
+- `%d`, `%i` - Decimal integer
+- `%o` - Octal
+- `%x` - Hexadecimal (lowercase)
+- `%X` - Hexadecimal (uppercase)
+- `%O` - Object/value dump
+- `%%` - Literal percent sign
+- Width: `%5d` (min width 5), `%-5s` (left-aligned), `%05d` (zero-padded)
+
+```c
+sprintf("Name: %-10s HP: %d/%d", name, hp, max_hp);
+// "Name: Orc       HP: 45/100"
+```
+
+**sscanf format specifiers:**
+- `%s` - String (until next literal or end)
+- `%d` - Integer
+- `%*s`, `%*d` - Skip (don't assign)
+- Returns number of variables assigned
+
+```c
+string who;
+int damage;
+sscanf("Bob attacks for 15 damage", "%s attacks for %d damage", who, damage);
+// who = "Bob", damage = 15, returns 2
+```
 
 ### Type Checking
 
