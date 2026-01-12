@@ -65,9 +65,15 @@ public class ObjectManager
     /// </summary>
     public ObjectInterpreter? Interpreter => _interpreter;
 
+    /// <summary>
+    /// Preprocessor for handling #include, #define, etc.
+    /// </summary>
+    private readonly Preprocessor _preprocessor;
+
     public ObjectManager(string mudlibPath)
     {
         MudlibPath = Path.GetFullPath(mudlibPath);
+        _preprocessor = new Preprocessor(MudlibPath);
     }
 
     /// <summary>
@@ -232,17 +238,28 @@ public class ObjectManager
 
     /// <summary>
     /// Compile source code into an LpcProgram.
-    /// Handles lexing, parsing, and inheritance resolution.
+    /// Handles preprocessing, lexing, parsing, and inheritance resolution.
     /// </summary>
     private LpcProgram CompileProgram(string path, string sourceCode)
     {
+        // Preprocess the source code (handles #include, #define, etc.)
+        string preprocessedSource;
+        try
+        {
+            preprocessedSource = _preprocessor.Process(sourceCode, path);
+        }
+        catch (PreprocessorException ex)
+        {
+            throw new ObjectManagerException($"Preprocessor error in {path}: {ex.Message}", ex);
+        }
+
         var program = new LpcProgram(path)
         {
-            SourceCode = sourceCode
+            SourceCode = preprocessedSource
         };
 
         // Lex
-        var lexer = new Lexer(sourceCode);
+        var lexer = new Lexer(preprocessedSource);
         var tokens = new List<Token>();
         while (true)
         {

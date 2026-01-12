@@ -524,6 +524,79 @@ void init() {
 int x = 5;  // Inline comment
 ```
 
+## Preprocessor
+
+LPC files are processed by a C-style preprocessor before compilation. The preprocessor handles file inclusion, macro definitions, and conditional compilation.
+
+### #include
+
+Include another file's contents:
+
+```c
+#include "/std/living.h"      // Absolute path (from mudlib root)
+#include <std/types.h>        // Also absolute path
+#include "local_defs.c"       // Relative to current file
+```
+
+The `.c` extension is added automatically if not present. Circular includes are detected and skipped.
+
+### #define / #undef
+
+Define and undefine macros:
+
+```c
+#define MAX_HP 100
+#define DEBUG                  // Value defaults to 1
+#define MESSAGE "Hello World"
+
+int health = MAX_HP;           // Becomes: int health = 100;
+
+#undef DEBUG                   // Remove the DEBUG macro
+```
+
+Macros are simple text substitution with word boundary matching (won't replace partial words).
+
+### #ifdef / #ifndef / #else / #endif
+
+Conditional compilation based on whether a macro is defined:
+
+```c
+#define DEBUG
+
+#ifdef DEBUG
+    write("Debug mode enabled\n");
+#else
+    // Production code
+#endif
+
+#ifndef RELEASE
+    // Include extra logging
+#endif
+```
+
+Conditions can be nested:
+
+```c
+#ifdef FEATURE_A
+    #ifdef FEATURE_B
+        // Both features enabled
+    #endif
+#endif
+```
+
+### Predefined Macros
+
+You can define macros from C# code before loading objects:
+
+```csharp
+preprocessor.Define("MUDLIB_VERSION", "1.0");
+preprocessor.Define("DEBUG");  // Defaults to "1"
+```
+
+### Line Number Preservation
+
+The preprocessor outputs empty lines for directives to preserve line numbers, ensuring error messages reference the correct source line.
+
 ## Efuns (External Functions)
 
 Efuns are functions provided by the driver, callable from any LPC code.
