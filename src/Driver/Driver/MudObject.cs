@@ -108,6 +108,13 @@ public class MudObject
     /// </summary>
     public DateTime LastHeartbeat { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Reset interval in seconds for this object.
+    /// When > 0, reset() is called periodically at this interval.
+    /// Set via set_reset() efun.
+    /// </summary>
+    public int ResetInterval { get; set; }
+
     #endregion
 
     #region Shadow System

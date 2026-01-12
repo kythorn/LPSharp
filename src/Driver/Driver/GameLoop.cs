@@ -112,6 +112,22 @@ public class GameLoop
 
     #endregion
 
+    #region Reset System
+
+    /// <summary>
+    /// Objects registered for periodic reset() calls.
+    /// Maps object to its next reset time.
+    /// </summary>
+    private readonly Dictionary<MudObject, DateTime> _resetObjects = new();
+    private readonly object _resetLock = new();
+
+    /// <summary>
+    /// Default reset interval in seconds.
+    /// </summary>
+    private const int DefaultResetIntervalSeconds = 60;
+
+    #endregion
+
     #region Callout System
 
     /// <summary>
@@ -903,6 +919,9 @@ public class GameLoop
                 // Process pending callouts every tick
                 ProcessCallouts();
 
+                // Process object resets
+                ProcessResets();
+
                 // Sleep for remaining tick time
                 var elapsed = (DateTime.UtcNow - tickStart).TotalMilliseconds;
                 var sleepTime = Math.Max(0, TickIntervalMs - elapsed);
@@ -1027,6 +1046,164 @@ public class GameLoop
             catch (Exception ex)
             {
                 Logger.Warning($"Heartbeat error on {obj.ObjectName}: {ex.Message}", LogCategory.LPC);
+            }
+        }
+    }
+
+    #endregion
+
+    #region Reset Methods
+
+    /// <summary>
+    /// Register an object for periodic reset() calls.
+    /// The reset will fire after intervalSeconds, and repeat at that interval.
+    /// Called by set_reset(seconds) efun.
+    /// </summary>
+    public void RegisterReset(MudObject obj, int intervalSeconds)
+    {
+        if (intervalSeconds <= 0)
+        {
+            UnregisterReset(obj);
+            return;
+        }
+
+        lock (_resetLock)
+        {
+            obj.ResetInterval = intervalSeconds;
+            _resetObjects[obj] = DateTime.UtcNow.AddSeconds(intervalSeconds);
+        }
+    }
+
+    /// <summary>
+    /// Unregister an object from periodic resets.
+    /// Called by set_reset(0) efun.
+    /// </summary>
+    public void UnregisterReset(MudObject obj)
+    {
+        lock (_resetLock)
+        {
+            obj.ResetInterval = 0;
+            _resetObjects.Remove(obj);
+        }
+    }
+
+    /// <summary>
+    /// Get the reset interval for an object.
+    /// Returns 0 if not registered for reset.
+    /// </summary>
+    public int GetResetInterval(MudObject obj)
+    {
+        lock (_resetLock)
+        {
+            return _resetObjects.ContainsKey(obj) ? obj.ResetInterval : 0;
+        }
+    }
+
+    /// <summary>
+    /// Call reset() immediately on an object.
+    /// Used after create() completes.
+    /// </summary>
+    public void CallReset(MudObject obj)
+    {
+        if (_interpreter == null) return;
+
+        // Skip if no reset function exists
+        if (obj.FindFunction("reset") == null)
+        {
+            return;
+        }
+
+        try
+        {
+            _interpreter.ResetInstructionCount();
+            _interpreter.CallFunctionOnObject(obj, "reset", new List<object>());
+        }
+        catch (ReturnException)
+        {
+            // Normal return
+        }
+        catch (Exception ex)
+        {
+            Logger.Warning($"Reset error on {obj.ObjectName}: {ex.Message}", LogCategory.LPC);
+        }
+    }
+
+    /// <summary>
+    /// Process periodic resets for all registered objects.
+    /// Called every tick, but only fires resets that are due.
+    /// </summary>
+    private void ProcessResets()
+    {
+        if (_interpreter == null) return;
+
+        var now = DateTime.UtcNow;
+        List<MudObject> dueForReset;
+
+        // Get list of objects due for reset
+        lock (_resetLock)
+        {
+            dueForReset = _resetObjects
+                .Where(kvp => kvp.Value <= now)
+                .Select(kvp => kvp.Key)
+                .ToList();
+        }
+
+        foreach (var obj in dueForReset)
+        {
+            // Skip destructed objects and remove from registry
+            if (obj.IsDestructed)
+            {
+                lock (_resetLock)
+                {
+                    _resetObjects.Remove(obj);
+                }
+                continue;
+            }
+
+            // Skip if no reset function
+            if (obj.FindFunction("reset") == null)
+            {
+                continue;
+            }
+
+            try
+            {
+                _interpreter.ResetInstructionCount();
+                _interpreter.CallFunctionOnObject(obj, "reset", new List<object>());
+
+                // Schedule next reset
+                lock (_resetLock)
+                {
+                    if (_resetObjects.ContainsKey(obj) && obj.ResetInterval > 0)
+                    {
+                        _resetObjects[obj] = DateTime.UtcNow.AddSeconds(obj.ResetInterval);
+                    }
+                }
+            }
+            catch (ExecutionLimitException ex)
+            {
+                Logger.Warning($"Reset limit exceeded on {obj.ObjectName}: {ex.Message}", LogCategory.LPC);
+                // Disable reset for misbehaving object
+                lock (_resetLock)
+                {
+                    _resetObjects.Remove(obj);
+                }
+                obj.ResetInterval = 0;
+            }
+            catch (ReturnException)
+            {
+                // Normal return - schedule next reset
+                lock (_resetLock)
+                {
+                    if (_resetObjects.ContainsKey(obj) && obj.ResetInterval > 0)
+                    {
+                        _resetObjects[obj] = DateTime.UtcNow.AddSeconds(obj.ResetInterval);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Reset error on {obj.ObjectName}: {ex.Message}", LogCategory.LPC);
             }
         }
     }

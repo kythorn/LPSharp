@@ -684,7 +684,7 @@ public class ObjectManager
 
     /// <summary>
     /// Call the create() lifecycle hook on an object.
-    /// Executes variable initializers and the create() function.
+    /// Executes variable initializers, the create() function, and then reset().
     /// </summary>
     private void CallCreate(MudObject obj)
     {
@@ -701,6 +701,10 @@ public class ObjectManager
             // Then call create() if it exists, using proper function call mechanism
             // This ensures the executing program is tracked for correct :: behavior
             _interpreter.CallFunctionOnObjectInit(obj, "create");
+
+            // Call reset() immediately after create() completes
+            // This is standard LPMud behavior for initial object setup
+            GameLoop.Instance?.CallReset(obj);
         }
         catch (Exception ex)
         {

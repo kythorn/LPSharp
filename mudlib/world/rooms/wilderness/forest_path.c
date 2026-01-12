@@ -20,4 +20,8 @@ void create() {
 
     // Hidden exit - only those who look carefully might find it
     add_hidden_exit("west", "/world/rooms/wilderness/hidden_grove");
+
+    // A rat lives here - good starter monster
+    add_spawn("/world/mobs/rat");
+    enable_reset(60);
 }

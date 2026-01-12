@@ -16,4 +16,8 @@ void create() {
     );
 
     add_exit("north", "/world/rooms/wilderness/forest_path");
+
+    // An aggressive orc guards these woods
+    add_spawn("/world/mobs/orc");
+    enable_reset(120);  // 2 minute respawn
 }

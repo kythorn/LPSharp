@@ -400,6 +400,10 @@ public class ObjectInterpreter
         _efuns.Register("set_heart_beat", SetHeartBeatEfun);
         _efuns.Register("query_heart_beat", QueryHeartBeatEfun);
 
+        // Reset efuns
+        _efuns.Register("set_reset", SetResetEfun);
+        _efuns.Register("query_reset", QueryResetEfun);
+
         // Callout efuns
         _efuns.Register("call_out", CallOutEfun);
         _efuns.Register("remove_call_out", RemoveCallOutEfun);
@@ -2924,6 +2928,73 @@ public class ObjectInterpreter
         }
 
         return obj.HeartbeatEnabled ? 1L : 0L;
+    }
+
+    #endregion
+
+    #region Reset Efuns
+
+    /// <summary>
+    /// set_reset(seconds) - Set the reset interval for this_object().
+    /// When enabled, reset() is called periodically at the specified interval.
+    /// Pass 0 to disable periodic resets.
+    /// Returns the previous reset interval.
+    /// </summary>
+    private object SetResetEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("set_reset() requires exactly 1 argument");
+        }
+
+        var seconds = Convert.ToInt32(args[0]);
+        var obj = _currentObject;
+        var wasEnabled = obj.ResetInterval;
+
+        var gameLoop = GameLoop.Instance;
+        if (gameLoop != null)
+        {
+            if (seconds > 0)
+            {
+                gameLoop.RegisterReset(obj, seconds);
+            }
+            else
+            {
+                gameLoop.UnregisterReset(obj);
+            }
+        }
+
+        return (long)wasEnabled;
+    }
+
+    /// <summary>
+    /// query_reset(obj) - Get the reset interval for an object.
+    /// Returns the interval in seconds, or 0 if reset is disabled.
+    /// If no argument, checks this_object().
+    /// </summary>
+    private object QueryResetEfun(List<object> args)
+    {
+        MudObject obj;
+
+        if (args.Count == 0)
+        {
+            obj = _currentObject;
+        }
+        else if (args.Count == 1)
+        {
+            if (args[0] is not MudObject mudObj)
+            {
+                throw new EfunException("query_reset() argument must be an object");
+            }
+            obj = mudObj;
+        }
+        else
+        {
+            throw new EfunException("query_reset() takes 0 or 1 argument");
+        }
+
+        var gameLoop = GameLoop.Instance;
+        return (long)(gameLoop?.GetResetInterval(obj) ?? 0);
     }
 
     #endregion

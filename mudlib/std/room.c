@@ -7,6 +7,9 @@ inherit "/std/object";
 // Room descriptions
 string long_desc;
 
+// Monster spawning
+string *spawn_monsters;
+
 // Exits - each direction stores a destination path or empty string
 string exit_north;
 string exit_south;
@@ -26,6 +29,9 @@ void create() {
     ::create();
     set_short("A room");
     long_desc = "You are in a nondescript room.";
+
+    // Initialize monster spawns
+    spawn_monsters = ({});
 
     // Initialize all exits to empty
     exit_north = "";
@@ -190,4 +196,60 @@ string query_exits() {
     }
 
     return "Obvious exits: " + result;
+}
+
+// Add a monster type to spawn in this room
+void add_spawn(string monster_path) {
+    spawn_monsters = spawn_monsters + ({ monster_path });
+}
+
+// Set multiple monster spawns at once
+void set_spawns(string *monsters) {
+    spawn_monsters = monsters;
+}
+
+// Query what monsters spawn here
+string *query_spawns() {
+    return spawn_monsters;
+}
+
+// Enable periodic reset for this room
+// Default interval is 60 seconds
+void enable_reset(int interval) {
+    if (interval <= 0) {
+        interval = 60;
+    }
+    set_reset(interval);
+}
+
+// Check if a monster of the given type already exists in the room
+int has_monster(string path) {
+    object *contents;
+    int i;
+
+    contents = all_inventory(this_object());
+    for (i = 0; i < sizeof(contents); i++) {
+        // Check if this object came from the specified path
+        if (file_name(contents[i]) == path ||
+            member(file_name(contents[i]), path) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// Reset is called periodically to respawn monsters
+void reset() {
+    int i;
+    object mob;
+
+    // Spawn any missing monsters
+    for (i = 0; i < sizeof(spawn_monsters); i++) {
+        if (!has_monster(spawn_monsters[i])) {
+            mob = clone_object(spawn_monsters[i]);
+            if (mob) {
+                move_object(mob, this_object());
+            }
+        }
+    }
 }
