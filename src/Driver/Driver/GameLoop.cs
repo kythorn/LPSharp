@@ -110,13 +110,21 @@ public class GameLoop
     #region Command Resolution System
 
     /// <summary>
-    /// Protected commands that can NEVER be overridden by add_action.
+    /// Protected commands that can NEVER be overridden by add_action or aliased.
     /// These are critical for player safety and game integrity.
     /// </summary>
     private static readonly HashSet<string> ProtectedCommands = new(StringComparer.OrdinalIgnoreCase)
     {
-        "quit", "save", "password", "who", "tell", "shout", "bug", "typo", "idea"
+        "quit", "save", "password", "who", "tell", "shout", "bug", "typo", "idea", "alias", "unalias"
     };
+
+    /// <summary>
+    /// Check if a command name is protected (cannot be aliased or overridden).
+    /// </summary>
+    public static bool IsProtectedCommand(string command)
+    {
+        return ProtectedCommands.Contains(command);
+    }
 
     /// <summary>
     /// Core commands that have standard implementations in /cmds/.
@@ -124,13 +132,42 @@ public class GameLoop
     /// </summary>
     private static readonly HashSet<string> CoreCommands = new(StringComparer.OrdinalIgnoreCase)
     {
-        "look", "l", "go", "get", "take", "drop", "put", "give",
-        "inventory", "i", "inv", "score", "say", "emote",
-        "north", "south", "east", "west", "up", "down",
-        "n", "s", "e", "w", "u", "d",
-        "northeast", "northwest", "southeast", "southwest",
-        "ne", "nw", "se", "sw"
+        "look", "go", "get", "take", "drop", "put", "give",
+        "inventory", "score", "say", "emote"
     };
+
+    /// <summary>
+    /// Resolve a command alias using the player's alias dictionary.
+    /// Transforms verb and args if an alias matches.
+    /// Returns the (possibly transformed) verb and args.
+    /// </summary>
+    private static (string Verb, string Args) ResolveAlias(PlayerSession session, string verb, string args)
+    {
+        if (session.Aliases.TryGetValue(verb, out var aliasCommand))
+        {
+            // Parse the alias command into verb and args
+            var spaceIdx = aliasCommand.IndexOf(' ');
+            string newVerb, aliasArgs;
+            if (spaceIdx >= 0)
+            {
+                newVerb = aliasCommand[..spaceIdx];
+                aliasArgs = aliasCommand[(spaceIdx + 1)..];
+            }
+            else
+            {
+                newVerb = aliasCommand;
+                aliasArgs = "";
+            }
+
+            // Combine alias args with original args
+            var newArgs = string.IsNullOrEmpty(aliasArgs)
+                ? args
+                : string.IsNullOrEmpty(args) ? aliasArgs : $"{aliasArgs} {args}";
+
+            return (newVerb, newArgs);
+        }
+        return (verb, args);
+    }
 
     #endregion
 
@@ -773,6 +810,9 @@ public class GameLoop
             args = "";
         }
 
+        // Resolve command aliases (e.g., "n" -> "go north")
+        (verb, args) = ResolveAlias(session, verb, args);
+
         // Set up execution context
         var context = new ExecutionContext
         {
@@ -924,6 +964,18 @@ public class GameLoop
             return false;
         }
 
+        // Get session for player (needed for alias resolution)
+        PlayerSession? session;
+        lock (_sessionLock)
+        {
+            session = _sessions.Values.FirstOrDefault(s => s.PlayerObject == context.PlayerObject);
+        }
+
+        if (session == null)
+        {
+            return false;
+        }
+
         var spaceIndex = input.IndexOf(' ');
         string verb, args;
         if (spaceIndex >= 0)
@@ -937,17 +989,8 @@ public class GameLoop
             args = "";
         }
 
-        // Get session for player
-        PlayerSession? session;
-        lock (_sessionLock)
-        {
-            session = _sessions.Values.FirstOrDefault(s => s.PlayerObject == context.PlayerObject);
-        }
-
-        if (session == null)
-        {
-            return false;
-        }
+        // Resolve command aliases (e.g., "n" -> "go north")
+        (verb, args) = ResolveAlias(session, verb, args);
 
         // Save and update context
         var oldVerb = context.CurrentVerb;
@@ -1411,6 +1454,9 @@ public class GameLoop
         {
             // Cache access level from account
             session.AccessLevel = _accountManager.GetAccessLevel(session.AuthenticatedUsername!);
+
+            // Load aliases from account
+            session.Aliases = _accountManager.GetAliases(session.AuthenticatedUsername!);
 
             // Clone a player object
             var playerObject = _objectManager.CloneObject("/std/player");

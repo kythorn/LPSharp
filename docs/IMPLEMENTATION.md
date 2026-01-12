@@ -648,7 +648,27 @@ void run_tests() {
 - `/cmds/look.c` - Look at room (shows description, exits)
 - `/cmds/quit.c` - Quit and disconnect
 - `/cmds/go.c` - Move in a direction
-- Direction shortcuts: n, s, e, w, ne, nw, se, sw, up, down (and full names)
+- `/cmds/alias.c` - Manage command aliases
+- `/cmds/unalias.c` - Remove an alias
+
+**Command Alias System:**
+Per-player command aliases expand short commands to longer ones. Aliases are:
+- Persisted in account data (survive logout/restart)
+- Pre-populated with defaults on account creation
+- Managed via `alias` command or alias efuns
+- Protected commands (quit, alias, password, etc.) cannot be aliased
+
+Default aliases include:
+- Direction shortcuts: n, s, e, w, ne, nw, se, sw, u, d → go <direction>
+- Full directions: north, south, etc. → go <direction>
+- `l` → look, `i`/`inv` → inventory, `take` → get
+
+**Alias Efuns:**
+- `query_aliases()` - Get all aliases as mapping
+- `query_alias(name)` - Get specific alias definition
+- `set_alias(name, cmd)` - Set or update an alias
+- `remove_alias(name)` - Remove an alias
+- `reset_aliases()` - Reset to defaults
 
 ### What's NOT Working Yet
 

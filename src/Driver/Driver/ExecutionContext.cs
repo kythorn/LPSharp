@@ -248,6 +248,14 @@ public class PlayerSession
     /// Set during login, used for permission checks.
     /// </summary>
     public AccessLevel AccessLevel { get; set; } = AccessLevel.Guest;
+
+    /// <summary>
+    /// Player-specific command aliases loaded from account.
+    /// Maps alias -> command string (e.g., "go north").
+    /// Loaded from account during login, synced back on changes.
+    /// </summary>
+    public Dictionary<string, string> Aliases { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>

@@ -378,6 +378,13 @@ public class ObjectInterpreter
 
         // Directory listing efun (for ls command)
         _efuns.Register("get_dir", GetDirEfun);
+
+        // Alias management efuns
+        _efuns.Register("query_aliases", QueryAliasesEfun);
+        _efuns.Register("query_alias", QueryAliasEfun);
+        _efuns.Register("set_alias", SetAliasEfun);
+        _efuns.Register("remove_alias", RemoveAliasEfun);
+        _efuns.Register("reset_aliases", ResetAliasesEfun);
     }
 
     /// <summary>
@@ -3219,6 +3226,194 @@ public class ObjectInterpreter
         }
 
         return $"/wizards/{targetUsername.ToLowerInvariant()}";
+    }
+
+    #endregion
+
+    #region Alias Management Efuns
+
+    /// <summary>
+    /// Get the current player's session (for alias operations).
+    /// </summary>
+    private PlayerSession? GetCurrentSession()
+    {
+        var context = ExecutionContext.Current;
+        if (context?.PlayerObject == null) return null;
+
+        var gameLoop = GameLoop.Instance;
+        if (gameLoop == null) return null;
+
+        return gameLoop.GetAllSessions()
+            .FirstOrDefault(s => s.PlayerObject == context.PlayerObject);
+    }
+
+    /// <summary>
+    /// query_aliases() - Get all aliases for the current player.
+    /// Returns a mapping of alias -> command.
+    /// </summary>
+    private object QueryAliasesEfun(List<object> args)
+    {
+        if (args.Count != 0)
+        {
+            throw new EfunException("query_aliases() takes no arguments");
+        }
+
+        var session = GetCurrentSession();
+        if (session == null)
+        {
+            return new Dictionary<object, object>();
+        }
+
+        // Convert to LPC mapping format
+        var result = new Dictionary<object, object>();
+        foreach (var kvp in session.Aliases)
+        {
+            result[kvp.Key] = kvp.Value;
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// query_alias(name) - Get a specific alias definition.
+    /// Returns the command string or 0 if not found.
+    /// </summary>
+    private object QueryAliasEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("query_alias() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string aliasName)
+        {
+            throw new EfunException("query_alias() argument must be an alias name string");
+        }
+
+        var session = GetCurrentSession();
+        if (session == null)
+        {
+            return 0;
+        }
+
+        return session.Aliases.TryGetValue(aliasName, out var command) ? command : 0;
+    }
+
+    /// <summary>
+    /// set_alias(name, command) - Set or update an alias.
+    /// Returns 1 on success, 0 on failure.
+    /// Security: Cannot alias protected commands (quit, alias, password, etc.)
+    /// </summary>
+    private object SetAliasEfun(List<object> args)
+    {
+        if (args.Count != 2)
+        {
+            throw new EfunException("set_alias() requires exactly 2 arguments");
+        }
+
+        if (args[0] is not string aliasName)
+        {
+            throw new EfunException("set_alias() first argument must be an alias name string");
+        }
+
+        if (args[1] is not string command)
+        {
+            throw new EfunException("set_alias() second argument must be a command string");
+        }
+
+        // Security: Cannot alias protected commands
+        if (GameLoop.IsProtectedCommand(aliasName))
+        {
+            throw new EfunException($"Cannot create alias for protected command '{aliasName}'");
+        }
+
+        var session = GetCurrentSession();
+        if (session?.AuthenticatedUsername == null)
+        {
+            return 0;
+        }
+
+        var gameLoop = GameLoop.Instance;
+        if (gameLoop == null)
+        {
+            return 0;
+        }
+
+        // Update session and persist to account
+        session.Aliases[aliasName.ToLowerInvariant()] = command;
+        gameLoop.AccountManager.SetAlias(session.AuthenticatedUsername, aliasName, command);
+
+        return 1;
+    }
+
+    /// <summary>
+    /// remove_alias(name) - Remove an alias.
+    /// Returns 1 on success, 0 if not found or on failure.
+    /// </summary>
+    private object RemoveAliasEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("remove_alias() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string aliasName)
+        {
+            throw new EfunException("remove_alias() argument must be an alias name string");
+        }
+
+        var session = GetCurrentSession();
+        if (session?.AuthenticatedUsername == null)
+        {
+            return 0;
+        }
+
+        var gameLoop = GameLoop.Instance;
+        if (gameLoop == null)
+        {
+            return 0;
+        }
+
+        // Update session and persist to account
+        var removed = session.Aliases.Remove(aliasName.ToLowerInvariant());
+        if (removed)
+        {
+            gameLoop.AccountManager.RemoveAlias(session.AuthenticatedUsername, aliasName);
+        }
+
+        return removed ? 1 : 0;
+    }
+
+    /// <summary>
+    /// reset_aliases() - Reset all aliases to defaults.
+    /// Returns 1 on success, 0 on failure.
+    /// </summary>
+    private object ResetAliasesEfun(List<object> args)
+    {
+        if (args.Count != 0)
+        {
+            throw new EfunException("reset_aliases() takes no arguments");
+        }
+
+        var session = GetCurrentSession();
+        if (session?.AuthenticatedUsername == null)
+        {
+            return 0;
+        }
+
+        var gameLoop = GameLoop.Instance;
+        if (gameLoop == null)
+        {
+            return 0;
+        }
+
+        // Reset in account and reload into session
+        if (gameLoop.AccountManager.ResetAliases(session.AuthenticatedUsername))
+        {
+            session.Aliases = gameLoop.AccountManager.GetAliases(session.AuthenticatedUsername);
+            return 1;
+        }
+
+        return 0;
     }
 
     #endregion

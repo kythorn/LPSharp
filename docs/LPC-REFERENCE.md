@@ -504,6 +504,20 @@ int do_pull(string arg) {
 |------|-------------|
 | `assert(cond, msg)` | Assert condition is true (for tests) |
 
+### Command Aliases
+
+Players have personal command aliases that expand short commands to longer ones (e.g., "n" expands to "go north"). These efuns allow LPC code to manage aliases.
+
+| Efun | Description |
+|------|-------------|
+| `query_aliases()` | Get all aliases as a mapping (alias -> command) |
+| `query_alias(name)` | Get specific alias definition, or 0 if not found |
+| `set_alias(name, cmd)` | Set or update an alias (returns 1 on success) |
+| `remove_alias(name)` | Remove an alias (returns 1 on success) |
+| `reset_aliases()` | Reset all aliases to defaults (returns 1 on success) |
+
+**Note:** Protected commands (quit, alias, password, etc.) cannot be aliased for security reasons.
+
 ## Example: Complete Object
 
 ```c
