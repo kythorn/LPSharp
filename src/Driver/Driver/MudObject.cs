@@ -110,6 +110,22 @@ public class MudObject
 
     #endregion
 
+    #region Shadow System
+
+    /// <summary>
+    /// The object that is shadowing this one (outermost shadow in chain).
+    /// When a function is called on this object, the shadow gets first chance to intercept.
+    /// </summary>
+    public MudObject? ShadowedBy { get; set; }
+
+    /// <summary>
+    /// The object this is shadowing.
+    /// If set, this object intercepts function calls to the shadowed object.
+    /// </summary>
+    public MudObject? Shadowing { get; set; }
+
+    #endregion
+
     #region Action System (add_action)
 
     /// <summary>

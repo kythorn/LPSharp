@@ -572,6 +572,38 @@ Efuns are functions provided by the driver, callable from any LPC code.
 | `remove_call_out(func)` | Cancel pending callout |
 | `find_call_out(func)` | Get time until callout fires |
 
+### Shadows
+
+Shadows allow one object to intercept function calls to another object.
+
+| Efun | Description |
+|------|-------------|
+| `shadow(ob)` | Make this_object() shadow `ob`, returns 1 on success |
+| `query_shadowing(ob)` | Returns the object shadowing `ob`, or 0 |
+| `unshadow()` | Remove this_object()'s shadow from its target |
+
+**How shadows work:**
+- When `shadow(ob)` succeeds, function calls to `ob` are intercepted by the shadow
+- If the shadow defines a function, it handles the call
+- If not, the call passes through to the original object
+- Objects can define `query_prevent_shadow()` returning 1 to prevent being shadowed
+
+```c
+// invisibility_shadow.c
+void create() {
+    shadow(find_player("bob"));  // Shadow player "bob"
+}
+
+string query_name() {
+    // Intercept query_name calls
+    return "Someone Invisible";
+}
+
+int query_prevent_shadow() {
+    return 1;  // Prevent this shadow from being shadowed
+}
+```
+
 ### Object Persistence
 
 | Efun | Description |

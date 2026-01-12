@@ -379,6 +379,11 @@ public class ObjectInterpreter
         _efuns.Register("file_name", FileNameEfun);
         _efuns.Register("previous_object", PreviousObjectEfun);
 
+        // Shadow efuns
+        _efuns.Register("shadow", ShadowEfun);
+        _efuns.Register("query_shadowing", QueryShadowingEfun);
+        _efuns.Register("unshadow", UnshadowEfun);
+
         // Living/Interactive efuns
         _efuns.Register("set_living", SetLivingEfun);
         _efuns.Register("living", LivingEfun);
@@ -510,9 +515,31 @@ public class ObjectInterpreter
     /// <summary>
     /// Call a function on an object.
     /// Manages the call stack for previous_object() tracking.
+    /// If the target has a shadow, the shadow gets first chance to handle the call.
     /// </summary>
     public object? CallFunctionOnObject(MudObject target, string functionName, List<object> args)
     {
+        return CallFunctionOnObjectInternal(target, functionName, args, checkShadow: true);
+    }
+
+    /// <summary>
+    /// Call a function on an object, optionally bypassing shadow check.
+    /// Used internally to prevent infinite recursion when shadows call through to original.
+    /// </summary>
+    private object? CallFunctionOnObjectInternal(MudObject target, string functionName, List<object> args, bool checkShadow)
+    {
+        // Check for shadow first (unless bypassed)
+        if (checkShadow && target.ShadowedBy != null)
+        {
+            var shadow = target.ShadowedBy;
+            var shadowFunc = shadow.Program.FindFunction(functionName);
+            if (shadowFunc != null)
+            {
+                // Shadow has this function - call it instead
+                return CallFunctionOnObjectInternal(shadow, functionName, args, checkShadow: false);
+            }
+        }
+
         var (func, owningProgram) = target.Program.FindFunctionWithProgram(functionName);
         if (func == null)
         {
@@ -2435,6 +2462,152 @@ public class ObjectInterpreter
         var callers = _callStack.ToArray();
         return callers[n];
     }
+
+    #region Shadow Efuns
+
+    /// <summary>
+    /// shadow(ob) - Make this_object() shadow `ob`.
+    /// Function calls to `ob` will be intercepted by this_object() first.
+    /// Returns 1 on success, 0 on failure.
+    /// Cannot shadow objects that already have shadows, or create circular shadows.
+    /// </summary>
+    private object ShadowEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("shadow() requires exactly 1 argument");
+        }
+
+        if (args[0] is not MudObject target)
+        {
+            if (args[0] is int i && i == 0)
+            {
+                return 0L; // shadow(0) just returns 0
+            }
+            throw new EfunException("shadow() argument must be an object");
+        }
+
+        // Cannot shadow self
+        if (target == _currentObject)
+        {
+            return 0L;
+        }
+
+        // Cannot shadow if target already has a shadow
+        if (target.ShadowedBy != null)
+        {
+            return 0L;
+        }
+
+        // Cannot shadow if this object is already shadowing something
+        if (_currentObject.Shadowing != null)
+        {
+            return 0L;
+        }
+
+        // Cannot shadow if this object is being shadowed
+        if (_currentObject.ShadowedBy != null)
+        {
+            return 0L;
+        }
+
+        // Check for query_prevent_shadow function on target
+        var preventFunc = target.FindFunction("query_prevent_shadow");
+        if (preventFunc != null)
+        {
+            var prevent = CallFunctionOnObject(target, "query_prevent_shadow", new List<object>());
+            if (prevent is int pi && pi != 0)
+            {
+                return 0L; // Target prevents shadowing
+            }
+            if (prevent is long pl && pl != 0)
+            {
+                return 0L;
+            }
+        }
+
+        // Set up shadow relationship
+        target.ShadowedBy = _currentObject;
+        _currentObject.Shadowing = target;
+
+        Logger.Debug($"{_currentObject.ObjectName} is now shadowing {target.ObjectName}", LogCategory.Object);
+        return 1L;
+    }
+
+    /// <summary>
+    /// query_shadowing(ob) - Returns the object that is shadowing `ob`.
+    /// Returns 0 if not shadowed.
+    /// </summary>
+    private object QueryShadowingEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("query_shadowing() requires exactly 1 argument");
+        }
+
+        if (args[0] is not MudObject target)
+        {
+            if (args[0] is int i && i == 0)
+            {
+                return 0;
+            }
+            throw new EfunException("query_shadowing() argument must be an object");
+        }
+
+        return target.ShadowedBy ?? (object)0;
+    }
+
+    /// <summary>
+    /// unshadow(ob) - Remove shadow from `ob`.
+    /// Can only be called from the shadowing object itself.
+    /// Returns 1 on success, 0 on failure.
+    /// </summary>
+    private object UnshadowEfun(List<object> args)
+    {
+        // If no argument, unshadow whatever this_object() is shadowing
+        if (args.Count == 0)
+        {
+            if (_currentObject.Shadowing == null)
+            {
+                return 0L;
+            }
+
+            var target = _currentObject.Shadowing;
+            target.ShadowedBy = null;
+            _currentObject.Shadowing = null;
+
+            Logger.Debug($"{_currentObject.ObjectName} stopped shadowing {target.ObjectName}", LogCategory.Object);
+            return 1L;
+        }
+
+        if (args.Count != 1)
+        {
+            throw new EfunException("unshadow() takes 0 or 1 argument");
+        }
+
+        if (args[0] is not MudObject target2)
+        {
+            if (args[0] is int i && i == 0)
+            {
+                return 0L;
+            }
+            throw new EfunException("unshadow() argument must be an object");
+        }
+
+        // Only the shadow can unshadow
+        if (_currentObject.Shadowing != target2)
+        {
+            return 0L;
+        }
+
+        target2.ShadowedBy = null;
+        _currentObject.Shadowing = null;
+
+        Logger.Debug($"{_currentObject.ObjectName} stopped shadowing {target2.ObjectName}", LogCategory.Object);
+        return 1L;
+    }
+
+    #endregion
 
     #region Living/Interactive Efuns
 
