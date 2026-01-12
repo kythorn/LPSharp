@@ -38,24 +38,20 @@ void main(string args) {
     // Wield the weapon (automatically unwields previous)
     if (call_other(player, "wield_weapon", weapon)) {
         string short_desc;
+        object room;
+
         short_desc = call_other(weapon, "query_short");
         if (!short_desc || short_desc == "") {
             short_desc = "something";
         }
-        write("You wield " + short_desc + ".");
 
-        // Notify room
-        object room;
-        object *others;
-        int i;
         room = environment(player);
         if (room) {
-            others = all_inventory(room);
-            for (i = 0; i < sizeof(others); i++) {
-                if (others[i] != player && call_other(others[i], "is_living")) {
-                    tell_object(others[i], call_other(player, "query_name") + " wields " + short_desc + ".\n");
-                }
-            }
+            call_other(room, "act", player,
+                "You wield " + short_desc + ".",
+                "$N wields " + short_desc + ".");
+        } else {
+            write("You wield " + short_desc + ".");
         }
     } else {
         write("You can't wield that.");

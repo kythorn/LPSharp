@@ -42,25 +42,18 @@ void main(string args) {
         return;
     }
 
-    // Move object to player inventory
-    move_object(target, player);
-
-    // Get the object's short description
+    // Get the object's short description before moving
     string short_desc;
     short_desc = call_other(target, "query_short");
     if (!short_desc || short_desc == "") {
         short_desc = "something";
     }
 
-    write("You pick up " + short_desc + ".");
+    // Notify everyone (do this before moving so room message works)
+    call_other(room, "act", player,
+        "You pick up " + short_desc + ".",
+        "$N picks up " + short_desc + ".");
 
-    // Notify room
-    object *others;
-    int i;
-    others = all_inventory(room);
-    for (i = 0; i < sizeof(others); i++) {
-        if (others[i] != player && call_other(others[i], "is_living")) {
-            tell_object(others[i], call_other(player, "query_name") + " picks up " + short_desc + ".\n");
-        }
-    }
+    // Move object to player inventory
+    move_object(target, player);
 }

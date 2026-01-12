@@ -48,24 +48,20 @@ void main(string args) {
     // Wear the armor
     if (call_other(player, "wear_armor", armor)) {
         string short_desc;
+        object room;
+
         short_desc = call_other(armor, "query_short");
         if (!short_desc || short_desc == "") {
             short_desc = "something";
         }
-        write("You wear " + short_desc + " on your " + slot + ".");
 
-        // Notify room
-        object room;
-        object *others;
-        int i;
         room = environment(player);
         if (room) {
-            others = all_inventory(room);
-            for (i = 0; i < sizeof(others); i++) {
-                if (others[i] != player && call_other(others[i], "is_living")) {
-                    tell_object(others[i], call_other(player, "query_name") + " wears " + short_desc + ".\n");
-                }
-            }
+            call_other(room, "act", player,
+                "You wear " + short_desc + " on your " + slot + ".",
+                "$N wears " + short_desc + ".");
+        } else {
+            write("You wear " + short_desc + " on your " + slot + ".");
         }
     } else {
         write("You can't wear that.");

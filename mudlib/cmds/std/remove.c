@@ -50,28 +50,25 @@ void main(string args) {
         return;
     }
 
+    // Get description before removing
+    string short_desc;
+    string slot;
+    short_desc = call_other(armor, "query_short");
+    slot = call_other(armor, "query_slot");
+    if (!short_desc || short_desc == "") {
+        short_desc = "something";
+    }
+
     // Remove the armor
     if (call_other(player, "remove_armor_obj", armor)) {
-        string short_desc;
-        string slot;
-        short_desc = call_other(armor, "query_short");
-        slot = call_other(armor, "query_slot");
-        if (!short_desc || short_desc == "") {
-            short_desc = "something";
-        }
-        write("You remove " + short_desc + " from your " + slot + ".");
-
-        // Notify room
         object room;
-        object *others;
         room = environment(player);
         if (room) {
-            others = all_inventory(room);
-            for (i = 0; i < sizeof(others); i++) {
-                if (others[i] != player && call_other(others[i], "is_living")) {
-                    tell_object(others[i], call_other(player, "query_name") + " removes " + short_desc + ".\n");
-                }
-            }
+            call_other(room, "act", player,
+                "You remove " + short_desc + " from your " + slot + ".",
+                "$N removes " + short_desc + ".");
+        } else {
+            write("You remove " + short_desc + " from your " + slot + ".");
         }
     } else {
         write("You can't remove that.");

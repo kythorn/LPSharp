@@ -17,26 +17,22 @@ void main(string args) {
         return;
     }
 
-    if (call_other(player, "unwield_weapon")) {
-        string short_desc;
-        short_desc = call_other(weapon, "query_short");
-        if (!short_desc || short_desc == "") {
-            short_desc = "something";
-        }
-        write("You stop wielding " + short_desc + ".");
+    // Get description before unwielding
+    string short_desc;
+    short_desc = call_other(weapon, "query_short");
+    if (!short_desc || short_desc == "") {
+        short_desc = "something";
+    }
 
-        // Notify room
+    if (call_other(player, "unwield_weapon")) {
         object room;
-        object *others;
-        int i;
         room = environment(player);
         if (room) {
-            others = all_inventory(room);
-            for (i = 0; i < sizeof(others); i++) {
-                if (others[i] != player && call_other(others[i], "is_living")) {
-                    tell_object(others[i], call_other(player, "query_name") + " stops wielding " + short_desc + ".\n");
-                }
-            }
+            call_other(room, "act", player,
+                "You stop wielding " + short_desc + ".",
+                "$N stops wielding " + short_desc + ".");
+        } else {
+            write("You stop wielding " + short_desc + ".");
         }
     } else {
         write("You can't do that.");

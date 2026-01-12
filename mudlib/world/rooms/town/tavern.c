@@ -64,24 +64,24 @@ int do_order(string arg) {
 
     if (arg == "ale") {
         new_intox = call_other(player, "add_intoxication", 15);
-        write("The barkeeper slides a foaming mug of ale across the bar.\n");
-        write("You drain it in one long gulp. The warmth spreads through you.\n");
-        tell_room(this_object(), call_other(player, "query_name") + " downs a mug of ale.\n", player);
+        act(player,
+            "The barkeeper slides you a foaming mug of ale. You drain it in one gulp!",
+            "The barkeeper slides $N a mug of ale. $N drains it in one gulp!");
     } else if (arg == "mead") {
         new_intox = call_other(player, "add_intoxication", 20);
-        write("The barkeeper pours you a glass of golden mead.\n");
-        write("The sweet honey flavor goes down smoothly.\n");
-        tell_room(this_object(), call_other(player, "query_name") + " enjoys some mead.\n", player);
+        act(player,
+            "The barkeeper pours you a glass of golden mead. Sweet and warming!",
+            "The barkeeper pours $N a glass of mead. $N savors it happily.");
     } else if (arg == "wine") {
         new_intox = call_other(player, "add_intoxication", 25);
-        write("The barkeeper uncorks a dusty bottle and fills your glass.\n");
-        write("A fine vintage! You feel it going to your head.\n");
-        tell_room(this_object(), call_other(player, "query_name") + " savors a glass of wine.\n", player);
+        act(player,
+            "The barkeeper uncorks a dusty bottle and fills your glass. Fine vintage!",
+            "The barkeeper pours $N a glass of wine. $N swirls it appreciatively.");
     } else if (arg == "grog") {
         new_intox = call_other(player, "add_intoxication", 35);
-        write("The barkeeper eyes you warily, then pours a murky liquid.\n");
-        write("You down it in one go. WOW! That's strong stuff!\n");
-        tell_room(this_object(), call_other(player, "query_name") + " bravely drinks some grog!\n", player);
+        act(player,
+            "The barkeeper eyes you warily, then pours a murky liquid. WOW! Strong stuff!",
+            "The barkeeper pours $N some grog. $N's eyes water as they drink it!");
     } else {
         write("The barkeeper says: Sorry, we don't serve that here.\n");
         write("Type MENU to see what we have.\n");

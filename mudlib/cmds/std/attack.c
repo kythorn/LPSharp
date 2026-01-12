@@ -53,17 +53,22 @@ void main(string args) {
     string target_name;
     target_name = call_other(target, "query_short");
 
+    // Tell attacker
     write("You attack " + target_name + "!");
+
+    // Tell target
     tell_object(target, call_other(player, "query_name") + " attacks you!\n");
 
-    // Notify room
+    // Tell everyone else using act() - but exclude target manually
     object *others;
     int i;
+    string formatted;
+    formatted = call_other(room, "format_msg", "$N attacks " + target_name + "!", player);
     others = all_inventory(room);
     for (i = 0; i < sizeof(others); i++) {
         if (others[i] != player && others[i] != target) {
             if (call_other(others[i], "is_living")) {
-                tell_object(others[i], call_other(player, "query_name") + " attacks " + target_name + "!\n");
+                tell_object(others[i], formatted + "\n");
             }
         }
     }
