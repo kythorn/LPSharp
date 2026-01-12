@@ -1287,6 +1287,14 @@ public class GameLoop
             return;
         }
 
+        // "new" is reserved for the registration command
+        if (input.Equals("new", StringComparison.OrdinalIgnoreCase))
+        {
+            SendToPlayer(session.ConnectionId, "That name is reserved.\r\n");
+            SendToPlayer(session.ConnectionId, "Choose a username: ");
+            return;
+        }
+
         if (_accountManager.AccountExists(input))
         {
             SendToPlayer(session.ConnectionId, "That name is already taken.\r\n");

@@ -430,4 +430,34 @@ void main(string args) {
 
         Assert.Contains(outputs, o => o.Content.Contains("Invalid password"));
     }
+
+    [Fact]
+    public void Registration_WithReservedName_ShowsError()
+    {
+        _gameLoop.CreatePlayerSession("conn-1");
+        _gameLoop.Start();
+
+        // Start registration
+        _gameLoop.QueueCommand("conn-1", "new");
+        Thread.Sleep(100);
+
+        // Try to register as "new"
+        _gameLoop.QueueCommand("conn-1", "new");
+        Thread.Sleep(200);
+
+        _gameLoop.Stop();
+
+        var session = _gameLoop.GetSession("conn-1");
+        Assert.NotNull(session);
+        // Should still be in registration name state
+        Assert.Equal(LoginState.RegistrationName, session.LoginState);
+
+        var outputs = new List<OutputMessage>();
+        while (_gameLoop.TryDequeueOutput(out var output))
+        {
+            outputs.Add(output!);
+        }
+
+        Assert.Contains(outputs, o => o.Content.Contains("reserved"));
+    }
 }
