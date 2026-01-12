@@ -718,6 +718,24 @@ int query_prevent_shadow() {
 - Object references cannot be saved (skipped silently)
 - Files are stored in LPC save format (varname value pairs)
 
+### File I/O (Wizard+ Only)
+
+| Efun | Description |
+|------|-------------|
+| `read_file(path, [start], [lines])` | Read file contents (start=line, default all) |
+| `write_file(path, text, [flag])` | Write text to file (flag: 0=overwrite, 1=append) |
+| `file_size(path)` | Get file size in bytes (-1 if not exist, -2 if directory) |
+| `get_dir(path)` | Get array of filenames in directory |
+| `rm(path)` | Delete a file |
+| `mkdir(path)` | Create a directory |
+| `rmdir(path)` | Remove an empty directory |
+| `rename(from, to)` | Rename/move a file or directory |
+
+**Notes:**
+- All file efuns require Wizard+ access level
+- Path access is checked based on wizard home directory permissions
+- Returns 0 on failure, 1 on success (except read_file, file_size, get_dir)
+
 ### Server Control (Admin Only)
 
 | Efun | Description |

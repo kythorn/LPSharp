@@ -414,6 +414,10 @@ public class ObjectInterpreter
         _efuns.Register("write_file", WriteFileEfun);
         _efuns.Register("file_size", FileSizeEfun);
         _efuns.Register("rm", RmEfun);
+        _efuns.Register("mkdir", MkdirEfun);
+        _efuns.Register("rmdir", RmdirEfun);
+        _efuns.Register("rename", RenameEfun);
+        _efuns.Register("get_dir", GetDirEfun);
 
         // Object persistence efuns
         _efuns.Register("save_object", SaveObjectEfun);
@@ -3409,6 +3413,142 @@ public class ObjectInterpreter
 
             File.Delete(fullPath);
             return 1;
+        }
+        catch (IOException)
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// mkdir(path) - Create a directory.
+    /// Requires Wizard+ access level and write path access.
+    /// Returns 1 on success, 0 on failure.
+    /// </summary>
+    private object MkdirEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("mkdir() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string path)
+        {
+            throw new EfunException("mkdir() argument must be a path string");
+        }
+
+        // Permission check: require Wizard+ and path access for writing
+        RequireAccessLevel(AccessLevel.Wizard, "mkdir");
+        RequirePathAccess(path, "mkdir", isWrite: true);
+
+        try
+        {
+            var fullPath = ResolveMudlibPath(path);
+
+            if (Directory.Exists(fullPath))
+            {
+                return 0; // Already exists
+            }
+
+            Directory.CreateDirectory(fullPath);
+            return 1;
+        }
+        catch (IOException)
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// rmdir(path) - Remove an empty directory.
+    /// Requires Wizard+ access level and write path access.
+    /// Returns 1 on success, 0 on failure.
+    /// The directory must be empty.
+    /// </summary>
+    private object RmdirEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("rmdir() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string path)
+        {
+            throw new EfunException("rmdir() argument must be a path string");
+        }
+
+        // Permission check: require Wizard+ and path access for writing
+        RequireAccessLevel(AccessLevel.Wizard, "rmdir");
+        RequirePathAccess(path, "rmdir", isWrite: true);
+
+        try
+        {
+            var fullPath = ResolveMudlibPath(path);
+
+            if (!Directory.Exists(fullPath))
+            {
+                return 0;
+            }
+
+            // Only delete if empty
+            if (Directory.EnumerateFileSystemEntries(fullPath).Any())
+            {
+                return 0; // Directory not empty
+            }
+
+            Directory.Delete(fullPath);
+            return 1;
+        }
+        catch (IOException)
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// rename(from, to) - Rename/move a file or directory.
+    /// Requires Wizard+ access level and write path access for both paths.
+    /// Returns 1 on success, 0 on failure.
+    /// </summary>
+    private object RenameEfun(List<object> args)
+    {
+        if (args.Count != 2)
+        {
+            throw new EfunException("rename() requires exactly 2 arguments");
+        }
+
+        if (args[0] is not string fromPath)
+        {
+            throw new EfunException("rename() first argument must be a path string");
+        }
+
+        if (args[1] is not string toPath)
+        {
+            throw new EfunException("rename() second argument must be a path string");
+        }
+
+        // Permission check: require Wizard+ and path access for both paths
+        RequireAccessLevel(AccessLevel.Wizard, "rename");
+        RequirePathAccess(fromPath, "rename", isWrite: true);
+        RequirePathAccess(toPath, "rename", isWrite: true);
+
+        try
+        {
+            var fullFromPath = ResolveMudlibPath(fromPath);
+            var fullToPath = ResolveMudlibPath(toPath);
+
+            if (File.Exists(fullFromPath))
+            {
+                File.Move(fullFromPath, fullToPath);
+                return 1;
+            }
+            else if (Directory.Exists(fullFromPath))
+            {
+                Directory.Move(fullFromPath, fullToPath);
+                return 1;
+            }
+
+            return 0; // Source doesn't exist
         }
         catch (IOException)
         {
