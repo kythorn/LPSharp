@@ -1,7 +1,14 @@
 // /cmds/quit.c
-// Quit command - disconnect from the game
+// Quit command - save and disconnect from the game
 
 void main(string args) {
+    object player;
+
+    player = this_player();
+    if (player != 0) {
+        call_other(player, "save_player");
+    }
+
     write("Goodbye!");
-    destruct(this_player());
+    destruct(player);
 }

@@ -94,6 +94,16 @@ public class GameLoop
     /// </summary>
     private int _tickCount;
 
+    /// <summary>
+    /// When the last periodic save occurred.
+    /// </summary>
+    private DateTime _lastPeriodicSave = DateTime.UtcNow;
+
+    /// <summary>
+    /// How often to auto-save all players.
+    /// </summary>
+    private static readonly TimeSpan PeriodicSaveInterval = TimeSpan.FromMinutes(5);
+
     #endregion
 
     #region Callout System
@@ -269,6 +279,38 @@ public class GameLoop
         _running = false;
         _gameThread?.Join(TimeSpan.FromSeconds(5));
         Console.WriteLine("Game loop stopped.");
+    }
+
+    /// <summary>
+    /// Perform graceful shutdown: announce to players, save all data.
+    /// Call this before Stop() for a clean shutdown.
+    /// </summary>
+    public void GracefulShutdown()
+    {
+        Console.WriteLine("Initiating graceful shutdown...");
+
+        // Get all active sessions
+        List<PlayerSession> sessions;
+        lock (_sessionLock)
+        {
+            sessions = _sessions.Values
+                .Where(s => s.LoginState == LoginState.Playing)
+                .ToList();
+        }
+
+        // Announce shutdown to all players
+        foreach (var session in sessions)
+        {
+            if (!string.IsNullOrEmpty(session.ConnectionId))
+            {
+                SendToPlayer(session.ConnectionId, "\r\n*** Server shutting down. Saving your character... ***\r\n");
+            }
+        }
+
+        // Save all players (includes linkdead)
+        SaveAllPlayers();
+
+        Console.WriteLine("Graceful shutdown complete.");
     }
 
     /// <summary>
@@ -484,6 +526,89 @@ public class GameLoop
     }
 
     /// <summary>
+    /// Save a player object's data by calling save_player() on it.
+    /// Returns true if save was successful.
+    /// </summary>
+    private bool SavePlayerObject(MudObject? playerObject)
+    {
+        if (_interpreter == null || playerObject == null || playerObject.IsDestructed)
+        {
+            return false;
+        }
+
+        // Check if the player has a save_player function
+        if (playerObject.FindFunction("save_player") == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            _interpreter.ResetInstructionCount();
+            var result = _interpreter.CallFunctionOnObject(playerObject, "save_player", new List<object>());
+
+            // save_player returns 1 on success
+            if (result is int i && i == 1)
+            {
+                return true;
+            }
+            if (result is long l && l == 1)
+            {
+                return true;
+            }
+        }
+        catch (ReturnException ex)
+        {
+            if (ex.Value is int i && i == 1)
+            {
+                return true;
+            }
+            if (ex.Value is long l && l == 1)
+            {
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving player: {ex.Message}");
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Save all active players. Used for periodic saves and shutdown.
+    /// </summary>
+    public void SaveAllPlayers()
+    {
+        List<PlayerSession> sessions;
+        lock (_sessionLock)
+        {
+            sessions = _sessions.Values
+                .Where(s => s.LoginState == LoginState.Playing && s.PlayerObject != null)
+                .ToList();
+
+            // Also include linkdead sessions
+            sessions.AddRange(_linkdeadSessions.Values
+                .Where(s => s.PlayerObject != null && !s.PlayerObject.IsDestructed));
+        }
+
+        int saved = 0;
+        foreach (var session in sessions)
+        {
+            if (SavePlayerObject(session.PlayerObject))
+            {
+                saved++;
+            }
+        }
+
+        if (saved > 0)
+        {
+            Console.WriteLine($"Auto-saved {saved} player(s)");
+        }
+    }
+
+    /// <summary>
     /// Clean up linkdead sessions that have exceeded the timeout.
     /// Called periodically from the game loop.
     /// </summary>
@@ -504,9 +629,15 @@ public class GameLoop
         {
             Console.WriteLine($"Linkdead session for {session.AuthenticatedUsername} expired - cleaning up");
 
-            // Announce to room before cleanup (use character name, not account name)
+            // Save player data before cleanup
             if (session.PlayerObject != null && !session.PlayerObject.IsDestructed)
             {
+                if (SavePlayerObject(session.PlayerObject))
+                {
+                    Console.WriteLine($"Saved player data for {session.AuthenticatedUsername}");
+                }
+
+                // Announce to room before cleanup (use character name, not account name)
                 AnnounceToRoom(session.PlayerObject,
                     $"{GetPlayerName(session.PlayerObject, session.AuthenticatedUsername)} has disconnected (linkdead timeout).\r\n");
             }
@@ -747,6 +878,14 @@ public class GameLoop
 
                     // Clean up expired linkdead sessions (check during heartbeat cycle)
                     CleanupExpiredLinkdeadSessions();
+                }
+
+                // Periodic player saves
+                var now = DateTime.UtcNow;
+                if (now - _lastPeriodicSave >= PeriodicSaveInterval)
+                {
+                    _lastPeriodicSave = now;
+                    SaveAllPlayers();
                 }
 
                 // Process pending callouts every tick
@@ -1837,6 +1976,24 @@ public class GameLoop
             {
                 _interpreter.CallFunctionOnObject(playerObject, "set_name",
                     new List<object> { Capitalize(session.AuthenticatedUsername!) });
+            }
+
+            // Restore saved player data (must be after set_name so it knows where to look)
+            if (_interpreter != null && playerObject.FindFunction("restore_player") != null)
+            {
+                try
+                {
+                    _interpreter.ResetInstructionCount();
+                    _interpreter.CallFunctionOnObject(playerObject, "restore_player", new List<object>());
+                }
+                catch (ReturnException)
+                {
+                    // Normal return
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Warning: Could not restore player data: {ex.Message}");
+                }
             }
 
             // Load starting room

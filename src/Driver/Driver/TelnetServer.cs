@@ -107,8 +107,12 @@ public class TelnetServer : IDisposable
     /// </summary>
     public void Stop()
     {
-        _running = false;
         Console.WriteLine("\nShutting down...");
+
+        // Perform graceful shutdown (announce to players, save data)
+        _gameLoop.GracefulShutdown();
+
+        _running = false;
     }
 
     private void AcceptPendingConnections()

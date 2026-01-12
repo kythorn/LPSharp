@@ -72,21 +72,27 @@ This document tracks critical driver fixes needed before serious mudlib developm
 
 ## Priority 4: Graceful Shutdown
 
-**Status:** TODO
+**Status:** COMPLETE
 
 **Problem:** Server shutdown (Ctrl+C) doesn't save player data. All progress lost.
 
-**Solution:**
-- Intercept shutdown signal
-- Announce shutdown to all players
-- Save all player data (call save_object or equivalent)
-- Disconnect all players cleanly
-- Flush any pending writes
+**Solution (implemented):**
+- Ctrl+C handler in TelnetServer calls GracefulShutdown()
+- Admin `shutdown` command available via `shutdown()` efun
+- GracefulShutdown announces to all players: "Server shutting down. Saving your character..."
+- Saves all active and linkdead players before stopping
+- `save_object()` / `restore_object()` efuns for LPC object persistence
+- Player data saved on: quit, linkdead timeout, shutdown, and every 5 minutes
+- Player data restored on login
 
-**Files to modify:**
-- `Program.cs` - signal handling
-- `TelnetServer.cs` - shutdown sequence
-- `GameLoop.cs` - save all players
+**Files modified:**
+- `TelnetServer.cs` - Stop() calls GracefulShutdown()
+- `GameLoop.cs` - GracefulShutdown(), SaveAllPlayers(), SavePlayerObject(), periodic saves
+- `ObjectInterpreter.cs` - save_object, restore_object, shutdown efuns
+- `mudlib/std/player.c` - save_player(), restore_player() functions
+- `mudlib/cmds/std/quit.c` - calls save_player before destruct
+- `mudlib/cmds/admin/shutdown.c` - admin shutdown command
+- `mudlib/secure/players/` - directory for player save files
 
 ---
 
@@ -116,7 +122,7 @@ This document tracks critical driver fixes needed before serious mudlib developm
 - [x] call_other security (function visibility)
 - [x] Duplicate login handling
 - [x] Linkdead system with reconnection
-- [ ] Graceful shutdown with player saves
+- [x] Graceful shutdown with player saves
 - [ ] (Optional) Better error reporting
 - [ ] (Optional) Inherit security at compile time
 - [ ] (Optional) Configuration file

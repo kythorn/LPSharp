@@ -523,6 +523,24 @@ Efuns are functions provided by the driver, callable from any LPC code.
 | `remove_call_out(func)` | Cancel pending callout |
 | `find_call_out(func)` | Get time until callout fires |
 
+### Object Persistence
+
+| Efun | Description |
+|------|-------------|
+| `save_object(path)` | Save this_object()'s variables to a file (.o extension added if missing) |
+| `restore_object(path)` | Restore this_object()'s variables from a file |
+
+**Notes:**
+- Saves int, string, float, arrays, and mappings of simple types
+- Object references cannot be saved (skipped silently)
+- Files are stored in LPC save format (varname value pairs)
+
+### Server Control (Admin Only)
+
+| Efun | Description |
+|------|-------------|
+| `shutdown()` | Initiate graceful server shutdown |
+
 ### Action System
 
 The action system allows objects to register custom command handlers via `add_action()`.

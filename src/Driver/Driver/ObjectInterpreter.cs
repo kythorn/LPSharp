@@ -378,6 +378,9 @@ public class ObjectInterpreter
         _efuns.Register("query_access_level", QueryAccessLevelEfun);
         _efuns.Register("homedir", HomedirEfun);
 
+        // Server control efuns (Admin only)
+        _efuns.Register("shutdown", ShutdownEfun);
+
         // Directory listing efun (for ls command)
         _efuns.Register("get_dir", GetDirEfun);
 
@@ -3298,6 +3301,73 @@ public class ObjectInterpreter
         }
 
         return $"/wizards/{targetUsername.ToLowerInvariant()}";
+    }
+
+    /// <summary>
+    /// shutdown() - Initiate graceful server shutdown.
+    /// Requires Admin access level.
+    /// Announces to all players, saves all data, then shuts down.
+    /// </summary>
+    private object ShutdownEfun(List<object> args)
+    {
+        if (args.Count != 0)
+        {
+            throw new EfunException("shutdown() takes no arguments");
+        }
+
+        // Require Admin access
+        RequireAccessLevel(AccessLevel.Admin, "shutdown");
+
+        var gameLoop = GameLoop.Instance;
+        if (gameLoop == null)
+        {
+            throw new EfunException("shutdown() failed - no game loop");
+        }
+
+        // Log who initiated shutdown
+        var context = ExecutionContext.Current;
+        var initiator = context?.PlayerObject != null
+            ? GetPlayerName(context.PlayerObject)
+            : "unknown";
+        Console.WriteLine($"Shutdown initiated by {initiator}");
+
+        // Schedule shutdown on a separate thread to allow this command to complete
+        Task.Run(() =>
+        {
+            // Small delay to let the command response be sent
+            Thread.Sleep(500);
+
+            // Trigger graceful shutdown (this will save all players and announce)
+            gameLoop.GracefulShutdown();
+
+            // Signal the main loop to stop
+            Environment.Exit(0);
+        });
+
+        return 1;
+    }
+
+    /// <summary>
+    /// Get the display name for a player object (helper for shutdown logging).
+    /// </summary>
+    private string GetPlayerName(MudObject player)
+    {
+        if (player.FindFunction("query_name") != null)
+        {
+            try
+            {
+                var result = CallFunctionOnObject(player, "query_name", new List<object>());
+                if (result is string name && !string.IsNullOrEmpty(name))
+                {
+                    return name;
+                }
+            }
+            catch
+            {
+                // Fall through
+            }
+        }
+        return player.ObjectName;
     }
 
     #endregion
