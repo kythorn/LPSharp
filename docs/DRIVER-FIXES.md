@@ -29,18 +29,18 @@ This document tracks critical driver fixes needed before serious mudlib developm
 
 ## Priority 2: Duplicate Login Handling
 
-**Status:** TODO
+**Status:** COMPLETE
 
 **Problem:** Same account can log in multiple times simultaneously, creating multiple player objects.
 
-**Solution:**
-- Track sessions by authenticated username
+**Solution (implemented):**
 - On login, check if username already has active session
-- Options: reject login, or kick previous session (user choice)
-- If kicking, clean up old session properly
+- New session wins: kick existing session with notification
+- Existing player gets message: "Another login detected - you have been disconnected"
+- Old session is properly cleaned up (player object destructed, connection closed)
 
-**Files to modify:**
-- `GameLoop.cs` - CompleteLogin(), session tracking
+**Files modified:**
+- `GameLoop.cs` - Added `FindSessionByUsername()`, `KickSession()`, duplicate check in `CompleteLogin()`
 
 ---
 
@@ -109,7 +109,7 @@ This document tracks critical driver fixes needed before serious mudlib developm
 ## Completion Checklist
 
 - [x] call_other security (function visibility)
-- [ ] Duplicate login handling
+- [x] Duplicate login handling
 - [ ] Linkdead system with reconnection
 - [ ] Graceful shutdown with player saves
 - [ ] (Optional) Better error reporting

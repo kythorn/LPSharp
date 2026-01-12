@@ -46,6 +46,11 @@ public enum LoginState
     Authenticated,
 
     /// <summary>
+    /// Waiting for confirmation to take over existing session.
+    /// </summary>
+    ConfirmTakeover,
+
+    /// <summary>
     /// In-game, player object exists.
     /// </summary>
     Playing

@@ -27,6 +27,7 @@ public class GameLoop
     /// </summary>
     private readonly Dictionary<string, PlayerSession> _sessions = new();
     private readonly object _sessionLock = new();
+    private readonly object _loginLock = new(); // Serialize login completion to prevent race conditions
 
     /// <summary>
     /// The object manager for loading and managing MUD objects.
@@ -379,6 +380,97 @@ public class GameLoop
         lock (_sessionLock)
         {
             return _sessions.Values.ToList();
+        }
+    }
+
+    /// <summary>
+    /// Find an active (Playing) session by authenticated username.
+    /// Only returns sessions that are fully logged in and playing.
+    /// Returns null if no playing session exists for that username.
+    /// </summary>
+    private PlayerSession? FindSessionByUsername(string username)
+    {
+        lock (_sessionLock)
+        {
+            return _sessions.Values.FirstOrDefault(s =>
+                s.LoginState == LoginState.Playing &&
+                s.AuthenticatedUsername != null &&
+                s.AuthenticatedUsername.Equals(username, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    /// <summary>
+    /// Kick an existing session (for duplicate login handling).
+    /// Notifies the player, cleans up the session, and disconnects.
+    /// </summary>
+    private void KickSession(PlayerSession session, string reason)
+    {
+        // Notify the player being kicked
+        SendToPlayer(session.ConnectionId, $"\r\n*** {reason} ***\r\n");
+
+        // Store connection ID before cleanup
+        var connectionId = session.ConnectionId;
+
+        // Remove the session (this destructs the player object)
+        RemovePlayerSession(connectionId);
+
+        // Disconnect the old connection
+        OnPlayerDisconnect?.Invoke(connectionId);
+
+        Console.WriteLine($"Kicked session {connectionId}: {reason}");
+    }
+
+    /// <summary>
+    /// Check if there's an existing session for the same username.
+    /// If so, prompt the user to confirm takeover.
+    /// Returns true if a prompt was shown (caller should wait for response),
+    /// false if no duplicate exists (caller can proceed with login).
+    /// </summary>
+    private bool CheckAndPromptForDuplicateSession(PlayerSession session)
+    {
+        var existingSession = FindSessionByUsername(session.AuthenticatedUsername!);
+        if (existingSession != null && existingSession.ConnectionId != session.ConnectionId)
+        {
+            // Duplicate exists - prompt for confirmation
+            session.LoginState = LoginState.ConfirmTakeover;
+            SendToPlayer(session.ConnectionId,
+                "You are already logged in from another location.\r\n" +
+                "Do you want to take over that session? (y/n): ");
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Handle response to duplicate session takeover prompt.
+    /// </summary>
+    private void HandleConfirmTakeover(PlayerSession session, string input)
+    {
+        input = input.Trim().ToLower();
+
+        if (input == "y" || input == "yes")
+        {
+            // User confirmed - kick the old session if it still exists
+            // No lock needed: FindSessionByUsername and KickSession have their own synchronization
+            var existingSession = FindSessionByUsername(session.AuthenticatedUsername!);
+            if (existingSession != null && existingSession.ConnectionId != session.ConnectionId)
+            {
+                KickSession(existingSession, "Another login detected - you have been disconnected");
+            }
+
+            // Now complete the login (CompleteLogin has its own minimal lock for the state transition)
+            CompleteLogin(session);
+        }
+        else if (input == "n" || input == "no")
+        {
+            // User declined - disconnect them
+            SendToPlayer(session.ConnectionId, "Login cancelled.\r\n");
+            OnPlayerDisconnect?.Invoke(session.ConnectionId);
+        }
+        else
+        {
+            // Invalid response - ask again
+            SendToPlayer(session.ConnectionId, "Please enter 'y' or 'n': ");
         }
     }
 
@@ -1290,6 +1382,10 @@ public class GameLoop
                 HandleRegistrationConfirm(session, input);
                 break;
 
+            case LoginState.ConfirmTakeover:
+                HandleConfirmTakeover(session, input);
+                break;
+
             default:
                 // Shouldn't happen, but reset to awaiting name
                 session.LoginState = LoginState.AwaitingName;
@@ -1339,6 +1435,14 @@ public class GameLoop
         {
             session.AuthenticatedUsername = session.PendingUsername;
             _accountManager.UpdateLastLogin(session.AuthenticatedUsername!);
+
+            // Check for existing session before completing login
+            if (CheckAndPromptForDuplicateSession(session))
+            {
+                // Duplicate exists, waiting for confirmation
+                return;
+            }
+
             CompleteLogin(session);
         }
         else
@@ -1445,6 +1549,7 @@ public class GameLoop
 
     /// <summary>
     /// Complete the login process and enter the game.
+    /// Duplicate session handling should be done BEFORE calling this method.
     /// </summary>
     private void CompleteLogin(PlayerSession session)
     {
@@ -1452,16 +1557,39 @@ public class GameLoop
 
         try
         {
-            // Cache access level from account
+            // Cache access level from account (outside lock - read-only)
             session.AccessLevel = _accountManager.GetAccessLevel(session.AuthenticatedUsername!);
 
-            // Load aliases from account
+            // Load aliases from account (outside lock - read-only)
             session.Aliases = _accountManager.GetAliases(session.AuthenticatedUsername!);
 
-            // Clone a player object
+            // Clone a player object (outside lock - object creation doesn't need login serialization)
             var playerObject = _objectManager.CloneObject("/std/player");
             playerObject.IsInteractive = true;
             playerObject.ConnectionId = session.ConnectionId;
+
+            // Critical section: atomically check for duplicate and mark as Playing
+            // This lock is MINIMAL - only covers the state transition
+            lock (_loginLock)
+            {
+                // Final safety check: if another session snuck in while we were setting up
+                var existingSession = FindSessionByUsername(session.AuthenticatedUsername!);
+                if (existingSession != null && existingSession.ConnectionId != session.ConnectionId)
+                {
+                    // Rare race condition: another session completed login while we were setting up
+                    // Clean up our player object and abort
+                    playerObject.IsInteractive = false;
+                    _objectManager.DestructObject(playerObject);
+                    SendToPlayer(session.ConnectionId, "Another session has connected. Please try again.\r\n");
+                    OnPlayerDisconnect?.Invoke(session.ConnectionId);
+                    return;
+                }
+
+                // Mark session as Playing (this is what FindSessionByUsername looks for)
+                session.PlayerObject = playerObject;
+                session.LoginState = LoginState.Playing;
+            }
+            // Lock released - all remaining operations are safe without synchronization
 
             // Set player name
             if (_interpreter != null && playerObject.FindFunction("set_name") != null)
@@ -1486,10 +1614,6 @@ public class GameLoop
             {
                 playerObject.MoveTo(startingRoom);
             }
-
-            // Update session
-            session.PlayerObject = playerObject;
-            session.LoginState = LoginState.Playing;
 
             // Show access level for non-player levels
             var accessMsg = session.AccessLevel switch
