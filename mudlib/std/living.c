@@ -24,6 +24,9 @@ int in_combat;
 // Regeneration (HP per heartbeat when not in combat)
 int regen_rate;
 
+// Intoxication (0-100, affects regen and combat)
+int intoxication;
+
 // Equipment
 object wielded_weapon;
 mapping worn_armor;
@@ -50,6 +53,9 @@ void create() {
 
     // Regeneration - 1 HP per heartbeat (2 seconds) when not in combat
     regen_rate = 1;
+
+    // Start sober
+    intoxication = 0;
 
     // Equipment
     wielded_weapon = 0;
@@ -117,6 +123,52 @@ void heal(int amount) {
     }
 }
 
+// Intoxication functions
+int query_intoxication() {
+    return intoxication;
+}
+
+// Add intoxication from drinking
+// Returns new intoxication level
+int add_intoxication(int amount) {
+    intoxication = intoxication + amount;
+    if (intoxication > 100) {
+        intoxication = 100;
+    }
+    if (intoxication < 0) {
+        intoxication = 0;
+    }
+
+    // Start heartbeat for sobering up and boosted regen
+    if (intoxication > 0) {
+        set_heart_beat(1);
+    }
+
+    return intoxication;
+}
+
+// Check if too drunk to fight effectively
+int is_too_drunk() {
+    return intoxication >= 50;
+}
+
+// Get intoxication status message
+string query_intoxication_status() {
+    if (intoxication == 0) {
+        return "sober";
+    } else if (intoxication < 20) {
+        return "tipsy";
+    } else if (intoxication < 40) {
+        return "buzzed";
+    } else if (intoxication < 60) {
+        return "drunk";
+    } else if (intoxication < 80) {
+        return "very drunk";
+    } else {
+        return "completely smashed";
+    }
+}
+
 // Combat state getters
 int query_in_combat() { return in_combat; }
 object query_attacker() { return attacker; }
@@ -172,6 +224,13 @@ int query_hit_chance(object target) {
     if (target) {
         target_agi = call_other(target, "query_agi");
         chance = chance - (target_agi * 2);
+    }
+
+    // Drunk penalty: lose 1% hit chance per 2 intoxication
+    // At 50 intox (too drunk): -25% hit chance
+    // At 100 intox (smashed): -50% hit chance
+    if (intoxication > 0) {
+        chance = chance - (intoxication / 2);
     }
 
     // Clamp to reasonable range
@@ -295,6 +354,11 @@ void start_combat(object target) {
     // Already fighting this target
     if (attacker == target && in_combat) {
         return;
+    }
+
+    // Warn if drunk
+    if (is_too_drunk()) {
+        tell_object(this_object(), "You stagger drunkenly into combat!\n");
     }
 
     attacker = target;
@@ -438,26 +502,57 @@ void do_attack() {
 // Heartbeat - called every 2 seconds
 // Handles combat rounds and regeneration
 void heart_beat() {
+    int bonus_regen;
+    int was_drunk;
+
     // If in combat, execute an attack
     if (in_combat && attacker) {
         do_attack();
+        // Still process sobering while fighting
+        if (intoxication > 0) {
+            intoxication = intoxication - 2;
+            if (intoxication < 0) intoxication = 0;
+        }
         return;
     }
 
+    // Track if we were drunk before sobering
+    was_drunk = intoxication;
+
+    // Sober up over time (2 points per heartbeat = ~1 minute to sober from one drink)
+    if (intoxication > 0) {
+        intoxication = intoxication - 2;
+        if (intoxication <= 0) {
+            intoxication = 0;
+            if (was_drunk > 0) {
+                tell_object(this_object(), "You feel sober again.\n");
+            }
+        }
+    }
+
+    // Calculate bonus regen from intoxication (intoxication/10)
+    bonus_regen = intoxication / 10;
+
     // Not in combat - regenerate HP
-    if (hp < max_hp && regen_rate > 0) {
-        hp = hp + regen_rate;
+    if (hp < max_hp && (regen_rate > 0 || bonus_regen > 0)) {
+        int total_regen;
+        total_regen = regen_rate + bonus_regen;
+
+        hp = hp + total_regen;
         if (hp > max_hp) {
             hp = max_hp;
         }
 
-        // Notify player of healing (only when significant)
+        // Notify player of healing (only when fully healed)
         if (hp == max_hp) {
             tell_object(this_object(), "You are fully healed.\n");
-            set_heart_beat(0);
+            // Don't disable heartbeat if still intoxicated
+            if (intoxication <= 0) {
+                set_heart_beat(0);
+            }
         }
-    } else {
-        // Full HP, disable heartbeat
+    } else if (intoxication <= 0) {
+        // Full HP and sober, disable heartbeat
         set_heart_beat(0);
     }
 }

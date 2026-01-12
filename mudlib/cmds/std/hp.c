@@ -66,5 +66,14 @@ void main(string args) {
         }
     }
 
-    write("HP: " + hp + "/" + max_hp + " " + bar + " " + status + combat_status);
+    // Check intoxication
+    string drunk_status;
+    int intox;
+    drunk_status = "";
+    intox = call_other(player, "query_intoxication");
+    if (intox > 0) {
+        drunk_status = " [" + capitalize(call_other(player, "query_intoxication_status")) + "]";
+    }
+
+    write("HP: " + hp + "/" + max_hp + " " + bar + " " + status + combat_status + drunk_status);
 }
