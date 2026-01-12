@@ -37,6 +37,9 @@ public enum TokenType
     Static,
     Nomask,
 
+    // Error handling
+    Catch,
+
     // Arithmetic operators
     Plus,           // +
     Minus,          // -

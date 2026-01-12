@@ -160,4 +160,152 @@ void main(string args) {
         Assert.Contains("/test/loop", ex.Message);
         Assert.Contains(":", ex.Message);
     }
+
+    [Fact]
+    public void Catch_ReturnsZeroOnSuccess()
+    {
+        // Create a file that uses catch with an expression that succeeds
+        File.WriteAllText(Path.Combine(_testMudlibPath, "test", "catch_success.c"), @"
+inherit ""/std/object"";
+
+int test_result;
+
+void main(string args) {
+    test_result = catch(5 + 3);
+}
+
+int query_result() {
+    return test_result;
+}
+");
+
+        var obj = _objectManager.LoadObject("/test/catch_success");
+        _interpreter.ResetInstructionCount();
+        _interpreter.CallFunctionOnObject(obj, "main", new List<object> { "" });
+
+        // Call query_result to get the value
+        _interpreter.ResetInstructionCount();
+        var result = _interpreter.CallFunctionOnObject(obj, "query_result", new List<object>());
+
+        // catch() returns 0 (not the expression result) on success
+        Assert.Equal(0L, result);
+    }
+
+    [Fact]
+    public void Catch_CatchesThrowAndReturnsValue()
+    {
+        // Create a file that uses catch to catch a throw()
+        File.WriteAllText(Path.Combine(_testMudlibPath, "test", "catch_throw.c"), @"
+inherit ""/std/object"";
+
+string test_result;
+
+void main(string args) {
+    test_result = catch(throw(""my error""));
+}
+
+string query_result() {
+    return test_result;
+}
+");
+
+        var obj = _objectManager.LoadObject("/test/catch_throw");
+        _interpreter.ResetInstructionCount();
+        _interpreter.CallFunctionOnObject(obj, "main", new List<object> { "" });
+
+        // Call query_result to get the value
+        _interpreter.ResetInstructionCount();
+        var result = _interpreter.CallFunctionOnObject(obj, "query_result", new List<object>());
+
+        // catch() returns the thrown value
+        Assert.Equal("my error", result);
+    }
+
+    [Fact]
+    public void Catch_CatchesRuntimeError()
+    {
+        // Create a file that uses catch to catch a runtime error
+        File.WriteAllText(Path.Combine(_testMudlibPath, "test", "catch_error.c"), @"
+inherit ""/std/object"";
+
+mixed test_result;
+
+void main(string args) {
+    test_result = catch(unknown_func());
+}
+
+mixed query_result() {
+    return test_result;
+}
+");
+
+        var obj = _objectManager.LoadObject("/test/catch_error");
+        _interpreter.ResetInstructionCount();
+        _interpreter.CallFunctionOnObject(obj, "main", new List<object> { "" });
+
+        // Call query_result to get the value
+        _interpreter.ResetInstructionCount();
+        var result = _interpreter.CallFunctionOnObject(obj, "query_result", new List<object>());
+
+        // catch() returns error string on runtime error
+        Assert.IsType<string>(result);
+        Assert.Contains("unknown_func", (string)result);
+    }
+
+    [Fact]
+    public void UncaughtThrow_PropagatesAsException()
+    {
+        // Create a file with uncaught throw
+        File.WriteAllText(Path.Combine(_testMudlibPath, "test", "uncaught_throw.c"), @"
+inherit ""/std/object"";
+
+void main(string args) {
+    throw(""uncaught error"");
+}
+");
+
+        var obj = _objectManager.LoadObject("/test/uncaught_throw");
+
+        var ex = Assert.Throws<LpcThrowException>(() =>
+        {
+            _interpreter.ResetInstructionCount();
+            _interpreter.CallFunctionOnObject(obj, "main", new List<object> { "" });
+        });
+
+        // Should contain the thrown message
+        Assert.Contains("uncaught error", ex.Message);
+    }
+
+    [Fact]
+    public void Catch_InNestedFunction()
+    {
+        // Create a file where throw happens in a nested function
+        File.WriteAllText(Path.Combine(_testMudlibPath, "test", "catch_nested.c"), @"
+inherit ""/std/object"";
+
+mixed test_result;
+
+void do_throw() {
+    throw(""nested throw"");
+}
+
+void main(string args) {
+    test_result = catch(do_throw());
+}
+
+mixed query_result() {
+    return test_result;
+}
+");
+
+        var obj = _objectManager.LoadObject("/test/catch_nested");
+        _interpreter.ResetInstructionCount();
+        _interpreter.CallFunctionOnObject(obj, "main", new List<object> { "" });
+
+        _interpreter.ResetInstructionCount();
+        var result = _interpreter.CallFunctionOnObject(obj, "query_result", new List<object>());
+
+        // catch() catches throw from nested function
+        Assert.Equal("nested throw", result);
+    }
 }

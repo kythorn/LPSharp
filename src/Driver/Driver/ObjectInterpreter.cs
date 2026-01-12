@@ -441,6 +441,9 @@ public class ObjectInterpreter
         // Server control efuns (Admin only)
         _efuns.Register("shutdown", ShutdownEfun);
 
+        // Error handling efuns
+        _efuns.Register("throw", ThrowEfun);
+
         // Directory listing efun (for ls command)
         _efuns.Register("get_dir", GetDirEfun);
 
@@ -890,8 +893,66 @@ public class ObjectInterpreter
             FunctionCall call => EvaluateFunctionCall(call),
             ArrowCall arrow => EvaluateArrowCall(arrow),
             IndexExpression idx => EvaluateIndexExpression(idx),
+            CatchExpression catchExpr => EvaluateCatch(catchExpr),
             _ => throw RuntimeError($"Unknown expression type: {expr.GetType().Name}", expr)
         };
+    }
+
+    /// <summary>
+    /// Evaluate catch(expr) - returns 0 on success, error string on exception.
+    /// </summary>
+    private object EvaluateCatch(CatchExpression expr)
+    {
+        try
+        {
+            Evaluate(expr.Body);
+            return 0L; // Success
+        }
+        catch (LpcThrowException ex)
+        {
+            // Explicit throw() - return the thrown value as error
+            return ex.ThrownValue is string s ? s : ex.Message;
+        }
+        catch (LpcRuntimeException ex)
+        {
+            // Runtime error - return error message
+            return ex.Message;
+        }
+        catch (EfunException ex)
+        {
+            // Efun error - return error message
+            return ex.Message;
+        }
+        catch (ObjectInterpreterException ex)
+        {
+            // Interpreter error - return error message
+            return ex.Message;
+        }
+        catch (ReturnException)
+        {
+            // return inside catch is allowed
+            throw;
+        }
+        catch (BreakException)
+        {
+            // break inside catch is allowed
+            throw;
+        }
+        catch (ContinueException)
+        {
+            // continue inside catch is allowed
+            throw;
+        }
+        catch (ExecutionLimitException)
+        {
+            // Don't catch execution limits - they need to propagate
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // Catch-all for unexpected errors
+            return $"*Unexpected error: {ex.Message}*";
+        }
     }
 
     private object EvaluateArrayLiteral(ArrayLiteral arr)
@@ -3427,6 +3488,21 @@ public class ObjectInterpreter
     }
 
     /// <summary>
+    /// throw(value) - Throw an error that can be caught by catch().
+    /// If not caught, becomes a runtime error.
+    /// value can be any type, but string is most common.
+    /// </summary>
+    private object ThrowEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("throw() requires exactly 1 argument");
+        }
+
+        throw new LpcThrowException(args[0] ?? "");
+    }
+
+    /// <summary>
     /// Get the display name for a player object (helper for shutdown logging).
     /// </summary>
     private string GetPlayerName(MudObject player)
@@ -4476,5 +4552,28 @@ public class ExecutionLimitException : Exception
     {
         File = file;
         Line = line;
+    }
+}
+
+/// <summary>
+/// Exception thrown by the LPC throw() efun.
+/// Can be caught by catch() expression.
+/// </summary>
+public class LpcThrowException : Exception
+{
+    public object ThrownValue { get; }
+
+    public LpcThrowException(object value) : base(FormatMessage(value))
+    {
+        ThrownValue = value;
+    }
+
+    private static string FormatMessage(object value)
+    {
+        return value switch
+        {
+            string s => s,
+            _ => value?.ToString() ?? "*throw with no message*"
+        };
     }
 }

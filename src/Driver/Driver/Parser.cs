@@ -1229,6 +1229,30 @@ public class Parser
             };
         }
 
+        // Catch expression: catch(expr)
+        if (Match(TokenType.Catch))
+        {
+            var catchToken = Previous();
+
+            if (!Match(TokenType.LeftParen))
+            {
+                throw new ParserException("Expected '(' after 'catch'", Current());
+            }
+
+            var body = ParseExpression();
+
+            if (!Match(TokenType.RightParen))
+            {
+                throw new ParserException("Expected ')' after catch expression", Current());
+            }
+
+            return new CatchExpression(body)
+            {
+                Line = catchToken.Line,
+                Column = catchToken.Column
+            };
+        }
+
         // Grouped expression: (expr)
         if (Match(TokenType.LeftParen))
         {

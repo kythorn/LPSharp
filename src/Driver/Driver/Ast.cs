@@ -105,6 +105,12 @@ public record MappingLiteral(List<(Expression Key, Expression Value)> Entries) :
 public record IndexExpression(Expression Target, Expression Index) : Expression;
 
 /// <summary>
+/// Catch expression: catch(expr)
+/// Evaluates expr and returns 0 on success, or error string if exception occurs.
+/// </summary>
+public record CatchExpression(Expression Body) : Expression;
+
+/// <summary>
 /// Binary operators with their precedence levels (higher = binds tighter).
 /// Follows authentic LDMud precedence where bitwise ops are below comparison.
 /// </summary>

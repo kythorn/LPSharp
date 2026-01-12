@@ -257,6 +257,55 @@ void greet(string name) {
 }
 ```
 
+## Error Handling
+
+### catch/throw
+
+LPC provides `catch()` and `throw()` for error handling.
+
+```c
+// catch() evaluates an expression and catches errors
+// Returns 0 on success, or error string/value if error occurred
+mixed err = catch(risky_operation());
+if (err) {
+    write("Error: " + err + "\n");
+}
+
+// throw() raises an error that can be caught by catch()
+void validate(int value) {
+    if (value < 0) {
+        throw("Value must be non-negative");
+    }
+}
+
+// Catching throw errors
+mixed err = catch(validate(-5));  // err = "Value must be non-negative"
+
+// Uncaught throw() propagates as a runtime error
+throw("Fatal error");  // Stops execution if not caught
+```
+
+**Key behaviors:**
+- `catch(expr)` returns `0` if `expr` succeeds (the expression result is discarded)
+- `catch(expr)` returns the thrown value/error message if an error occurs
+- `throw(value)` raises an error that propagates up the call stack
+- Uncaught `throw()` becomes a runtime error with stack trace
+- Runtime errors (undefined functions, division by zero, etc.) can also be caught
+
+```c
+// Catching runtime errors
+mixed err = catch(unknown_func());
+// err now contains error message with file:line info
+
+// Nested catch - only innermost catches
+mixed outer = catch(({
+    mixed inner = catch(throw("inner"));
+    // inner == "inner", execution continues here
+    throw("outer");  // This throw is caught by outer catch
+}));
+// outer == "outer"
+```
+
 ## Functions
 
 ### Definition
@@ -540,6 +589,14 @@ Efuns are functions provided by the driver, callable from any LPC code.
 | Efun | Description |
 |------|-------------|
 | `shutdown()` | Initiate graceful server shutdown |
+
+### Error Handling
+
+| Efun | Description |
+|------|-------------|
+| `throw(value)` | Raise an error that can be caught by `catch()` |
+
+**Note:** `catch(expr)` is a language construct, not an efun. See [Error Handling](#error-handling) section above.
 
 ### Action System
 
