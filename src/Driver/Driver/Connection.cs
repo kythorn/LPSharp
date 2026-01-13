@@ -38,6 +38,7 @@ public class Connection : IDisposable
 
     /// <summary>
     /// Send a message to this connection.
+    /// Converts Unix newlines (\n) to telnet newlines (\r\n).
     /// </summary>
     public void Send(string message)
     {
@@ -45,7 +46,9 @@ public class Connection : IDisposable
 
         try
         {
-            _writer.Write(message);
+            // Convert \n to \r\n for telnet, but don't double-convert \r\n
+            var telnetMessage = message.Replace("\r\n", "\n").Replace("\n", "\r\n");
+            _writer.Write(telnetMessage);
         }
         catch (IOException)
         {

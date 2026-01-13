@@ -187,8 +187,10 @@ public class AccountManager
     {
         return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            // Look aliases
+            // Look/examine aliases
             { "l", "look" },
+            { "examine", "look at" },
+            { "exa", "look at" },
 
             // Inventory aliases
             { "i", "inventory" },
