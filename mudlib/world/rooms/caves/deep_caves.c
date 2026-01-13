@@ -18,6 +18,6 @@ void create() {
     add_exit("up", "/world/rooms/caves/warren");
     add_exit("down", "/world/rooms/mines/upper_shaft");
 
-    enable_reset(120);
     add_spawn("/world/mobs/hobgoblin");
+    enable_reset(120);
 }

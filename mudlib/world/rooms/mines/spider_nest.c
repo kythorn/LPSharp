@@ -16,7 +16,7 @@ void create() {
 
     add_exit("west", "/world/rooms/mines/upper_shaft");
 
+    add_spawn("/world/mobs/cave_spider");
+    add_spawn("/world/mobs/cave_spider");
     enable_reset(120);
-    add_spawn("/world/mobs/cave_spider");
-    add_spawn("/world/mobs/cave_spider");
 }

@@ -17,6 +17,6 @@ void create() {
 
     add_exit("west", "/world/rooms/dragon/fire_cavern");
 
-    enable_reset(300);
     add_spawn("/world/mobs/fire_elemental");
+    enable_reset(300);
 }

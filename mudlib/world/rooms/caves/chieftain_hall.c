@@ -16,7 +16,7 @@ void create() {
 
     add_exit("south", "/world/rooms/caves/guard_post");
 
+    add_spawn("/world/mobs/hobgoblin");
+    add_spawn("/world/mobs/hobgoblin");
     enable_reset(180);
-    add_spawn("/world/mobs/hobgoblin");
-    add_spawn("/world/mobs/hobgoblin");
 }

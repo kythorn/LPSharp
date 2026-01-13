@@ -215,11 +215,14 @@ string *query_spawns() {
 
 // Enable periodic reset for this room
 // Default interval is 60 seconds
+// IMPORTANT: Call add_spawn() BEFORE calling enable_reset()
 void enable_reset(int interval) {
     if (interval <= 0) {
         interval = 60;
     }
     set_reset(interval);
+    // Spawn monsters immediately - add_spawn() must be called before this!
+    reset();
 }
 
 // Check if a monster of the given type already exists in the room

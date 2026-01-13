@@ -20,6 +20,6 @@ void create() {
     add_exit("down", "/world/rooms/mines/main_tunnel");
     add_exit("east", "/world/rooms/mines/spider_nest");
 
-    enable_reset(120);
     add_spawn("/world/mobs/cave_spider");
+    enable_reset(120);
 }

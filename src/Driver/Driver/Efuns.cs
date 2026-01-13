@@ -184,15 +184,20 @@ public class EfunRegistry
             throw new EfunException("Second argument must be a string");
         }
 
+        // First try the current execution context (fast path for current player)
         var context = ExecutionContext.Current;
-        if (context != null)
+        if (context != null && target == context.PlayerObject)
         {
-            // For MVP: only works if target is the current player
-            // TODO Milestone 8: Look up target's connection in GameLoop
-            if (target == context.PlayerObject)
-            {
-                context.SendOutput(message);
-            }
+            context.SendOutput(message);
+            return 1;
+        }
+
+        // Fall back to looking up the player's connection in GameLoop
+        // This enables tell_object during heartbeats, callouts, and other async contexts
+        var gameLoop = GameLoop.Instance;
+        if (gameLoop != null)
+        {
+            gameLoop.SendToPlayer(target, message);
         }
 
         return 1;

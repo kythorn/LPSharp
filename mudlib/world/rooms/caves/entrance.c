@@ -18,6 +18,6 @@ void create() {
     add_exit("west", "/world/rooms/wilderness/old_road");
     add_exit("east", "/world/rooms/caves/tunnel");
 
-    enable_reset(90);
     add_spawn("/world/mobs/goblin");
+    enable_reset(90);
 }

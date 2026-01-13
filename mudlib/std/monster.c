@@ -58,6 +58,19 @@ void set_name(string n) {
     monster_name = n;
 }
 
+// Override id() to also match monster name
+int id(string str) {
+    if (!str || str == "") return 0;
+
+    // Check monster_name (exact match, case insensitive)
+    if (monster_name && lower_case(str) == lower_case(monster_name)) {
+        return 1;
+    }
+
+    // Fall back to parent id() check (matches short description)
+    return ::id(str);
+}
+
 int query_aggressive() {
     return aggressive;
 }
@@ -81,9 +94,10 @@ void init() {
 
     ::init();
 
+    player = this_player();
+
     // If aggressive, attack any player that enters
     if (aggressive) {
-        player = this_player();
         if (player && player != this_object()) {
             // Check if player is a living and not already fighting
             if (call_other(player, "is_living") && !query_in_combat()) {

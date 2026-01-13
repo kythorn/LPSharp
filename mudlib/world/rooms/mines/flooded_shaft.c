@@ -17,6 +17,6 @@ void create() {
     add_exit("north", "/world/rooms/mines/main_tunnel");
     add_exit("down", "/world/rooms/dragon/approach");
 
-    enable_reset(120);
     add_spawn("/world/mobs/cave_spider");
+    enable_reset(120);
 }

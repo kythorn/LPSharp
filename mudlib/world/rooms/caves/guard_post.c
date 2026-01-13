@@ -17,7 +17,7 @@ void create() {
     add_exit("south", "/world/rooms/caves/tunnel");
     add_exit("north", "/world/rooms/caves/chieftain_hall");
 
+    add_spawn("/world/mobs/goblin");
+    add_spawn("/world/mobs/goblin");
     enable_reset(90);
-    add_spawn("/world/mobs/goblin");
-    add_spawn("/world/mobs/goblin");
 }

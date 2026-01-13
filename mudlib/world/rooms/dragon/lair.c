@@ -18,8 +18,8 @@ void create() {
 
     add_exit("north", "/world/rooms/dragon/fire_cavern");
 
-    enable_reset(600);  // 10 minute respawn for boss
     add_spawn("/world/mobs/dragon");
+    enable_reset(600);  // 10 minute respawn for boss
 }
 
 void init() {

@@ -17,7 +17,7 @@ void create() {
 
     add_exit("east", "/world/rooms/mines/main_tunnel");
 
+    add_spawn("/world/mobs/troll");
+    add_spawn("/world/mobs/troll");
     enable_reset(180);
-    add_spawn("/world/mobs/troll");
-    add_spawn("/world/mobs/troll");
 }

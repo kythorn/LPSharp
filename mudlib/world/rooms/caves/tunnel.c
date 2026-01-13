@@ -18,6 +18,6 @@ void create() {
     add_exit("north", "/world/rooms/caves/guard_post");
     add_exit("east", "/world/rooms/caves/warren");
 
-    enable_reset(90);
     add_spawn("/world/mobs/goblin");
+    enable_reset(90);
 }

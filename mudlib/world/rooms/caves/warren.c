@@ -17,7 +17,7 @@ void create() {
     add_exit("west", "/world/rooms/caves/tunnel");
     add_exit("down", "/world/rooms/caves/deep_caves");
 
+    add_spawn("/world/mobs/goblin");
+    add_spawn("/world/mobs/goblin");
     enable_reset(90);
-    add_spawn("/world/mobs/goblin");
-    add_spawn("/world/mobs/goblin");
 }

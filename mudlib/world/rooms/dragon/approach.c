@@ -18,6 +18,6 @@ void create() {
     add_exit("up", "/world/rooms/mines/flooded_shaft");
     add_exit("south", "/world/rooms/dragon/fire_cavern");
 
-    enable_reset(300);
     add_spawn("/world/mobs/fire_elemental");
+    enable_reset(300);
 }

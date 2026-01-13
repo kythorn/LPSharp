@@ -31,6 +31,26 @@ void set_mass(int m) {
     mass = m;
 }
 
+// id() - Check if this object matches a given string
+// Used by present() and other search functions
+// Override in subclasses to add additional IDs
+int id(string str) {
+    if (!str || str == "") return 0;
+
+    // Match against short description (case insensitive)
+    if (short_desc && lower_case(str) == lower_case(short_desc)) {
+        return 1;
+    }
+
+    // Check if the string is contained in the short description
+    // This allows "goblin" to match "a snarling goblin"
+    if (short_desc && member(lower_case(short_desc), lower_case(str)) >= 0) {
+        return 1;
+    }
+
+    return 0;
+}
+
 // Message formatting helpers for consistent actor/observer messages
 // Substitutes $N with actor name, $n with lowercase name, $P with possessive
 

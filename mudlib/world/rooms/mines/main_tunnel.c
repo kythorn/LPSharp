@@ -18,6 +18,6 @@ void create() {
     add_exit("west", "/world/rooms/mines/troll_den");
     add_exit("south", "/world/rooms/mines/flooded_shaft");
 
-    enable_reset(120);
     add_spawn("/world/mobs/troll");
+    enable_reset(120);
 }

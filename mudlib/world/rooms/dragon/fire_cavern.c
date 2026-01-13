@@ -18,7 +18,7 @@ void create() {
     add_exit("east", "/world/rooms/dragon/treasure_room");
     add_exit("south", "/world/rooms/dragon/lair");
 
+    add_spawn("/world/mobs/fire_elemental");
+    add_spawn("/world/mobs/fire_elemental");
     enable_reset(300);
-    add_spawn("/world/mobs/fire_elemental");
-    add_spawn("/world/mobs/fire_elemental");
 }

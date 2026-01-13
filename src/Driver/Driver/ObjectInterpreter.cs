@@ -1762,12 +1762,24 @@ public class ObjectInterpreter
             };
         }
 
+        // Object comparison (reference equality)
+        if (leftValue is MudObject leftObj && rightValue is MudObject rightObj)
+        {
+            return expr.Operator switch
+            {
+                BinaryOperator.Equal => ReferenceEquals(leftObj, rightObj) ? 1L : 0L,
+                BinaryOperator.NotEqual => !ReferenceEquals(leftObj, rightObj) ? 1L : 0L,
+                _ => throw new ObjectInterpreterException($"Cannot apply operator {expr.Operator} to objects")
+            };
+        }
+
         // Mixed type equality comparisons (string vs int, etc.) return false
         // This matches authentic LPC behavior
         if (expr.Operator == BinaryOperator.Equal || expr.Operator == BinaryOperator.NotEqual)
         {
             bool sameType = (IsInteger(leftValue) && IsInteger(rightValue)) ||
-                           (leftValue is string && rightValue is string);
+                           (leftValue is string && rightValue is string) ||
+                           (leftValue is MudObject && rightValue is MudObject);
             if (!sameType)
             {
                 return expr.Operator == BinaryOperator.Equal ? 0L : 1L;
@@ -1959,7 +1971,8 @@ public class ObjectInterpreter
 
     /// <summary>
     /// clone_object(path) - Create a new clone of an object.
-    /// Requires Wizard+ access level. Path access checked.
+    /// Requires Wizard+ access level for non-public paths.
+    /// Public paths (/world/, /std/) can be cloned by anyone.
     /// Returns the clone object.
     /// </summary>
     private object CloneObjectEfun(List<object> args)
@@ -1974,9 +1987,16 @@ public class ObjectInterpreter
             throw new EfunException("clone_object() requires a string path argument");
         }
 
-        // Permission check: require Wizard+ and path access
-        RequireAccessLevel(AccessLevel.Wizard, "clone_object");
-        RequirePathAccess(path, "clone_object", isWrite: false);
+        // Public paths can be cloned by anyone (for monster spawning, etc.)
+        bool isPublicPath = path.StartsWith("/world/") ||
+                           path.StartsWith("/std/");
+
+        if (!isPublicPath)
+        {
+            // Permission check: require Wizard+ and path access for non-public paths
+            RequireAccessLevel(AccessLevel.Wizard, "clone_object");
+            RequirePathAccess(path, "clone_object", isWrite: false);
+        }
 
         try
         {
@@ -2284,13 +2304,16 @@ public class ObjectInterpreter
         try
         {
             // Call init() on the destination (e.g., room)
+            Logger.Debug($"CallInitHooks: calling init on destination {destination.ObjectName}", LogCategory.LPC);
             CallInitIfExists(destination);
 
             // Call init() on all OTHER objects in the destination
+            Logger.Debug($"CallInitHooks: checking {destination.Contents.Count} objects in {destination.ObjectName}", LogCategory.LPC);
             foreach (var other in destination.Contents)
             {
                 if (other != movedObject && !other.IsDestructed)
                 {
+                    Logger.Debug($"CallInitHooks: calling init on {other.ObjectName}", LogCategory.LPC);
                     CallInitIfExists(other);
                 }
             }

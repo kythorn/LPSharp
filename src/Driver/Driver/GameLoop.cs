@@ -273,6 +273,27 @@ public class GameLoop
     }
 
     /// <summary>
+    /// Send output to a specific player by their MudObject.
+    /// Used by tell_object() during heartbeats and other contexts without ExecutionContext.
+    /// Returns true if the message was delivered.
+    /// </summary>
+    public bool SendToPlayer(MudObject playerObject, string message)
+    {
+        var session = FindSessionByPlayerObject(playerObject);
+        if (session == null || session.IsLinkdead)
+        {
+            return false;
+        }
+
+        _outputQueue.Enqueue(new OutputMessage
+        {
+            ConnectionId = session.ConnectionId,
+            Content = message
+        });
+        return true;
+    }
+
+    /// <summary>
     /// Start the game loop thread.
     /// </summary>
     public void Start()
@@ -959,9 +980,11 @@ public class GameLoop
     /// </summary>
     public void RegisterHeartbeat(MudObject obj)
     {
+        Logger.Debug($"RegisterHeartbeat: {obj.ObjectName}", LogCategory.LPC);
         lock (_heartbeatLock)
         {
             _heartbeatObjects.Add(obj);
+            Logger.Debug($"RegisterHeartbeat: now have {_heartbeatObjects.Count} objects", LogCategory.LPC);
         }
     }
 
@@ -1001,6 +1024,11 @@ public class GameLoop
         lock (_heartbeatLock)
         {
             objects = _heartbeatObjects.ToList();
+        }
+
+        if (objects.Count > 0)
+        {
+            Logger.Debug($"ProcessHeartbeats: processing {objects.Count} objects", LogCategory.LPC);
         }
 
         foreach (var obj in objects)
