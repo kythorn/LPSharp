@@ -1,0 +1,19 @@
+RESURRECT - Return from death
+=============================
+
+Usage: resurrect
+
+When you die, you are sent to the Netherworld. Use this command to return
+to the world of the living.
+
+Effects:
+  - Teleports you to the Town Square
+  - Your HP is already restored to full
+  - Your character is automatically saved
+
+After resurrection, go back to where you died to recover your items from
+your corpse!
+
+Warning: Corpses decay after 5 minutes. Hurry!
+
+See also: help death

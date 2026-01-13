@@ -1,0 +1,13 @@
+UNALIAS - Remove an alias
+=========================
+
+Usage: unalias <name>
+
+Removes a command alias.
+
+Example:
+  unalias k
+
+This is equivalent to 'alias k' with no command argument.
+
+See also: help alias, help aliases

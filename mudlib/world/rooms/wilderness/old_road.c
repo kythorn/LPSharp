@@ -11,10 +11,11 @@ void create() {
         "This road was once well-traveled, but now lies mostly forgotten. Weeds push " +
         "through cracks in the old paving stones, and grass encroaches from the sides. " +
         "The skeletal remains of a waystation stand crumbling beside the path. " +
-        "Something about this place feels melancholy, as if it remembers better days " +
-        "when merchants and travelers passed this way."
+        "To the north, a dark cave entrance gapes in the hillside, the stench of " +
+        "goblins wafting from within. Something about this place feels dangerous."
     );
 
     add_exit("east", "/world/rooms/wilderness/crossroads");
     add_exit("west", "/world/rooms/wilderness/ruins/entrance");
+    add_exit("north", "/world/rooms/caves/entrance");
 }

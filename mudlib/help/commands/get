@@ -1,0 +1,18 @@
+GET - Pick up an item
+=====================
+
+Usage: get <item>
+
+Picks up an item from the ground and adds it to your inventory.
+
+Examples:
+  get sword
+  get tooth
+  get all from corpse
+
+Notes:
+  - You cannot pick up living creatures
+  - Items have weight (mass) which may affect you in the future
+  - To see what you're carrying, use 'inventory'
+
+See also: help drop, help inventory

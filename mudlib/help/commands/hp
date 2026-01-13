@@ -1,0 +1,15 @@
+HP - Check your health
+======================
+
+Usage: hp
+
+Displays a quick summary of your current health status:
+  - Current HP / Maximum HP
+  - Visual health bar
+  - Health description (Healthy, Hurt, Wounded, etc.)
+  - Combat status (if fighting)
+  - Intoxication level (if drunk)
+
+Use this frequently during combat to monitor your health!
+
+See also: help score, help combat

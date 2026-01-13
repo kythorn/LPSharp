@@ -1,0 +1,69 @@
+===============================================================================
+                            COMBAT - How Fighting Works
+===============================================================================
+
+STARTING COMBAT
+---------------
+To attack a monster or player, type:
+  attack <target>
+
+Example: attack rat, attack orc, attack wolf
+
+COMBAT MECHANICS
+----------------
+Once combat starts, it proceeds automatically in rounds (every 2 seconds):
+
+1. HIT CHANCE
+   Your chance to hit is calculated as:
+   50% + (your DEX * 3) - (target AGI * 2) - (intoxication / 2)
+
+   - Higher DEX improves your accuracy
+   - Target's AGI makes them harder to hit
+   - Being drunk reduces your accuracy
+   - Hit chance is always between 5% and 95%
+
+2. DAMAGE
+   When you hit, damage is calculated as:
+   Weapon damage + (STR / 2)
+
+   If you have no weapon (unarmed):
+   1 + (STR / 3) + (STR / 2)
+
+   - Stronger characters deal more damage
+   - Better weapons deal more damage
+
+3. ARMOR
+   The target's armor reduces incoming damage:
+   Actual damage = Your damage - Target's total armor
+
+   - You always deal at least 1 damage
+   - Armor from all equipped pieces adds up
+
+ENDING COMBAT
+-------------
+Combat ends when:
+  - You or your opponent reaches 0 HP (death)
+  - You flee by moving to another room
+
+MONSTER BEHAVIOR
+----------------
+Some monsters are AGGRESSIVE - they attack you on sight!
+  - Wolves and Orcs are aggressive
+  - Rats, Spiders, and Snakes are passive (you must attack first)
+
+HEALTH REGENERATION
+-------------------
+When NOT in combat:
+  - You regenerate 1 HP every 2 seconds
+  - Being intoxicated speeds up regeneration
+
+TIPS
+----
+  - Check your HP frequently during combat
+  - Equip the best weapon and armor you can find
+  - Raise your STR for more damage, DEX for accuracy
+  - Fight easier monsters first to gain experience
+  - Run away if you're about to die!
+
+See also: help hp, help attack, help death, help stats
+===============================================================================

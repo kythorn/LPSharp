@@ -1,0 +1,17 @@
+LOOK - Examine your surroundings
+=================================
+
+Usage: look
+
+Displays a description of your current location, including:
+  - The room name
+  - The room description
+  - Items on the ground
+  - Monsters and other players present
+  - Available exits
+
+The exits line shows obvious exits. Some exits may be hidden!
+
+Alias: l
+
+See also: help go

@@ -1,0 +1,13 @@
+INVENTORY - List your belongings
+=================================
+
+Usage: inventory
+
+Shows all items you are currently carrying, including:
+  - Wielded weapons (marked with "(wielded)")
+  - Worn armor (marked with "(worn)")
+  - Other items in your possession
+
+Aliases: i, inv
+
+See also: help get, help drop, help wield, help wear

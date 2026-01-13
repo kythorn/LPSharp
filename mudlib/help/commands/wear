@@ -1,0 +1,20 @@
+WEAR - Put on armor
+===================
+
+Usage: wear <armor>
+
+Equips a piece of armor from your inventory. Armor reduces damage taken
+in combat.
+
+Examples:
+  wear cap
+  wear pelt
+  wear gloves
+
+Notes:
+  - Each armor piece goes in a specific slot (head, torso, hands, etc.)
+  - You can only wear one item per slot
+  - Total armor is the sum of all equipped pieces
+  - Damage taken = incoming damage - total armor (minimum 1)
+
+See also: help remove, help equipment, help combat

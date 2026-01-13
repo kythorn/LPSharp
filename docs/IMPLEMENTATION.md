@@ -530,13 +530,13 @@ void run_tests() {
 | 7. Player & Commands | ✅ Complete |
 | 8. Rooms & Movement | ✅ Complete |
 | 9. Heartbeats & Callouts | ✅ Complete |
-| 10. Combat | Not Started |
+| 10. Combat | ✅ Complete |
 
 ---
 
 ## Current State Notes
 
-### What's Working (as of Milestone 8 complete)
+### What's Working (all milestones complete)
 
 **Interpreter/REPL:**
 - Full expression evaluation with correct operator precedence
@@ -670,10 +670,52 @@ Default aliases include:
 - `remove_alias(name)` - Remove an alias
 - `reset_aliases()` - Reset to defaults
 
+**Combat System (Milestone 10):**
+- Full 7-stat system: STR, DEX, AGI, CON, INT, WIS, CHA
+- HP with constitution-based max HP (10 + CON * 5)
+- `/std/living.c` base class for all living creatures
+- Combat rounds via heartbeat (2-second intervals)
+- Hit chance: 50% + (DEX * 3) - (target AGI * 2) - (intoxication / 2)
+- Damage calculation: weapon damage + (STR / 2), or unarmed damage
+- Armor system: damage reduction by total equipped armor class
+- Equipment slots: head, torso, hands (expandable)
+- `/std/weapon.c` and `/std/armor.c` base classes
+- Monster spawning with room reset() hooks
+- Aggressive monsters that attack on sight
+- Drop system: monsters can drop items on death
+- Death system: players go to netherworld, can resurrect
+- Corpse creation with inventory transfer and timed decay
+- XP rewards for killing monsters
+- Intoxication system affecting combat (hit chance penalty)
+- HP regeneration when not in combat
+- 5 monster types with progressive difficulty (Rat, Spider, Snake, Wolf, Orc)
+
+**Commands:**
+- `/cmds/std/attack.c` - Start combat with a target
+- `/cmds/std/hp.c` - Quick health status display
+- `/cmds/std/score.c` - Full character stats
+- `/cmds/std/wield.c`, `unwield.c` - Weapon management
+- `/cmds/std/wear.c`, `remove.c` - Armor management
+- `/cmds/std/get.c`, `drop.c` - Item management
+- `/cmds/std/inventory.c` - List carried items
+- `/cmds/std/resurrect.c` - Return from death
+- `/cmds/std/help.c` - In-game help system
+- `/cmds/std/say.c` - Speak to room using act() messaging
+- `/cmds/std/who.c` - List online players
+
+**In-Game Help System:**
+- Dynamic help index generated from `/help/` directory structure
+- Help topics in `/help/topics/` (newbie, combat, death, stats, equipment, aliases, tavern)
+- Command help in `/help/commands/` (all standard commands documented)
+- Extensible: add new help files to automatically appear in index
+
 ### What's NOT Working Yet
 
-**Gameplay gaps (needed for Milestone 10):**
-- No combat system
+**Future enhancements:**
+- Shops and buying/selling
+- Leveling and stat advancement
+- Magic/spells system
+- Quests
 
 **Execution Limits (Safety):**
 - Instruction counter limits execution to 1,000,000 instructions per command (configurable)

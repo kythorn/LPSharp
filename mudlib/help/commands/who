@@ -1,0 +1,10 @@
+WHO - List online players
+=========================
+
+Usage: who
+
+Shows a list of all players currently connected to the game, including:
+  - Active players
+  - Linkdead players (disconnected but not timed out)
+
+See also: help say

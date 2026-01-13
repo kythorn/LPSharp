@@ -1,0 +1,26 @@
+GO - Move in a direction
+========================
+
+Usage: go <direction>
+       <direction>
+
+Moves your character in the specified direction. You can also just type the
+direction name directly.
+
+Directions:
+  north (n)      south (s)      east (e)       west (w)
+  northeast (ne) northwest (nw) southeast (se) southwest (sw)
+  up (u)         down (d)
+
+Examples:
+  go north
+  go south
+  n
+  s
+
+Notes:
+  - You can only move if an exit exists in that direction
+  - Some exits may be hidden and not shown in the room description
+  - Moving while in combat will cause you to flee
+
+See also: help look

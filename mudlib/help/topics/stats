@@ -1,0 +1,66 @@
+===============================================================================
+                        STATS - Character Attributes
+===============================================================================
+
+Your character has seven primary stats that affect your abilities:
+
+PRIMARY STATS
+-------------
+STR (Strength)
+  - Increases melee damage
+  - Affects carrying capacity (future)
+  - Damage bonus: STR / 2
+
+DEX (Dexterity)
+  - Increases hit chance in combat
+  - Hit bonus: DEX * 3 percentage points
+
+AGI (Agility)
+  - Makes you harder to hit
+  - Defense: Reduces enemy hit chance by AGI * 2 percentage points
+
+CON (Constitution)
+  - Determines your maximum HP
+  - Max HP = 10 + (CON * 5)
+  - Higher CON means you can take more damage
+
+INT (Intelligence)
+  - Currently affects magical abilities (future)
+
+WIS (Wisdom)
+  - Currently affects magical abilities (future)
+
+CHA (Charisma)
+  - Currently affects social interactions (future)
+
+DERIVED STATS
+-------------
+HP (Hit Points)
+  - Your health - when it reaches 0, you die
+  - Max HP is based on your CON stat
+  - Regenerates slowly when not in combat
+
+XP (Experience Points)
+  - Gained by defeating monsters
+  - Different monsters give different XP:
+    * Rat: 5 XP
+    * Spider: 10 XP
+    * Snake: 15 XP
+    * Wolf: 20 XP
+    * Orc: 25 XP
+
+LEVEL
+  - Your overall power level
+  - Currently for display (advancement system coming soon)
+
+GOLD
+  - Currency for buying items (shops coming soon)
+  - Monsters may drop gold in the future
+
+VIEWING YOUR STATS
+------------------
+  score     - Shows all stats, level, XP, gold, and equipment
+  hp        - Quick view of just health and combat status
+
+See also: help combat, help equipment, help score
+===============================================================================

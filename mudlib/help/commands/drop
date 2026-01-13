@@ -1,0 +1,17 @@
+DROP - Put down an item
+=======================
+
+Usage: drop <item>
+
+Drops an item from your inventory onto the ground.
+
+Examples:
+  drop sword
+  drop tooth
+
+Notes:
+  - You cannot drop a wielded weapon (use 'unwield' first)
+  - You cannot drop worn armor (use 'remove' first)
+  - Dropped items stay in the room until picked up
+
+See also: help get, help inventory, help unwield, help remove

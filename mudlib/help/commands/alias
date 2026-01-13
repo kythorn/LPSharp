@@ -1,0 +1,28 @@
+ALIAS - Manage command shortcuts
+=================================
+
+Usage: alias              - List all aliases
+       alias <name> <cmd> - Create an alias
+       alias <name>       - Remove an alias
+       alias reset        - Reset to defaults
+
+Creates shortcuts for frequently used commands.
+
+Examples:
+  alias k attack      - 'k rat' becomes 'attack rat'
+  alias h hp          - 'h' becomes 'hp'
+  alias sc score      - 'sc' becomes 'score'
+  alias               - List all current aliases
+  alias k             - Remove the 'k' alias
+  alias reset         - Reset all aliases to defaults
+
+Default aliases include:
+  n/s/e/w    - go north/south/east/west
+  ne/nw/se/sw - diagonal movement
+  u/d        - go up/down
+  l          - look
+  i/inv      - inventory
+
+Aliases are saved when you quit and restored when you log in.
+
+See also: help unalias, help aliases

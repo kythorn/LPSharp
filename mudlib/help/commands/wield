@@ -1,0 +1,19 @@
+WIELD - Equip a weapon
+======================
+
+Usage: wield <weapon>
+
+Equips a weapon from your inventory. Having a weapon equipped increases
+your damage in combat.
+
+Examples:
+  wield sword
+  wield tooth
+
+Notes:
+  - You can only wield one weapon at a time
+  - Wielding a new weapon automatically unwields the old one
+  - The item must be a weapon (not armor or other items)
+  - Your damage = weapon damage + (STR / 2)
+
+See also: help unwield, help equipment, help combat

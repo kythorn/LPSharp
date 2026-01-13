@@ -1,0 +1,92 @@
+===============================================================================
+                       GETTING STARTED - New Player Guide
+===============================================================================
+
+Welcome to LPMud Revival! This guide will help you get started.
+
+FIRST STEPS
+-----------
+When you first enter the game, you'll be in the Town Square. Take a moment to
+look around with the 'look' command to see where you are.
+
+1. LOOK AROUND
+   Type: look
+   This shows you the room description, any items on the ground, and the
+   available exits.
+
+2. MOVE AROUND
+   Type: go <direction>   (or just the direction name)
+   Example: go north, go south, n, s, e, w
+   Explore the town! The exits are listed at the bottom of each room.
+
+3. CHECK YOUR STATUS
+   Type: score
+   This shows your level, health, stats, experience, and gold.
+   Type: hp
+   This shows a quick health summary.
+
+EXPLORATION TIPS
+----------------
+- The Town is safe - no monsters will attack you there
+- Visit the tavern (west from Town Square) for drinks that heal you
+- The wilderness (south from town) has monsters to fight
+- Hidden exits exist! Try examining things carefully
+
+COMBAT BASICS
+-------------
+1. Find a monster (try the Forest Path south of town)
+2. Type: attack <monster name>
+   Example: attack rat
+3. Combat is automatic - you'll trade blows until one of you dies
+4. Check your health with 'hp' during combat
+5. If you're losing, you can try to flee (go to an exit)
+
+YOUR FIRST FIGHT
+----------------
+The easiest monster is the RAT in the Forest Path:
+  - From Town Square, go south to Market Street
+  - Go south again to South Gate
+  - Go south to the Crossroads
+  - Go south to the Forest Path
+  - Type: attack rat
+
+Rats give 5 XP when killed and might drop a Rat Tooth weapon.
+
+GETTING EQUIPMENT
+-----------------
+Monsters sometimes drop items when they die. To get equipment:
+  1. Type: get <item>     - Pick up an item
+  2. Type: wield <weapon> - Equip a weapon
+  3. Type: wear <armor>   - Put on armor
+  4. Type: inventory      - See what you're carrying
+
+WHEN YOU DIE
+------------
+Don't panic! When you die:
+  - You'll be sent to the Netherworld
+  - Your items will be on your corpse (which stays in the room)
+  - Type: resurrect - This returns you to town with full health
+  - Go back to your corpse quickly to get your items!
+
+USEFUL COMMANDS
+---------------
+  look        - See the room
+  score       - See your full stats
+  hp          - Quick health check
+  inventory   - See what you're carrying
+  who         - See who's online
+  say <msg>   - Talk to others in the room
+  quit        - Save and exit the game
+
+NEXT STEPS
+----------
+Once you've defeated some rats, try these progressively harder challenges:
+  1. Spiders in the Spider Nest (10 XP)
+  2. Snakes in the Snake Pit (15 XP)
+  3. Wolves in the Wolf Den (20 XP) - WARNING: Aggressive!
+  4. Orcs in the Deep Forest (25 XP) - WARNING: Aggressive!
+
+Aggressive monsters attack you on sight, so be prepared!
+
+See also: help combat, help death, help stats, help equipment
+===============================================================================

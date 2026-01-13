@@ -1,0 +1,18 @@
+REMOVE - Take off armor
+=======================
+
+Usage: remove <armor>
+       remove <slot>
+
+Removes a piece of worn armor. You can specify either the item name or the
+slot name.
+
+Examples:
+  remove cap
+  remove head
+  remove pelt
+  remove torso
+
+The armor piece stays in your inventory after removal.
+
+See also: help wear, help equipment

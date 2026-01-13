@@ -1,0 +1,61 @@
+===============================================================================
+                       ALIASES - Command Shortcuts
+===============================================================================
+
+Aliases let you create shortcuts for commands you use frequently.
+
+CREATING AN ALIAS
+-----------------
+  alias <name> <command>
+
+Examples:
+  alias k attack
+  alias n go north
+  alias s go south
+  alias l look
+  alias i inventory
+  alias sc score
+  alias h hp
+
+After creating 'alias k attack', typing 'k rat' will execute 'attack rat'.
+
+LISTING ALIASES
+---------------
+  alias
+
+Shows all your current aliases.
+
+REMOVING AN ALIAS
+-----------------
+  alias <name>
+  unalias <name>
+
+Typing just the alias name with no command removes it.
+Example: alias k  (removes the 'k' alias)
+
+RESETTING ALIASES
+-----------------
+  alias reset
+
+Removes ALL your aliases and restores defaults.
+
+DEFAULT ALIASES
+---------------
+Some aliases are set up by default:
+  n  -> go north       s  -> go south
+  e  -> go east        w  -> go west
+  ne -> go northeast   nw -> go northwest
+  se -> go southeast   sw -> go southwest
+  u  -> go up          d  -> go down
+  l  -> look           i  -> inventory
+  inv -> inventory
+
+TIPS
+----
+  - Aliases are saved when you quit and restored when you log in
+  - You can override default aliases with your own
+  - Alias names should be short (1-10 characters)
+  - Alias names must be letters only
+
+See also: help alias, help unalias
+===============================================================================

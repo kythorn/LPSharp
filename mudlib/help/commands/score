@@ -1,0 +1,16 @@
+SCORE - View your character stats
+==================================
+
+Usage: score
+
+Displays comprehensive information about your character:
+  - Name and Level
+  - HP (current/max)
+  - All stats (STR, DEX, AGI, CON, INT, WIS, CHA)
+  - Experience points
+  - Gold
+  - Currently equipped weapon and armor
+
+This is your main reference for character information.
+
+See also: help stats, help hp

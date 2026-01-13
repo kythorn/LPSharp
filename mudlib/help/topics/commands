@@ -1,0 +1,60 @@
+===============================================================================
+                         COMPLETE COMMAND LIST
+===============================================================================
+
+MOVEMENT
+--------
+  go <direction>     - Move in a direction (n, s, e, w, ne, nw, se, sw, u, d)
+  look               - Look at your surroundings
+
+ITEMS & INVENTORY
+-----------------
+  get <item>         - Pick up an item from the room
+  drop <item>        - Drop an item from your inventory
+  inventory          - List items you're carrying
+
+EQUIPMENT
+---------
+  wield <weapon>     - Equip a weapon
+  unwield            - Unequip your current weapon
+  wear <armor>       - Put on a piece of armor
+  remove <armor>     - Take off a piece of armor
+
+COMBAT
+------
+  attack <target>    - Start combat with a monster or player
+  hp                 - Show your health status
+
+COMMUNICATION
+-------------
+  say <message>      - Speak to everyone in the room
+  who                - List players currently online
+
+INFORMATION
+-----------
+  score              - Show your full character stats
+  help [topic]       - Get help on a topic
+
+SESSION
+-------
+  quit               - Save your character and exit the game
+  resurrect          - Return from death (only in Netherworld)
+  alias [name] [cmd] - Create or list command aliases
+  unalias <name>     - Remove a command alias
+
+WIZARD COMMANDS (Wizard access required)
+----------------------------------------
+  clone <path>       - Create a copy of an object
+  dest <object>      - Destroy an object
+  goto <room>        - Teleport to a room
+  load <path>        - Load or reload an object file
+  ls [path]          - List directory contents
+
+ADMIN COMMANDS (Admin access required)
+--------------------------------------
+  promote <player> <level>  - Change a player's access level
+  shutdown                  - Shut down the server
+  update <path>             - Hot-reload objects from a file
+
+Type 'help <command>' for detailed information about any command.
+===============================================================================

@@ -1,0 +1,16 @@
+QUIT - Exit the game
+====================
+
+Usage: quit
+
+Saves your character and disconnects from the game.
+
+Your character data is automatically saved, including:
+  - Stats and level
+  - Experience and gold
+  - Equipment and inventory
+  - Command aliases
+
+You can reconnect later and continue where you left off.
+
+See also: help resurrect

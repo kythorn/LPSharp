@@ -1,0 +1,12 @@
+UNWIELD - Unequip your weapon
+=============================
+
+Usage: unwield
+
+Removes your currently wielded weapon. The weapon stays in your inventory.
+
+Notes:
+  - Fighting without a weapon does reduced damage
+  - Unarmed damage = 1 + (STR / 3) + (STR / 2)
+
+See also: help wield, help equipment

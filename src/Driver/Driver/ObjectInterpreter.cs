@@ -2019,9 +2019,19 @@ public class ObjectInterpreter
             throw new EfunException("load_object() requires a string path argument");
         }
 
-        // Permission check: require Wizard+ and path access
-        RequireAccessLevel(AccessLevel.Wizard, "load_object");
-        RequirePathAccess(path, "load_object", isWrite: false);
+        // Permission check: allow loading public game content, require Wizard+ for others
+        // Public paths that players can load for normal gameplay
+        bool isPublicPath = path.StartsWith("/world/") ||
+                           path.StartsWith("/std/") ||
+                           path.StartsWith("/cmds/") ||
+                           path.StartsWith("/help/") ||
+                           path.StartsWith("/examples/");
+
+        if (!isPublicPath)
+        {
+            RequireAccessLevel(AccessLevel.Wizard, "load_object");
+            RequirePathAccess(path, "load_object", isWrite: false);
+        }
 
         try
         {
@@ -3404,9 +3414,19 @@ public class ObjectInterpreter
             throw new EfunException("read_file() first argument must be a path string");
         }
 
-        // Permission check: require Wizard+ and path access for reading
-        RequireAccessLevel(AccessLevel.Wizard, "read_file");
-        RequirePathAccess(path, "read_file", isWrite: false);
+        // Permission check: allow reading public game content, require Wizard+ for others
+        bool isPublicPath = path.StartsWith("/world/") ||
+                           path.StartsWith("/std/") ||
+                           path.StartsWith("/cmds/") ||
+                           path.StartsWith("/help/") ||
+                           path.StartsWith("/help") ||
+                           path.StartsWith("/examples/");
+
+        if (!isPublicPath)
+        {
+            RequireAccessLevel(AccessLevel.Wizard, "read_file");
+            RequirePathAccess(path, "read_file", isWrite: false);
+        }
 
         int startLine = 1;
         int? numLines = null;
@@ -3752,9 +3772,19 @@ public class ObjectInterpreter
             throw new EfunException("get_dir() argument must be a path string");
         }
 
-        // Permission check: require Wizard+ and path access for reading
-        RequireAccessLevel(AccessLevel.Wizard, "get_dir");
-        RequirePathAccess(path, "get_dir", isWrite: false);
+        // Permission check: allow reading public game content, require Wizard+ for others
+        bool isPublicPath = path.StartsWith("/world/") ||
+                           path.StartsWith("/std/") ||
+                           path.StartsWith("/cmds/") ||
+                           path.StartsWith("/help/") ||
+                           path.StartsWith("/help") ||  // Allow /help without trailing /
+                           path.StartsWith("/examples/");
+
+        if (!isPublicPath)
+        {
+            RequireAccessLevel(AccessLevel.Wizard, "get_dir");
+            RequirePathAccess(path, "get_dir", isWrite: false);
+        }
 
         try
         {

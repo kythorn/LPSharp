@@ -1,0 +1,22 @@
+ATTACK - Start combat
+=====================
+
+Usage: attack <target>
+
+Initiates combat with a monster or player in the same room.
+
+Examples:
+  attack rat
+  attack orc
+  attack wolf
+
+Combat proceeds automatically in rounds every 2 seconds. You will continue
+fighting until one of you dies or you flee by moving to another room.
+
+Notes:
+  - Make sure you have good equipment before fighting
+  - Check your HP during combat with the 'hp' command
+  - Some monsters are aggressive and will attack you first!
+  - You can flee by moving to an exit
+
+See also: help combat, help hp, help death

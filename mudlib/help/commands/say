@@ -1,0 +1,15 @@
+SAY - Speak to the room
+=======================
+
+Usage: say <message>
+
+Broadcasts a message to all players in your current room.
+
+Examples:
+  say Hello everyone!
+  say Anyone want to group up?
+
+You will see: "You say: Hello everyone!"
+Others see: "PlayerName says: Hello everyone!"
+
+See also: help who

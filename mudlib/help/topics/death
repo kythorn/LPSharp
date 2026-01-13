@@ -1,0 +1,51 @@
+===============================================================================
+                          DEATH - What Happens When You Die
+===============================================================================
+
+WHEN YOU DIE
+------------
+When your HP reaches 0, several things happen:
+
+1. Your character is moved to the NETHERWORLD
+   - This is a special void between life and death
+   - You cannot move or do much here
+
+2. A CORPSE is created where you died
+   - All your equipment and inventory is placed on the corpse
+   - The corpse will decay after 5 minutes
+   - Anyone can loot the corpse!
+
+3. Your HP is restored to full
+   - You'll be at max health when you resurrect
+
+RESURRECTION
+------------
+To return to the world of the living, type:
+  resurrect
+
+This will:
+  - Transport you back to the Town Square
+  - Save your character
+
+RECOVERING YOUR ITEMS
+---------------------
+After resurrection:
+1. Remember where you died
+2. Go back to that location quickly
+3. Look for your corpse
+4. Type: get all from corpse
+5. Re-equip your gear with 'wield' and 'wear'
+
+WARNING: Corpses decay after 5 minutes! If the corpse decays, your items
+will be scattered on the ground where anyone can take them.
+
+AVOIDING DEATH
+--------------
+  - Watch your HP with the 'hp' command during combat
+  - Flee (move to another room) if your HP is low
+  - Fight monsters appropriate to your level
+  - Equip good armor to reduce damage taken
+  - Visit the healer in town if you need healing
+
+See also: help combat, help resurrect, help hp
+===============================================================================

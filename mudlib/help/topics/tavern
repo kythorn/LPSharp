@@ -1,0 +1,56 @@
+===============================================================================
+                    THE SILVER FLAGON - Tavern Guide
+===============================================================================
+
+The Silver Flagon tavern is located west of the Town Square. It's a great
+place to rest, heal up, and enjoy some drinks!
+
+GETTING THERE
+-------------
+From Town Square: go west
+
+ORDERING DRINKS
+---------------
+The tavern has several drinks available. To order:
+  buy <drink name>
+
+Available drinks:
+  ale        - 2 gold, +10 intoxication, +5 HP
+  wine       - 3 gold, +15 intoxication, +8 HP
+  mead       - 4 gold, +20 intoxication, +12 HP
+  spirits    - 5 gold, +30 intoxication, +15 HP
+  water      - 1 gold, -20 intoxication, no healing
+
+INTOXICATION
+------------
+Drinking alcohol increases your intoxication level (0-100):
+  0-9     Sober
+  10-24   Tipsy
+  25-49   Buzzed
+  50-74   Drunk
+  75-89   Very Drunk
+  90-100  Completely Smashed
+
+Effects of intoxication:
+  - Reduces your hit chance in combat (intoxication / 2)
+  - Speeds up HP regeneration when not fighting
+  - At 50+ intoxication, you're "too drunk" for some actions
+
+Sobering up:
+  - Intoxication decreases by 1 every 2 seconds
+  - Drinking water reduces intoxication by 20
+
+STRATEGY
+--------
+  - Drinks are a cheap way to heal between fights
+  - Don't get too drunk before combat!
+  - Water can quickly sober you up if needed
+  - The healing makes tavern visits worthwhile after tough fights
+
+ROOMS
+-----
+The tavern also has rooms upstairs if you need a place to rest.
+Go up from the tavern to reach the hallway.
+
+See also: help combat, help hp, help newbie
+===============================================================================

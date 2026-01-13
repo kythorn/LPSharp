@@ -1,0 +1,66 @@
+===============================================================================
+                      EQUIPMENT - Weapons and Armor
+===============================================================================
+
+WEAPONS
+-------
+Weapons increase your damage in combat. You can only wield ONE weapon at a time.
+
+To equip a weapon:
+  wield <weapon name>
+  Example: wield sword
+
+To unequip a weapon:
+  unwield
+
+Available weapons you might find:
+  Iron Sword   - 25 damage (sold at blacksmith, or find one)
+  Rat Tooth    - 3 damage (dropped by rats)
+  Snake Fang   - 5 damage (dropped by snakes)
+
+Weapon damage formula:
+  Total damage = Weapon damage + (STR / 2)
+
+ARMOR
+-----
+Armor reduces damage you take in combat. You can wear multiple pieces in
+different slots.
+
+Armor slots:
+  Head    - Helmets, caps, hoods
+  Torso   - Shirts, chainmail, robes
+  Hands   - Gloves, gauntlets
+  Legs    - Pants, greaves (future)
+  Feet    - Boots, shoes (future)
+
+To equip armor:
+  wear <armor name>
+  Example: wear leather cap
+
+To remove armor:
+  remove <armor name>
+  remove <slot name>
+  Example: remove cap, remove head
+
+Available armor you might find:
+  Leather Cap  - AC 1, head slot (buy at shops)
+  Wolf Pelt    - AC 2, torso slot (dropped by wolves)
+  Web Gloves   - AC 1, hands slot (dropped by spiders)
+
+Armor damage reduction:
+  Damage taken = Incoming damage - Total armor class
+  (You always take at least 1 damage)
+
+INVENTORY MANAGEMENT
+--------------------
+  inventory   - See what you're carrying and wearing
+  get <item>  - Pick up an item from the ground
+  drop <item> - Drop an item from your inventory
+
+Notes:
+  - You cannot drop a wielded weapon (unwield it first)
+  - You cannot drop worn armor (remove it first)
+  - Items on your corpse can be looted by anyone!
+
+See also: help wield, help wear, help inventory, help combat
+===============================================================================
