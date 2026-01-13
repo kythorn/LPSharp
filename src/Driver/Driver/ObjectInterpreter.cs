@@ -1023,23 +1023,31 @@ public class ObjectInterpreter
 
         if (target is string str)
         {
-            if (index is not int i)
-            {
+            int i;
+            if (index is long indexLong)
+                i = (int)indexLong;
+            else if (index is int indexInt)
+                i = indexInt;
+            else
                 throw new ObjectInterpreterException("String index must be an integer");
-            }
+
             if (i < 0 || i >= str.Length)
             {
                 throw new ObjectInterpreterException($"String index {i} out of bounds (length {str.Length})");
             }
-            return (int)str[i]; // Return character as int (LPC convention)
+            return (long)str[i]; // Return character as int (LPC convention)
         }
 
         if (target is List<object> list)
         {
-            if (index is not int i)
-            {
+            int i;
+            if (index is long indexLong)
+                i = (int)indexLong;
+            else if (index is int indexInt)
+                i = indexInt;
+            else
                 throw new ObjectInterpreterException("Array index must be an integer");
-            }
+
             if (i < 0 || i >= list.Count)
             {
                 throw new ObjectInterpreterException($"Array index {i} out of bounds (size {list.Count})");
@@ -2064,7 +2072,13 @@ public class ObjectInterpreter
         }
 
         // Permission check: require Wizard+ access level
-        RequireAccessLevel(AccessLevel.Wizard, "destruct");
+        // Exception: players can destruct their own player object (for quit)
+        var context = ExecutionContext.Current;
+        bool isSelfDestruct = context?.PlayerObject != null && context.PlayerObject == obj;
+        if (!isSelfDestruct)
+        {
+            RequireAccessLevel(AccessLevel.Wizard, "destruct");
+        }
 
         // Check if trying to destruct a /secure/ object (admin only)
         var accessLevel = GetCurrentAccessLevel();
@@ -2098,10 +2112,10 @@ public class ObjectInterpreter
 
         if (args[0] is not MudObject target)
         {
-            // If it's an int 0, return 0 (calling on null object)
-            if (args[0] is int i && i == 0)
+            // If it's 0, return 0 (calling on null object)
+            if ((args[0] is int i && i == 0) || (args[0] is long l && l == 0))
             {
-                return 0;
+                return 0L;
             }
             throw new EfunException("call_other() first argument must be an object");
         }
@@ -2473,9 +2487,9 @@ public class ObjectInterpreter
             {
                 target = obj;
             }
-            else if (args[0] is int i && i == 0)
+            else if ((args[0] is int i && i == 0) || (args[0] is long l && l == 0))
             {
-                return 0; // object_name(0) returns 0
+                return 0L; // object_name(0) returns 0
             }
             else
             {
@@ -2509,7 +2523,7 @@ public class ObjectInterpreter
             {
                 target = obj;
             }
-            else if (args[0] is int i && i == 0)
+            else if ((args[0] is long l && l == 0) || (args[0] is int i && i == 0))
             {
                 return 0; // file_name(0) returns 0
             }
@@ -2542,11 +2556,12 @@ public class ObjectInterpreter
         }
         else if (args.Count == 1)
         {
-            if (args[0] is not int idx)
-            {
+            if (args[0] is long idxLong)
+                n = (int)idxLong;
+            else if (args[0] is int idxInt)
+                n = idxInt;
+            else
                 throw new EfunException("previous_object() argument must be an integer");
-            }
-            n = idx;
         }
         else
         {
@@ -2587,7 +2602,7 @@ public class ObjectInterpreter
 
         if (args[0] is not MudObject target)
         {
-            if (args[0] is int i && i == 0)
+            if ((args[0] is long l && l == 0) || (args[0] is int i && i == 0))
             {
                 return 0L; // shadow(0) just returns 0
             }
@@ -2654,7 +2669,7 @@ public class ObjectInterpreter
 
         if (args[0] is not MudObject target)
         {
-            if (args[0] is int i && i == 0)
+            if ((args[0] is long l && l == 0) || (args[0] is int i && i == 0))
             {
                 return 0;
             }
@@ -2694,7 +2709,7 @@ public class ObjectInterpreter
 
         if (args[0] is not MudObject target2)
         {
-            if (args[0] is int i && i == 0)
+            if ((args[0] is long l && l == 0) || (args[0] is int i && i == 0))
             {
                 return 0L;
             }
@@ -2729,7 +2744,11 @@ public class ObjectInterpreter
             throw new EfunException("set_living() requires exactly 1 argument");
         }
 
-        var flag = args[0] is int i ? i != 0 : false;
+        bool flag = false;
+        if (args[0] is long l)
+            flag = l != 0;
+        else if (args[0] is int i)
+            flag = i != 0;
         _currentObject.IsLiving = flag;
         return flag ? 1L : 0L;
     }
@@ -2750,7 +2769,7 @@ public class ObjectInterpreter
             return obj.IsLiving ? 1L : 0L;
         }
 
-        if (args[0] is int i && i == 0)
+        if ((args[0] is long l && l == 0) || (args[0] is int i && i == 0))
         {
             return 0; // living(0) returns 0
         }
@@ -2796,7 +2815,7 @@ public class ObjectInterpreter
             {
                 target = obj;
             }
-            else if (args[0] is int i && i == 0)
+            else if ((args[0] is long l && l == 0) || (args[0] is int i && i == 0))
             {
                 return 0;
             }
@@ -2831,7 +2850,7 @@ public class ObjectInterpreter
             {
                 target = obj;
             }
-            else if (args[0] is int i && i == 0)
+            else if ((args[0] is long l && l == 0) || (args[0] is int i && i == 0))
             {
                 return 0;
             }
@@ -3147,14 +3166,17 @@ public class ObjectInterpreter
         {
             return gameLoop.RemoveCalloutByFunction(_currentObject, function);
         }
-        else if (args[0] is int calloutId)
+        else if (args[0] is long calloutIdLong)
         {
-            return gameLoop.RemoveCalloutById(calloutId);
+            return gameLoop.RemoveCalloutById((int)calloutIdLong);
+        }
+        else if (args[0] is int calloutIdInt)
+        {
+            return gameLoop.RemoveCalloutById(calloutIdInt);
         }
         else
         {
-            var id = Convert.ToInt32(args[0]);
-            return gameLoop.RemoveCalloutById(id);
+            throw new EfunException("remove_call_out() argument must be a function name or callout ID");
         }
     }
 
@@ -4287,7 +4309,7 @@ public class ObjectInterpreter
             {
                 // Skip null/default values
                 if (value == null) continue;
-                if (value is int i && i == 0) continue;
+                if ((value is long l && l == 0) || (value is int i && i == 0)) continue;
 
                 sb.Append(name);
                 sb.Append(' ');

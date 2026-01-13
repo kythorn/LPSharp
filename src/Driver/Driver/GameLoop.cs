@@ -1885,6 +1885,10 @@ public class GameLoop
             {
                 return true;
             }
+            if (result is long l && l != 0)
+            {
+                return true;
+            }
             if (result is bool b && b)
             {
                 return true;
@@ -1894,6 +1898,10 @@ public class GameLoop
         {
             // Check the return value
             if (ex.Value is int i && i != 0)
+            {
+                return true;
+            }
+            if (ex.Value is long l && l != 0)
             {
                 return true;
             }

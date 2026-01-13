@@ -314,7 +314,7 @@ public class EfunRegistry
         {
             if (args[0] is not MudObject obj)
             {
-                if (args[0] is int && (int)args[0] == 0)
+                if ((args[0] is long l && l == 0) || (args[0] is int i && i == 0))
                 {
                     return 0; // LPC convention: environment(0) returns 0
                 }
@@ -1062,9 +1062,20 @@ public class EfunRegistry
         result.Sort((a, b) =>
         {
             int cmp;
-            if (a is int ai && b is int bi)
+            if (a is long al && b is long bl)
+            {
+                cmp = al.CompareTo(bl);
+            }
+            else if (a is int ai && b is int bi)
             {
                 cmp = ai.CompareTo(bi);
+            }
+            else if ((a is int or long) && (b is int or long))
+            {
+                // Mixed int/long - convert both to long
+                long la = Convert.ToInt64(a);
+                long lb = Convert.ToInt64(b);
+                cmp = la.CompareTo(lb);
             }
             else if (a is string sa && b is string sb)
             {
@@ -1405,10 +1416,13 @@ public class EfunRegistry
             throw new EfunException("allocate() requires exactly 1 argument");
         }
 
-        if (args[0] is not int size)
-        {
+        int size;
+        if (args[0] is long sizeLong)
+            size = (int)sizeLong;
+        else if (args[0] is int sizeInt)
+            size = sizeInt;
+        else
             throw new EfunException("allocate() argument must be an integer");
-        }
 
         if (size < 0)
         {
