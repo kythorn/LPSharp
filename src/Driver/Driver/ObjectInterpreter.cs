@@ -1474,12 +1474,37 @@ public class ObjectInterpreter
                         }
                         else
                         {
-                            // No delimiter - for %s followed by %d, we need to stop at first digit
-                            // For now, take rest of string or until whitespace
-                            endPos = inputPos;
-                            while (endPos < input.Length && !char.IsWhiteSpace(input[endPos]))
+                            // No delimiter text between this specifier and the next
+                            // Check if there's another format specifier coming
+                            if (nextLiteral < format.Length && format[nextLiteral] == '%')
                             {
-                                endPos++;
+                                // Another specifier follows (e.g., %s%d)
+                                // For %s followed by %d, stop at first digit
+                                // For %s followed by %s, stop at whitespace
+                                char? nextSpec = (nextLiteral + 1 < format.Length) ? format[nextLiteral + 1] : null;
+                                if (nextSpec == 'd')
+                                {
+                                    // Stop before first digit
+                                    endPos = inputPos;
+                                    while (endPos < input.Length && !char.IsDigit(input[endPos]))
+                                    {
+                                        endPos++;
+                                    }
+                                }
+                                else
+                                {
+                                    // Stop at whitespace for %s%s
+                                    endPos = inputPos;
+                                    while (endPos < input.Length && !char.IsWhiteSpace(input[endPos]))
+                                    {
+                                        endPos++;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // This is the last specifier - capture rest of string
+                                endPos = input.Length;
                             }
                         }
 
