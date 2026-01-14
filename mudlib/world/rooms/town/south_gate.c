@@ -16,5 +16,5 @@ void create() {
     );
 
     add_exit("north", "/world/rooms/town/market_street");
-    add_exit("south", "/world/rooms/wilderness/crossroads");
+    add_exit("south", "/world/rooms/forest/edge");
 }

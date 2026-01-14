@@ -1,27 +1,26 @@
 // /world/mobs/wolf.c
-// A fierce forest wolf - drops wolf pelt
+// A grey wolf - medium-hard difficulty
 
 inherit "/std/monster";
 
 void create() {
     ::create();
-    set_short("a fierce wolf");
+    set_short("a grey wolf");
     set_name("wolf");
 
-    // Strong and tough
-    set_str(3);
-    set_dex(3);
-    set_agi(2);
-    set_con(3);
+    // Strong and fast predator
+    set_str(4);
+    set_dex(4);
+    set_agi(4);
+    set_con(4);
 
-    set_max_hp(15);
-    set_hp(15);
+    // Good HP
+    set_max_hp(25);
+    set_hp(25);
 
-    // Aggressive - attacks on sight
+    // Aggressive pack hunter
     set_aggressive(1);
 
-    set_xp_value(20);
-
-    // Drop wolf pelt
-    add_drop("/world/items/armor/wolf_pelt");
+    // Good XP reward
+    set_xp_value(18);
 }

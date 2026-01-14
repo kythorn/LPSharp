@@ -1,5 +1,5 @@
 // /world/mobs/spider.c
-// A large forest spider - drops web gloves
+// A large forest spider - medium difficulty
 
 inherit "/std/monster";
 
@@ -8,20 +8,19 @@ void create() {
     set_short("a large spider");
     set_name("spider");
 
-    // Slightly tougher than rat
-    set_str(2);
-    set_dex(3);
-    set_agi(2);
-    set_con(2);
+    // Quick and dangerous
+    set_str(3);
+    set_dex(4);
+    set_agi(3);
+    set_con(3);
 
-    set_max_hp(8);
-    set_hp(8);
+    // Medium HP
+    set_max_hp(18);
+    set_hp(18);
 
-    // Non-aggressive - player initiates
-    set_aggressive(0);
+    // Aggressive
+    set_aggressive(1);
 
-    set_xp_value(10);
-
-    // Drop web gloves
-    add_drop("/world/items/armor/web_gloves");
+    // Moderate XP reward
+    set_xp_value(12);
 }
