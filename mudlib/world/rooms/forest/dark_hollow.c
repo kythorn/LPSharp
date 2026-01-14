@@ -8,10 +8,11 @@ void create() {
 
     set_short("Dark Hollow");
     set_long(
-        "The forest grows noticeably darker here as the canopy thickens overhead. " +
-        "Shadows pool in every corner, and an eerie silence has replaced the cheerful " +
-        "birdsong of the lighter woods. Paw prints in the soft earth and scattered " +
-        "bones suggest this is wolf territory. Yellow eyes seem to watch from the darkness."
+        "The forest grows noticeably darker here as the canopy thickens overhead.\n" +
+        "Shadows pool in every corner, and an eerie silence has replaced the\n" +
+        "cheerful birdsong of the lighter woods. Paw prints in the soft earth and\n" +
+        "scattered bones suggest this is wolf territory. Yellow eyes seem to watch\n" +
+        "from the darkness."
     );
 
     add_exit("north", "/world/rooms/forest/winding_trail");

@@ -907,6 +907,8 @@ void advance_stats_for_skill(string skill_name) {
 
 // Start combat with a target
 void start_combat(object target) {
+    object target_current_attacker;
+
     if (!target) {
         return;
     }
@@ -937,19 +939,67 @@ void start_combat(object target) {
     // Start heartbeat for combat rounds
     set_heart_beat(1);
 
-    // Make target fight back
-    if (!call_other(target, "query_in_combat")) {
+    // Make target fight back if they're not in combat,
+    // or if their current opponent is not in the same room (stale combat)
+    target_current_attacker = call_other(target, "query_attacker");
+    if (!call_other(target, "query_in_combat") ||
+        !target_current_attacker ||
+        environment(target_current_attacker) != environment(target)) {
         call_other(target, "start_combat", this_object());
     }
 }
 
-// Stop combat
+// Find another hostile creature attacking us in the same room
+object find_next_attacker() {
+    object *contents;
+    object room;
+    int i;
+
+    room = environment(this_object());
+    if (!room) {
+        return 0;
+    }
+
+    contents = all_inventory(room);
+    for (i = 0; i < sizeof(contents); i++) {
+        object other;
+        other = contents[i];
+
+        // Skip self
+        if (other == this_object()) {
+            continue;
+        }
+
+        // Check if it's a living that's attacking us
+        if (call_other(other, "is_living") &&
+            call_other(other, "query_in_combat") &&
+            call_other(other, "query_attacker") == this_object()) {
+            return other;
+        }
+    }
+
+    return 0;
+}
+
+// Stop combat, but look for another attacker first
 void stop_combat() {
-    in_combat = 0;
-    attacker = 0;
-    // Keep heartbeat running if we need to regenerate
-    if (hp >= max_hp) {
-        set_heart_beat(0);
+    object next;
+
+    // Try to find another creature attacking us
+    next = find_next_attacker();
+
+    if (next) {
+        // Switch to the next attacker
+        attacker = next;
+        // Stay in combat, keep heartbeat
+    } else {
+        // No more attackers, end combat
+        in_combat = 0;
+        attacker = 0;
+        // Keep heartbeat running if we need to regenerate
+        if (hp >= max_hp) {
+            set_heart_beat(0);
+        }
     }
 }
 

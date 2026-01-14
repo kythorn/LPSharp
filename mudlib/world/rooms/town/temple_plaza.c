@@ -8,10 +8,10 @@ void create() {
 
     set_short("Temple Plaza");
     set_long(
-        "A beautiful plaza opens up before the grand Temple of Light. " +
-        "White marble benches line the edges where pilgrims rest and pray. " +
-        "A large statue of a robed figure with arms raised stands in the center. " +
-        "The temple's magnificent facade rises to the west."
+        "A beautiful plaza opens up before the grand Temple of Light. White\n" +
+        "marble benches line the edges where pilgrims rest and pray. A large\n" +
+        "statue of a robed figure with arms raised stands in the center. The\n" +
+        "temple's magnificent facade rises to the west."
     );
 
     add_exit("south", "/world/rooms/town/temple_road_north");

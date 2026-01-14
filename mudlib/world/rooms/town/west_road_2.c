@@ -8,10 +8,9 @@ void create() {
 
     set_short("West Road");
     set_long(
-        "The road continues past a row of boarding houses and small inns. " +
-        "This area caters to travelers and merchants who need affordable " +
-        "lodging. A notice board displays advertisements for rooms and " +
-        "services."
+        "The road continues past a row of boarding houses and small inns. This\n" +
+        "area caters to travelers and merchants who need affordable lodging. A\n" +
+        "notice board displays advertisements for rooms and services."
     );
 
     add_exit("east", "/world/rooms/town/west_road");

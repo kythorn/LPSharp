@@ -8,9 +8,9 @@ void create() {
 
     set_short("Market Street South");
     set_long(
-        "The market continues southward, though the stalls here are less crowded. " +
-        "Second-hand goods and cheaper wares are sold here by vendors who can't " +
-        "afford the prime spots further north. A few taverns and inns cater to " +
+        "The market continues southward, though the stalls here are less crowded.\n" +
+        "Second-hand goods and cheaper wares are sold here by vendors who can't\n" +
+        "afford the prime spots further north. A few taverns and inns cater to\n" +
         "travelers heading to or from the South Gate."
     );
 

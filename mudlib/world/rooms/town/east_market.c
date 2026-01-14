@@ -8,10 +8,10 @@ void create() {
 
     set_short("East Market");
     set_long(
-        "A smaller market area serves the eastern residential district. " +
-        "Local craftsmen sell their goods here - pottery, woven baskets, " +
-        "and simple tools. The pace is slower and friendlier than the " +
-        "bustling main market to the west."
+        "A smaller market area serves the eastern residential district. Local\n" +
+        "craftsmen sell their goods here - pottery, woven baskets, and simple\n" +
+        "tools. The pace is slower and friendlier than the bustling main market\n" +
+        "to the west."
     );
 
     add_exit("west", "/world/rooms/town/east_road_2");

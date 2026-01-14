@@ -8,10 +8,10 @@ void create() {
 
     set_short("North Road");
     set_long(
-        "The road narrows as it approaches the northern wall of the town. " +
-        "Guard towers loom ahead, and you can see the massive North Gate " +
-        "that leads to the wilderness beyond. Travelers and merchants " +
-        "mill about, preparing for their journeys."
+        "The road narrows as it approaches the northern wall of the town. Guard\n" +
+        "towers loom ahead, and you can see the massive North Gate that leads to\n" +
+        "the wilderness beyond. Travelers and merchants mill about, preparing for\n" +
+        "their journeys."
     );
 
     add_exit("south", "/world/rooms/town/temple_plaza");

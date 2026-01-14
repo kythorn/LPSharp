@@ -9,12 +9,12 @@ void create() {
 
     set_short("The Silver Flagon Tavern");
     set_long(
-        "The warm glow of a crackling fireplace welcomes you into this cozy tavern. " +
-        "Heavy oak beams support the low ceiling, darkened by years of hearth smoke. " +
-        "Rough wooden tables are scattered about, most occupied by locals nursing their ales. " +
-        "A long bar runs along the northern wall, behind which shelves of bottles and " +
-        "tankards gleam in the firelight. The smell of roasting meat and fresh bread " +
-        "mingles with the pleasant aroma of pipe smoke.\n\n" +
+        "The warm glow of a crackling fireplace welcomes you into this cozy tavern.\n" +
+        "Heavy oak beams support the low ceiling, darkened by years of hearth smoke.\n" +
+        "Rough wooden tables are scattered about, most occupied by locals nursing\n" +
+        "their ales. A long bar runs along the northern wall, behind which shelves\n" +
+        "of bottles and tankards gleam in the firelight. The smell of roasting meat\n" +
+        "and fresh bread mingles with the pleasant aroma of pipe smoke.\n\n" +
         "Type MENU to see available drinks, or ORDER <drink> to buy one.\n" +
         "Drinking speeds healing but impairs combat ability!"
     );

@@ -12,11 +12,13 @@ void create() {
     set_guild_name("Healers Guild");
 
     set_short("Healers Guild Temple");
-    set_long("You stand in the peaceful temple of the Healers Guild. " +
-        "Soft light filters through stained glass windows depicting scenes of mercy. " +
-        "The scent of healing herbs fills the air. " +
-        "A serene priestess in white robes tends to a small altar.\n\n" +
-        "Type 'join' to become a member, or 'leave' to resign your membership.");
+    set_long(
+        "You stand in the peaceful temple of the Healers Guild. Soft light filters\n" +
+        "through stained glass windows depicting scenes of mercy. The scent of\n" +
+        "healing herbs fills the air. A serene priestess in white robes tends to\n" +
+        "a small altar.\n\n" +
+        "Type 'join' to become a member, or 'leave' to resign your membership."
+    );
 
     // Magic schools granted by this guild
     set_granted_skills(({

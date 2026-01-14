@@ -10,6 +10,10 @@ int level;
 string *guilds;  // Array of guild paths this player belongs to
 string cwd;      // Current working directory for wizards
 
+// Saved equipment paths (for persistence across logins)
+string saved_weapon_path;
+mapping saved_armor_paths;  // slot -> path
+
 void create() {
     ::create();
     set_short("a player");
@@ -19,6 +23,8 @@ void create() {
     level = 1;
     guilds = ({});
     cwd = "/";
+    saved_weapon_path = "";
+    saved_armor_paths = ([]);
 }
 
 string query_name() {
@@ -135,9 +141,42 @@ void remove_guild(string guild_path) {
 // Note: save_object saves all variables including stats, xp, gold
 int save_player() {
     string path;
+    mapping armor;
+    string *slots;
+    int i;
 
     if (player_name == "" || player_name == "Guest") {
         return 0;
+    }
+
+    // Capture current equipment paths before saving
+    if (wielded_weapon && objectp(wielded_weapon)) {
+        saved_weapon_path = file_name(wielded_weapon);
+        // Remove clone suffix if present (e.g., "/world/items/sword#1" -> "/world/items/sword")
+        if (member(saved_weapon_path, "#") != -1) {
+            saved_weapon_path = explode(saved_weapon_path, "#")[0];
+        }
+    } else {
+        saved_weapon_path = "";
+    }
+
+    // Capture worn armor paths
+    saved_armor_paths = ([]);
+    armor = query_worn_armor();
+    if (armor) {
+        slots = keys(armor);
+        for (i = 0; i < sizeof(slots); i++) {
+            object piece;
+            string piece_path;
+            piece = armor[slots[i]];
+            if (piece && objectp(piece)) {
+                piece_path = file_name(piece);
+                if (member(piece_path, "#") != -1) {
+                    piece_path = explode(piece_path, "#")[0];
+                }
+                saved_armor_paths[slots[i]] = piece_path;
+            }
+        }
     }
 
     path = "/secure/players/" + lower_case(player_name);
@@ -150,6 +189,8 @@ int save_player() {
 int restore_player() {
     string path;
     int result;
+    string *slots;
+    int i;
 
     if (player_name == "" || player_name == "Guest") {
         return 0;
@@ -158,10 +199,36 @@ int restore_player() {
     path = "/secure/players/" + lower_case(player_name);
     result = restore_object(path);
 
-    // Clear equipment references - the saved objects no longer exist
-    // (equipment was left on corpse when player died, or is stale from logout)
+    // Clear live equipment references first
     wielded_weapon = 0;
     worn_armor = ([]);
+
+    // Recreate saved equipment
+    if (saved_weapon_path && saved_weapon_path != "") {
+        object weapon;
+        weapon = clone_object(saved_weapon_path);
+        if (weapon) {
+            move_object(weapon, this_object());
+            wield_weapon(weapon);
+        }
+    }
+
+    // Recreate saved armor
+    if (saved_armor_paths) {
+        slots = keys(saved_armor_paths);
+        for (i = 0; i < sizeof(slots); i++) {
+            string armor_path;
+            object armor;
+            armor_path = saved_armor_paths[slots[i]];
+            if (armor_path && armor_path != "") {
+                armor = clone_object(armor_path);
+                if (armor) {
+                    move_object(armor, this_object());
+                    wear_armor(armor);
+                }
+            }
+        }
+    }
 
     return result;
 }
@@ -187,9 +254,10 @@ void die() {
     if (death_location) {
         corpse = clone_object("/std/corpse");
         call_other(corpse, "set_corpse_name", player_name);
+        call_other(corpse, "set_decay_time", 3600);  // Player corpses last 1 hour
 
         // Unequip wielded weapon and move to corpse
-        if (wielded_weapon) {
+        if (wielded_weapon && objectp(wielded_weapon)) {
             move_object(wielded_weapon, corpse);
             wielded_weapon = 0;
         }
@@ -201,7 +269,7 @@ void die() {
             for (i = 0; i < sizeof(slots); i++) {
                 object piece;
                 piece = armor[slots[i]];
-                if (piece) {
+                if (piece && objectp(piece)) {
                     move_object(piece, corpse);
                 }
             }
@@ -221,6 +289,10 @@ void die() {
         // Start corpse decay timer
         call_other(corpse, "start_decay");
     }
+
+    // Clear saved equipment so we don't respawn with gear
+    saved_weapon_path = "";
+    saved_armor_paths = ([]);
 
     // Message to player
     tell_object(this_object(),

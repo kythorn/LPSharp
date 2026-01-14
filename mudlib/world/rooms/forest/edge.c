@@ -8,11 +8,12 @@ void create() {
 
     set_short("Forest Edge");
     set_long(
-        "The cobblestone road from town gives way to a worn dirt path that disappears " +
-        "into the shadowy embrace of Whisperwood Forest. Ancient oaks and tall pines " +
-        "mark the boundary between civilization and wilderness. Birdsong fills the air, " +
-        "and shafts of sunlight filter through the canopy ahead. A weathered sign reads: " +
-        "'Beware - wildlife may be dangerous to the unprepared.'"
+        "The cobblestone road from town gives way to a worn dirt path that\n" +
+        "disappears into the shadowy embrace of Whisperwood Forest. Ancient oaks\n" +
+        "and tall pines mark the boundary between civilization and wilderness.\n" +
+        "Birdsong fills the air, and shafts of sunlight filter through the canopy\n" +
+        "ahead. A weathered sign reads: 'Beware - wildlife may be dangerous to\n" +
+        "the unprepared.'"
     );
 
     add_exit("north", "/world/rooms/town/south_gate");

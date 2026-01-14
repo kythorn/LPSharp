@@ -8,9 +8,9 @@ void create() {
 
     set_short("East Road");
     set_long(
-        "The road approaches the eastern wall of town. The buildings here " +
-        "are older and more weathered. A few warehouses store goods for " +
-        "merchants trading with villages to the east."
+        "The road approaches the eastern wall of town. The buildings here are\n" +
+        "older and more weathered. A few warehouses store goods for merchants\n" +
+        "trading with villages to the east."
     );
 
     add_exit("west", "/world/rooms/town/east_market");

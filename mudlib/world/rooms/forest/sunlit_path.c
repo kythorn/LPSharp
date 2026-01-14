@@ -8,10 +8,10 @@ void create() {
 
     set_short("Sunlit Path");
     set_long(
-        "Dappled sunlight warms this gentle forest path. Wildflowers grow along the " +
-        "edges, attracting butterflies and bees. The underbrush rustles occasionally " +
-        "as small creatures go about their business. This seems like a safe area for " +
-        "those new to adventuring."
+        "Dappled sunlight warms this gentle forest path. Wildflowers grow along\n" +
+        "the edges, attracting butterflies and bees. The underbrush rustles\n" +
+        "occasionally as small creatures go about their business. This seems like\n" +
+        "a safe area for those new to adventuring."
     );
 
     add_exit("north", "/world/rooms/forest/edge");

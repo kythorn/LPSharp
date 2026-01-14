@@ -48,6 +48,11 @@ void create() {
     hidden_exit_dir = "";
 }
 
+// Identify this as a room
+int is_room() {
+    return 1;
+}
+
 // Set the long description
 void set_long(string desc) {
     long_desc = desc;

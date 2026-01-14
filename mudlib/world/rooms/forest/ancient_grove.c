@@ -8,11 +8,12 @@ void create() {
 
     set_short("Ancient Grove");
     set_long(
-        "You have reached the heart of Whisperwood Forest. Ancient trees tower overhead, " +
-        "their trunks thick with moss and age. A strange stillness hangs in the air, " +
-        "broken only by the occasional rustle of leaves. In the center of the grove, " +
-        "a massive dire wolf guards its territory - larger and more fearsome than any " +
-        "ordinary wolf. This creature is clearly the apex predator of this forest."
+        "You have reached the heart of Whisperwood Forest. Ancient trees tower\n" +
+        "overhead, their trunks thick with moss and age. A strange stillness hangs\n" +
+        "in the air, broken only by the occasional rustle of leaves. In the center\n" +
+        "of the grove, a massive dire wolf guards its territory - larger and more\n" +
+        "fearsome than any ordinary wolf. This creature is clearly the apex\n" +
+        "predator of this forest."
     );
 
     add_exit("north", "/world/rooms/forest/dark_hollow");

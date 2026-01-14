@@ -8,10 +8,11 @@ void create() {
 
     set_short("Stream Crossing");
     set_long(
-        "A crystal-clear stream babbles through the forest here, flowing over smooth " +
-        "stones worn by centuries of water. Stepping stones provide a way across. " +
-        "The peaceful sound of running water is soothing, and this seems like a safe " +
-        "place to rest and recover. Small fish dart through the shallows."
+        "A crystal-clear stream babbles through the forest here, flowing over\n" +
+        "smooth stones worn by centuries of water. Stepping stones provide a way\n" +
+        "across. The peaceful sound of running water is soothing, and this seems\n" +
+        "like a safe place to rest and recover. Small fish dart through the\n" +
+        "shallows."
     );
 
     add_exit("east", "/world/rooms/forest/winding_trail");

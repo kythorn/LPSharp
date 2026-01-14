@@ -417,6 +417,7 @@ public class ObjectInterpreter
         _efuns.Register("read_file", ReadFileEfun);
         _efuns.Register("write_file", WriteFileEfun);
         _efuns.Register("file_size", FileSizeEfun);
+        _efuns.Register("file_time", FileTimeEfun);
         _efuns.Register("rm", RmEfun);
         _efuns.Register("mkdir", MkdirEfun);
         _efuns.Register("rmdir", RmdirEfun);
@@ -430,6 +431,7 @@ public class ObjectInterpreter
         // Hot-reload efuns
         _efuns.Register("update", UpdateEfun);
         _efuns.Register("inherits", InheritsEfun);
+        _efuns.Register("reload_changed", ReloadChangedEfun);
 
         // Input handling efuns
         _efuns.Register("input_to", InputToEfun);
@@ -3668,6 +3670,46 @@ public class ObjectInterpreter
     }
 
     /// <summary>
+    /// file_time(path) - Get the last modification time of a file.
+    /// Requires Wizard+ access level and read path access.
+    /// Returns Unix timestamp (seconds since epoch), or -1 if file doesn't exist.
+    /// </summary>
+    private object FileTimeEfun(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("file_time() requires exactly 1 argument");
+        }
+
+        if (args[0] is not string path)
+        {
+            throw new EfunException("file_time() argument must be a path string");
+        }
+
+        // Permission check: require Wizard+ and path access for reading
+        RequireAccessLevel(AccessLevel.Wizard, "file_time");
+        RequirePathAccess(path, "file_time", isWrite: false);
+
+        try
+        {
+            var fullPath = ResolveMudlibPath(path);
+
+            if (!File.Exists(fullPath))
+            {
+                return -1; // Doesn't exist
+            }
+
+            var info = new FileInfo(fullPath);
+            var unixTime = ((DateTimeOffset)info.LastWriteTimeUtc).ToUnixTimeSeconds();
+            return (int)unixTime;
+        }
+        catch (IOException)
+        {
+            return -1;
+        }
+    }
+
+    /// <summary>
     /// rm(path) - Delete a file.
     /// Requires Wizard+ access level and write path access.
     /// Returns 1 on success, 0 on failure.
@@ -4846,6 +4888,50 @@ public class ObjectInterpreter
         }
 
         return _objectManager.GetInheritanceParents(path).Cast<object>().ToList();
+    }
+
+    /// <summary>
+    /// reload_changed() - Reload all blueprints whose source files have changed.
+    /// Requires Admin access level.
+    /// Returns an array of paths that were reloaded.
+    /// </summary>
+    private object ReloadChangedEfun(List<object> args)
+    {
+        if (args.Count != 0)
+        {
+            throw new EfunException("reload_changed() takes no arguments");
+        }
+
+        RequireAccessLevel(AccessLevel.Admin, "reload_changed");
+
+        var reloaded = new List<object>();
+        var blueprints = _objectManager.GetAllBlueprints().ToList();
+
+        foreach (var blueprint in blueprints)
+        {
+            try
+            {
+                var sourcePath = ResolveMudlibPath(blueprint.FilePath + ".c");
+                if (!File.Exists(sourcePath))
+                {
+                    continue;
+                }
+
+                var fileInfo = new FileInfo(sourcePath);
+                if (fileInfo.LastWriteTimeUtc > blueprint.CreatedAt)
+                {
+                    // File is newer than the loaded blueprint - reload it
+                    _objectManager.UpdateObject(blueprint.FilePath);
+                    reloaded.Add(blueprint.FilePath);
+                }
+            }
+            catch
+            {
+                // Skip files that can't be checked or reloaded
+            }
+        }
+
+        return reloaded;
     }
 
     #endregion

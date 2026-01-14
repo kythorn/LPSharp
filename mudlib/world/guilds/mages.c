@@ -12,11 +12,13 @@ void create() {
     set_guild_name("Mages Guild");
 
     set_short("Mages Guild Tower");
-    set_long("You stand in the grand tower of the Mages Guild. " +
-        "Shelves lined with ancient tomes reach to the vaulted ceiling. " +
-        "Arcane symbols are etched into the stone floor, faintly glowing. " +
-        "An elderly wizard in star-covered robes studies at a large desk.\n\n" +
-        "Type 'join' to become a member, or 'leave' to resign your membership.");
+    set_long(
+        "You stand in the grand tower of the Mages Guild. Shelves lined with\n" +
+        "ancient tomes reach to the vaulted ceiling. Arcane symbols are etched\n" +
+        "into the stone floor, faintly glowing. An elderly wizard in star-covered\n" +
+        "robes studies at a large desk.\n\n" +
+        "Type 'join' to become a member, or 'leave' to resign your membership."
+    );
 
     // Magic schools granted by this guild
     set_granted_skills(({

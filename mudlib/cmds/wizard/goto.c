@@ -37,7 +37,7 @@ void main(string args) {
         tell_room(old_room, call_other(player, "query_name") + " disappears in a puff of smoke.\n", player);
     }
 
-    call_other(player, "move", room);
+    move_object(player, room);
 
     tell_room(room, call_other(player, "query_name") + " appears in a puff of smoke.\n", player);
     write("Teleported to: " + path);

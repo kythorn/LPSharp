@@ -9,11 +9,13 @@ void create() {
     set_guild_name("Fighters Guild");
 
     set_short("Fighters Guild Hall");
-    set_long("You are standing in the grand hall of the Fighters Guild. " +
-        "Weapons of all kinds adorn the walls - swords, axes, maces, and more. " +
-        "Training dummies stand in corners, showing signs of heavy use. " +
-        "A grizzled veteran sits at a desk, ready to accept new recruits.\n\n" +
-        "Type 'join' to become a member, or 'leave' to resign your membership.");
+    set_long(
+        "You are standing in the grand hall of the Fighters Guild. Weapons of all\n" +
+        "kinds adorn the walls - swords, axes, maces, and more. Training dummies\n" +
+        "stand in corners, showing signs of heavy use. A grizzled veteran sits at\n" +
+        "a desk, ready to accept new recruits.\n\n" +
+        "Type 'join' to become a member, or 'leave' to resign your membership."
+    );
 
     // Skills granted by this guild
     set_granted_skills(({

@@ -8,10 +8,10 @@ void create() {
 
     set_short("Dense Thicket");
     set_long(
-        "Thorny brambles and tangled vines make passage difficult here. The vegetation " +
-        "is so thick that you can barely see more than a few feet ahead. Something " +
-        "slithers through the undergrowth nearby. Watch your step - this looks like " +
-        "the perfect habitat for snakes."
+        "Thorny brambles and tangled vines make passage difficult here. The\n" +
+        "vegetation is so thick that you can barely see more than a few feet\n" +
+        "ahead. Something slithers through the undergrowth nearby. Watch your\n" +
+        "step - this looks like the perfect habitat for snakes."
     );
 
     add_exit("north", "/world/rooms/forest/mushroom_grove");

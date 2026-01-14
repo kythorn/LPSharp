@@ -8,10 +8,9 @@ void create() {
 
     set_short("East Road");
     set_long(
-        "The road continues past a row of modest houses. Children play in " +
-        "small yards while their parents tend to daily chores. A water well " +
-        "stands at a small intersection, where locals gather to chat and " +
-        "draw water."
+        "The road continues past a row of modest houses. Children play in small\n" +
+        "yards while their parents tend to daily chores. A water well stands at a\n" +
+        "small intersection, where locals gather to chat and draw water."
     );
 
     add_exit("west", "/world/rooms/town/east_road");

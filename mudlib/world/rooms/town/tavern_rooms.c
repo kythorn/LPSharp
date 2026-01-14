@@ -8,10 +8,11 @@ void create() {
 
     set_short("Tavern Hallway");
     set_long(
-        "A narrow hallway runs the length of the tavern's upper floor, lit by a few " +
-        "guttering candles in wall sconces. Several wooden doors line both sides, " +
-        "leading to modest rooms available for rent. The floorboards creak beneath " +
-        "your feet, and the muffled sounds of the common room drift up from below."
+        "A narrow hallway runs the length of the tavern's upper floor, lit by a\n" +
+        "few guttering candles in wall sconces. Several wooden doors line both\n" +
+        "sides, leading to modest rooms available for rent. The floorboards creak\n" +
+        "beneath your feet, and the muffled sounds of the common room drift up\n" +
+        "from below."
     );
 
     add_exit("down", "/world/rooms/town/tavern");

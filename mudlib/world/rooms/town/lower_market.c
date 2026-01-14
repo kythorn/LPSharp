@@ -8,9 +8,9 @@ void create() {
 
     set_short("Lower Market");
     set_long(
-        "This area serves as a gathering place for farmers and traders coming " +
-        "through the South Gate. Hay wagons and livestock pens line the edges " +
-        "of the road. The smell of animals mixes with the scent of fresh produce " +
+        "This area serves as a gathering place for farmers and traders coming\n" +
+        "through the South Gate. Hay wagons and livestock pens line the edges of\n" +
+        "the road. The smell of animals mixes with the scent of fresh produce\n" +
         "from the surrounding farms."
     );
 

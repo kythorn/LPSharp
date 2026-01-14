@@ -8,9 +8,9 @@ void create() {
 
     set_short("West Road");
     set_long(
-        "A lively road leads westward from the town square. " +
-        "Street performers occasionally entertain passersby here, and the " +
-        "smell of roasting meat from nearby eateries fills the air."
+        "A lively road leads westward from the town square. Street performers\n" +
+        "occasionally entertain passersby here, and the smell of roasting meat\n" +
+        "from nearby eateries fills the air."
     );
 
     add_exit("east", "/world/rooms/town/square");

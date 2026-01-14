@@ -8,10 +8,11 @@ void create() {
 
     set_short("Town Square");
     set_long(
-        "You stand in the heart of the town, a bustling square paved with worn cobblestones. " +
-        "A weathered stone fountain stands at the center, its water sparkling in the light. " +
-        "Merchants call out their wares from wooden stalls, while townspeople hurry about " +
-        "their daily business. Roads lead away in all four cardinal directions."
+        "You stand in the heart of the town, a bustling square paved with worn\n" +
+        "cobblestones. A weathered stone fountain stands at the center, its water\n" +
+        "sparkling in the light. Merchants call out their wares from wooden stalls,\n" +
+        "while townspeople hurry about their daily business. Roads lead away in all\n" +
+        "four cardinal directions."
     );
 
     // Roads lead in cardinal directions

@@ -47,13 +47,13 @@ void main(string args) {
         object room;
         room = environment(player);
         if (room) {
-            call_other(obj, "move", room);
+            move_object(obj, room);
             write("Cloned " + path + " -> " + object_name(obj) + " (in room)");
         } else {
             write("Cloned " + path + " -> " + object_name(obj) + " (no room)");
         }
     } else {
-        call_other(obj, "move", player);
+        move_object(obj, player);
         write("Cloned " + path + " -> " + object_name(obj));
     }
 }

@@ -8,9 +8,9 @@ void create() {
 
     set_short("West Road");
     set_long(
-        "The road nears the western wall. Stables and wagon yards line the " +
-        "street here, serving travelers preparing for long journeys. The " +
-        "smell of horses and fresh hay is strong."
+        "The road nears the western wall. Stables and wagon yards line the\n" +
+        "street here, serving travelers preparing for long journeys. The smell\n" +
+        "of horses and fresh hay is strong."
     );
 
     add_exit("east", "/world/rooms/town/craftsman_row");
