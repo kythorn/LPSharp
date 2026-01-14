@@ -20,4 +20,9 @@ void create() {
     add_exit("south", "/world/rooms/town/market_street");
     add_exit("east", "/world/rooms/castle/gate");
     add_exit("west", "/world/rooms/town/tavern");
+
+    // Guild halls
+    add_exit("northeast", "/world/guilds/fighters");
+    add_exit("northwest", "/world/guilds/mages");
+    add_exit("southeast", "/world/guilds/healers");
 }

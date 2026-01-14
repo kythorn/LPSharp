@@ -21,9 +21,11 @@ int main(string args) {
              call_other(player, "query_level") + "\n";
     output = output + "----------------------------------------\n";
 
-    // HP bar
+    // HP and Mana
     output = output + "HP: " + call_other(player, "query_hp") + "/" +
-             call_other(player, "query_max_hp") + "\n\n";
+             call_other(player, "query_max_hp") + "    ";
+    output = output + "Mana: " + call_other(player, "query_mana") + "/" +
+             call_other(player, "query_max_mana") + "\n\n";
 
     // Stats
     output = output + "Stats:\n";

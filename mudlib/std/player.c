@@ -7,6 +7,7 @@ string player_name;
 int xp;
 int gold;
 int level;
+string *guilds;  // Array of guild paths this player belongs to
 
 void create() {
     ::create();
@@ -15,6 +16,7 @@ void create() {
     xp = 0;
     gold = 0;
     level = 1;
+    guilds = ({});
 }
 
 string query_name() {
@@ -44,6 +46,40 @@ void add_gold(int amount) {
     if (gold < 0) {
         gold = 0;
     }
+}
+
+// Guild membership functions
+string *query_guilds() {
+    return guilds;
+}
+
+int is_guild_member(string guild_path) {
+    int i;
+    for (i = 0; i < sizeof(guilds); i++) {
+        if (guilds[i] == guild_path) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+void add_guild(string guild_path) {
+    if (!is_guild_member(guild_path)) {
+        guilds = guilds + ({ guild_path });
+    }
+}
+
+void remove_guild(string guild_path) {
+    int i;
+    string *new_guilds;
+
+    new_guilds = ({});
+    for (i = 0; i < sizeof(guilds); i++) {
+        if (guilds[i] != guild_path) {
+            new_guilds = new_guilds + ({ guilds[i] });
+        }
+    }
+    guilds = new_guilds;
 }
 
 // Save player data to file

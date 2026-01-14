@@ -87,6 +87,21 @@ void set_xp_value(int val) {
     xp_value = val;
 }
 
+// Monsters don't advance skills - they're static
+int advance_skill(string skill_name, int difficulty) {
+    return 0;
+}
+
+// Monsters don't advance stats
+int advance_stat(string stat_name) {
+    return 0;
+}
+
+// Monsters don't learn to dodge better
+void try_dodge_advancement(int difficulty) {
+    // Do nothing
+}
+
 // Called when something enters the monster's environment
 // or when the monster enters an environment
 void init() {
