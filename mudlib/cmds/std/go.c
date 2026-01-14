@@ -42,11 +42,31 @@ void main(string args) {
         return;
     }
 
+    // Check if this is a hidden exit
+    int is_hidden;
+    is_hidden = call_other(room, "is_hidden_exit", dir);
+
+    // Notify old room and player
+    if (is_hidden) {
+        // Hidden exit - others just see player leave, no direction
+        call_other(room, "act", player,
+            "You go " + dir + ".",
+            "$N leaves.");
+    } else {
+        // Normal exit - show direction
+        call_other(room, "act", player,
+            "You go " + dir + ".",
+            "$N leaves " + dir + ".");
+    }
+
     // Move the player
     move_object(destination);
 
-    // Show the new room
-    write("You go " + dir + ".");
+    // Notify new room that player has arrived (after move)
+    call_other(destination, "act", player,
+        "",
+        "$N arrives.");
+
     write("");
 
     // Display the new room using look command

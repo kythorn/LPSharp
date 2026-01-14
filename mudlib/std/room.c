@@ -87,6 +87,23 @@ void add_hidden_exit(string direction, string destination) {
     hidden_exit_dir = direction;
 }
 
+// Check if a direction is a hidden exit
+int is_hidden_exit(string direction) {
+    // Normalize short forms to long forms
+    if (direction == "n") direction = "north";
+    if (direction == "s") direction = "south";
+    if (direction == "e") direction = "east";
+    if (direction == "w") direction = "west";
+    if (direction == "ne") direction = "northeast";
+    if (direction == "nw") direction = "northwest";
+    if (direction == "se") direction = "southeast";
+    if (direction == "sw") direction = "southwest";
+    if (direction == "u") direction = "up";
+    if (direction == "d") direction = "down";
+
+    return hidden_exit_dir == direction;
+}
+
 // Query an exit destination
 string query_exit(string direction) {
     if (direction == "n") { return exit_north; }

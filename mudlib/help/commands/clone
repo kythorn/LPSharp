@@ -1,0 +1,20 @@
+CLONE (Wizard Command)
+======================
+
+Usage: clone <path>
+
+Clone (create a copy of) an object and place it in your inventory.
+
+Arguments:
+  <path>  - The path to the object file to clone (e.g., /world/items/weapons/sword)
+
+Examples:
+  clone /world/items/weapons/sword     - Clone a sword into your inventory
+  clone /world/mobs/rat                - Clone a rat into your inventory
+
+Notes:
+  - Requires Wizard or higher access level
+  - The path should not include the .c extension
+  - Cloned objects appear in your inventory
+
+See also: dest, load

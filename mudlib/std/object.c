@@ -2,10 +2,12 @@
 // Base class for all objects in the MUD
 
 string short_desc;
+string long_desc;
 int mass;
 
 void create() {
     short_desc = "something";
+    long_desc = "";
     mass = 1;
 }
 
@@ -21,6 +23,14 @@ string query_short() {
 
 void set_short(string desc) {
     short_desc = desc;
+}
+
+string query_long() {
+    return long_desc;
+}
+
+void set_long(string desc) {
+    long_desc = desc;
 }
 
 int query_mass() {

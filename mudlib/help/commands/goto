@@ -1,0 +1,20 @@
+GOTO (Wizard Command)
+=====================
+
+Usage: goto <path>
+
+Teleport instantly to a specific room.
+
+Arguments:
+  <path>  - The path to the room (e.g., /world/rooms/town/square)
+
+Examples:
+  goto /world/rooms/town/square      - Go to the town square
+  goto /world/rooms/castle/throne    - Go to the throne room
+
+Notes:
+  - Requires Wizard or higher access level
+  - The path should not include the .c extension
+  - Ignores normal room exits and movement restrictions
+
+See also: go

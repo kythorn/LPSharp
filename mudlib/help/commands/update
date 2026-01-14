@@ -1,0 +1,15 @@
+UPDATE (Wizard Command)
+=======================
+
+Usage: update
+
+Reload the source file of the current room. This is useful for testing
+changes to room code without leaving and returning.
+
+Notes:
+  - Requires Wizard or higher access level
+  - Only updates the current room you're standing in
+  - Changes take effect immediately
+  - Existing objects in the room are preserved
+
+See also: load

@@ -1,0 +1,22 @@
+LOAD (Wizard Command)
+=====================
+
+Usage: load <path>
+
+Load or reload an LPC file. This is useful for testing changes to code
+without restarting the server.
+
+Arguments:
+  <path>  - The path to the LPC file (e.g., /world/rooms/town/square)
+
+Examples:
+  load /world/rooms/town/square      - Load/reload the town square
+  load /std/room                     - Reload the base room class
+
+Notes:
+  - Requires Wizard or higher access level
+  - The path should not include the .c extension
+  - Reloading a file updates its code but existing clones keep old code
+  - Use 'update' to refresh the current room's code
+
+See also: clone, dest, update

@@ -691,6 +691,44 @@ public class Interpreter
             return result;
         }
 
+        // Array subtraction (removes all occurrences of right elements from left)
+        if (expr.Operator == BinaryOperator.Subtract && leftVal is List<object> leftArrSub && rightVal is List<object> rightArrSub)
+        {
+            var result = new List<object>();
+            foreach (var item in leftArrSub)
+            {
+                bool found = false;
+                foreach (var rightItem in rightArrSub)
+                {
+                    if (ValuesEqual(item, rightItem))
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    result.Add(item);
+                }
+            }
+            return result;
+        }
+
+        // Mapping concatenation (merge mappings, right overwrites left)
+        if (expr.Operator == BinaryOperator.Add && leftVal is Dictionary<object, object> leftMap && rightVal is Dictionary<object, object> rightMap)
+        {
+            var result = new Dictionary<object, object>();
+            foreach (var kvp in leftMap)
+            {
+                result[kvp.Key] = kvp.Value;
+            }
+            foreach (var kvp in rightMap)
+            {
+                result[kvp.Key] = kvp.Value;
+            }
+            return result;
+        }
+
         // String equality
         if (leftVal is string leftStr && rightVal is string rightStr)
         {

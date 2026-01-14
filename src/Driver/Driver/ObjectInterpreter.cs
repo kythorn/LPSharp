@@ -1776,6 +1776,46 @@ public class ObjectInterpreter
             return result;
         }
 
+        // Array subtraction for -
+        // Removes all occurrences of elements in rightArr from leftArr
+        if (expr.Operator == BinaryOperator.Subtract && leftValue is List<object> leftArrSub && rightValue is List<object> rightArrSub)
+        {
+            var result = new List<object>();
+            foreach (var item in leftArrSub)
+            {
+                // Check if this item exists in the right array
+                bool found = false;
+                foreach (var rightItem in rightArrSub)
+                {
+                    if (ValuesEqual(item, rightItem))
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    result.Add(item);
+                }
+            }
+            return result;
+        }
+
+        // Mapping concatenation for + (merge mappings, right overwrites left)
+        if (expr.Operator == BinaryOperator.Add && leftValue is Dictionary<object, object> leftMap && rightValue is Dictionary<object, object> rightMap)
+        {
+            var result = new Dictionary<object, object>();
+            foreach (var kvp in leftMap)
+            {
+                result[kvp.Key] = kvp.Value;
+            }
+            foreach (var kvp in rightMap)
+            {
+                result[kvp.Key] = kvp.Value;
+            }
+            return result;
+        }
+
         // String comparison
         if (leftValue is string ls && rightValue is string rs)
         {

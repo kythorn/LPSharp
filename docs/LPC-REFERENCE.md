@@ -640,10 +640,19 @@ Efuns are functions provided by the driver, callable from any LPC code.
 | `clone_object(path)` | Create a clone of the object at path |
 | `destruct(obj)` | Destroy an object |
 | `find_object(path)` | Find a loaded object by path |
-| `find_player(name)` | Find a player by name |
+| `find_player(name)` | Find a connected player by name (searches all players) |
+| `find_living(name)` | Find a living object by name (NPC or player) |
 | `users()` | Get array of all connected player objects |
 | `linkdead_users()` | Get array of linkdead player objects |
 | `query_linkdead(obj)` | Returns 1 if object is linkdead, 0 otherwise |
+| `interactive(obj)` | Returns 1 if object has a connected player, 0 otherwise |
+| `living(obj)` | Returns 1 if object is a living creature (player or NPC) |
+| `set_living(name)` | Register this object as a living with the given name |
+| `query_living_name()` | Get the living name of this object |
+| `inherits(obj, path)` | Returns 1 if obj inherits from the file at path |
+| `object_name(obj)` | Get the full object name/path (e.g., "/std/room#42") |
+| `file_name(obj)` | Get the source file path (e.g., "/std/room") |
+| `update()` | Reload the current object's source file |
 
 ### Communication
 
@@ -792,6 +801,7 @@ The action system allows objects to register custom command handlers via `add_ac
 | `enable_commands()` | Allow this object to receive commands |
 | `disable_commands()` | Disable command receiving |
 | `command(str)` | Execute a command as this_player() |
+| `input_to(func, [args...])` | Wait for player's next input and call func |
 
 **Flags for add_action:**
 - `0` - Exact match (default)
@@ -835,14 +845,27 @@ int do_pull(string arg) {
 | `m_delete(map, key)` | Remove a key from mapping |
 | `mkmapping(keys, values)` | Create mapping from two arrays |
 
-### Other
+### Math
 
 | Efun | Description |
 |------|-------------|
 | `random(n)` | Random integer from 0 to n-1 |
+| `abs(n)` | Absolute value of n |
+| `min(a, b, ...)` | Minimum of arguments (2 or more) |
+| `max(a, b, ...)` | Maximum of arguments (2 or more) |
+
+### Time
+
+| Efun | Description |
+|------|-------------|
 | `time()` | Current Unix timestamp |
 | `ctime([t])` | Convert timestamp to human-readable string |
 | `localtime([t])` | Convert timestamp to array of time components |
+
+### Other
+
+| Efun | Description |
+|------|-------------|
 | `typeof(x)` | Get type name as string |
 
 ### Strings

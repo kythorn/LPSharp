@@ -1,0 +1,22 @@
+DEST (Wizard Command)
+=====================
+
+Usage: dest <object>
+
+Destruct (destroy) an object. The object will be completely removed from
+the game.
+
+Arguments:
+  <object>  - The name of the object to destroy
+
+Examples:
+  dest sword          - Destroy the sword in your inventory or room
+  dest rat            - Destroy the rat in the room
+  dest sword 2        - Destroy the second sword
+
+Notes:
+  - Requires Wizard or higher access level
+  - Be careful! Destructed objects cannot be recovered
+  - Cannot destruct yourself or other players
+
+See also: clone, load

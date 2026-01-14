@@ -1,0 +1,21 @@
+LS (Wizard Command)
+===================
+
+Usage: ls [path]
+
+List the contents of a directory in the mudlib.
+
+Arguments:
+  [path]  - Optional path to list (defaults to current wizard's home)
+
+Examples:
+  ls                          - List your home directory
+  ls /world/rooms            - List the rooms directory
+  ls /std                    - List the standard library
+
+Notes:
+  - Requires Wizard or higher access level
+  - Shows files and directories
+  - Paths are relative to the mudlib root
+
+See also: load, clone

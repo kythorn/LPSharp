@@ -39,6 +39,9 @@ public class EfunRegistry
         Register("tell_room", TellRoom);
         Register("all_inventory", AllInventory);
         Register("random", Random);
+        Register("abs", Abs);
+        Register("min", Min);
+        Register("max", Max);
         Register("member_array", MemberArray);
         Register("sprintf", Sprintf);
         Register("explode", Explode);
@@ -69,6 +72,7 @@ public class EfunRegistry
 
         // String functions
         Register("strsrch", Strsrch);
+        Register("member", Member);
 
         // Inventory traversal
         Register("first_inventory", FirstInventory);
@@ -463,6 +467,88 @@ public class EfunRegistry
     }
 
     /// <summary>
+    /// abs(n) - Returns the absolute value of n.
+    /// </summary>
+    private static object Abs(List<object> args)
+    {
+        if (args.Count != 1)
+        {
+            throw new EfunException("abs() requires exactly 1 argument");
+        }
+
+        return args[0] switch
+        {
+            long l => Math.Abs(l),
+            int i => (long)Math.Abs(i),
+            _ => throw new EfunException("abs() argument must be an integer")
+        };
+    }
+
+    /// <summary>
+    /// min(a, b, ...) - Returns the minimum value among the arguments.
+    /// Accepts 2 or more arguments.
+    /// </summary>
+    private static object Min(List<object> args)
+    {
+        if (args.Count < 2)
+        {
+            throw new EfunException("min() requires at least 2 arguments");
+        }
+
+        long minVal = args[0] switch
+        {
+            long l => l,
+            int i => i,
+            _ => throw new EfunException("min() arguments must be integers")
+        };
+
+        for (int i = 1; i < args.Count; i++)
+        {
+            long val = args[i] switch
+            {
+                long l => l,
+                int n => n,
+                _ => throw new EfunException("min() arguments must be integers")
+            };
+            if (val < minVal) minVal = val;
+        }
+
+        return minVal;
+    }
+
+    /// <summary>
+    /// max(a, b, ...) - Returns the maximum value among the arguments.
+    /// Accepts 2 or more arguments.
+    /// </summary>
+    private static object Max(List<object> args)
+    {
+        if (args.Count < 2)
+        {
+            throw new EfunException("max() requires at least 2 arguments");
+        }
+
+        long maxVal = args[0] switch
+        {
+            long l => l,
+            int i => i,
+            _ => throw new EfunException("max() arguments must be integers")
+        };
+
+        for (int i = 1; i < args.Count; i++)
+        {
+            long val = args[i] switch
+            {
+                long l => l,
+                int n => n,
+                _ => throw new EfunException("max() arguments must be integers")
+            };
+            if (val > maxVal) maxVal = val;
+        }
+
+        return maxVal;
+    }
+
+    /// <summary>
     /// member_array(item, array) - Returns the index of item in array, or -1 if not found.
     /// Comparison is done using Equals().
     /// </summary>
@@ -582,6 +668,7 @@ public class EfunRegistry
                     formatted = arg switch
                     {
                         string s => s,
+                        long n => n.ToString(),
                         int n => n.ToString(),
                         _ => arg?.ToString() ?? ""
                     };
@@ -590,14 +677,16 @@ public class EfunRegistry
                 case 'i':
                     formatted = arg switch
                     {
+                        long n => n.ToString(),
                         int n => n.ToString(),
-                        string s when int.TryParse(s, out var n) => n.ToString(),
+                        string s when long.TryParse(s, out var n) => n.ToString(),
                         _ => "0"
                     };
                     break;
                 case 'o':
                     formatted = arg switch
                     {
+                        long n => Convert.ToString(n, 8),
                         int n => Convert.ToString(n, 8),
                         _ => "0"
                     };
@@ -605,6 +694,7 @@ public class EfunRegistry
                 case 'x':
                     formatted = arg switch
                     {
+                        long n => Convert.ToString(n, 16),
                         int n => Convert.ToString(n, 16),
                         _ => "0"
                     };
@@ -612,6 +702,7 @@ public class EfunRegistry
                 case 'X':
                     formatted = arg switch
                     {
+                        long n => Convert.ToString(n, 16).ToUpper(),
                         int n => Convert.ToString(n, 16).ToUpper(),
                         _ => "0"
                     };
@@ -1276,6 +1367,54 @@ public class EfunRegistry
             if (start >= str.Length) return -1L;
             return (long)str.IndexOf(substr, start, StringComparison.Ordinal);
         }
+    }
+
+    /// <summary>
+    /// member(collection, element) - Generic membership test.
+    /// For strings: returns index of substring, or -1 if not found (like strsrch).
+    /// For arrays: returns index of element, or -1 if not found (like member_array).
+    /// For mappings: returns 1 if key exists, 0 otherwise.
+    /// </summary>
+    private static object Member(List<object> args)
+    {
+        if (args.Count != 2)
+        {
+            throw new EfunException("member() requires exactly 2 arguments");
+        }
+
+        var collection = args[0];
+        var element = args[1];
+
+        // String search (for substring)
+        if (collection is string str)
+        {
+            if (element is not string substr)
+            {
+                throw new EfunException("member() second argument must be a string when first is a string");
+            }
+            return (long)str.IndexOf(substr, StringComparison.Ordinal);
+        }
+
+        // Array search (for element)
+        if (collection is List<object> array)
+        {
+            for (int i = 0; i < array.Count; i++)
+            {
+                if (Equals(element, array[i]))
+                {
+                    return (long)i;
+                }
+            }
+            return -1L;
+        }
+
+        // Mapping key check
+        if (collection is Dictionary<object, object> map)
+        {
+            return map.ContainsKey(element) ? 1L : 0L;
+        }
+
+        throw new EfunException("member() first argument must be a string, array, or mapping");
     }
 
     #endregion

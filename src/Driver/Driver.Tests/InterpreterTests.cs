@@ -1170,6 +1170,42 @@ public class InterpreterTests
 
     #endregion
 
+    #region Math Efuns
+
+    [Theory]
+    [InlineData("abs(-5)", 5L)]
+    [InlineData("abs(5)", 5L)]
+    [InlineData("abs(0)", 0L)]
+    [InlineData("abs(-100)", 100L)]
+    public void Evaluate_Abs(string expr, long expected)
+    {
+        Assert.Equal(expected, Eval(expr));
+    }
+
+    [Theory]
+    [InlineData("min(3, 5)", 3L)]
+    [InlineData("min(5, 3)", 3L)]
+    [InlineData("min(1, 2, 3)", 1L)]
+    [InlineData("min(3, 2, 1)", 1L)]
+    [InlineData("min(-5, 0)", -5L)]
+    public void Evaluate_Min(string expr, long expected)
+    {
+        Assert.Equal(expected, Eval(expr));
+    }
+
+    [Theory]
+    [InlineData("max(3, 5)", 5L)]
+    [InlineData("max(5, 3)", 5L)]
+    [InlineData("max(1, 2, 3)", 3L)]
+    [InlineData("max(3, 2, 1)", 3L)]
+    [InlineData("max(-5, 0)", 0L)]
+    public void Evaluate_Max(string expr, long expected)
+    {
+        Assert.Equal(expected, Eval(expr));
+    }
+
+    #endregion
+
     #region Arrays
 
     [Fact]
@@ -1259,6 +1295,55 @@ public class InterpreterTests
         Assert.Equal((long)'h', Eval("\"hello\"[0]"));
         Assert.Equal((long)'e', Eval("\"hello\"[1]"));
         Assert.Equal((long)'o', Eval("\"hello\"[4]"));
+    }
+
+    [Fact]
+    public void Evaluate_ArraySubtraction()
+    {
+        var result = Eval("({ 1, 2, 3, 4 }) - ({ 2, 4 })");
+        var arr = Assert.IsType<List<object>>(result);
+        Assert.Equal(2, arr.Count);
+        Assert.Equal(1L, arr[0]);
+        Assert.Equal(3L, arr[1]);
+    }
+
+    [Fact]
+    public void Evaluate_ArraySubtraction_RemovesAllOccurrences()
+    {
+        var result = Eval("({ 1, 2, 2, 3, 2 }) - ({ 2 })");
+        var arr = Assert.IsType<List<object>>(result);
+        Assert.Equal(2, arr.Count);
+        Assert.Equal(1L, arr[0]);
+        Assert.Equal(3L, arr[1]);
+    }
+
+    [Fact]
+    public void Evaluate_ArraySubtraction_EmptyResult()
+    {
+        var result = Eval("({ 1, 2 }) - ({ 1, 2, 3 })");
+        var arr = Assert.IsType<List<object>>(result);
+        Assert.Empty(arr);
+    }
+
+    [Fact]
+    public void Evaluate_MappingConcatenation()
+    {
+        var result = Eval("([ \"a\": 1 ]) + ([ \"b\": 2 ])");
+        var map = Assert.IsType<Dictionary<object, object>>(result);
+        Assert.Equal(2, map.Count);
+        Assert.Equal(1L, map["a"]);
+        Assert.Equal(2L, map["b"]);
+    }
+
+    [Fact]
+    public void Evaluate_MappingConcatenation_RightOverwritesLeft()
+    {
+        var result = Eval("([ \"a\": 1, \"b\": 2 ]) + ([ \"b\": 99, \"c\": 3 ])");
+        var map = Assert.IsType<Dictionary<object, object>>(result);
+        Assert.Equal(3, map.Count);
+        Assert.Equal(1L, map["a"]);
+        Assert.Equal(99L, map["b"]);  // Overwritten by right mapping
+        Assert.Equal(3L, map["c"]);
     }
 
     #endregion

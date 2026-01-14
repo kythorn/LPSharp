@@ -1,0 +1,19 @@
+SHUTDOWN (Admin Command)
+========================
+
+Usage: shutdown
+
+Initiate a graceful server shutdown.
+
+This command will:
+  1. Save all player data
+  2. Disconnect all players with a shutdown message
+  3. Stop the game loop
+  4. Exit the server process
+
+Notes:
+  - Requires Admin access level
+  - Cannot be undone once initiated
+  - Players will need to reconnect after the server restarts
+
+See also: promote

@@ -1,0 +1,27 @@
+PROMOTE (Admin Command)
+=======================
+
+Usage: promote <player> <level>
+
+Change a player's access level.
+
+Arguments:
+  <player>  - The username of the player to promote/demote
+  <level>   - The new access level: player, wizard, or admin
+
+Examples:
+  promote alice wizard       - Make Alice a wizard
+  promote bob player         - Demote Bob back to player
+  promote charlie admin      - Make Charlie an admin
+
+Access Levels:
+  player  - Normal player, can use standard commands
+  wizard  - Can use wizard commands (clone, dest, goto, load, ls)
+  admin   - Full access including promote and shutdown
+
+Notes:
+  - Requires Admin access level
+  - Wizards get their own home directory at /wizards/<username>/
+  - Be careful when granting admin access
+
+See also: who
