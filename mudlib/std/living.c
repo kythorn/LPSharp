@@ -278,7 +278,8 @@ int query_total_armor() {
     for (i = 0; i < sizeof(slots); i++) {
         object armor;
         armor = worn_armor[slots[i]];
-        if (armor) {
+        // Check object is valid (not null, not destructed)
+        if (armor && objectp(armor)) {
             total = total + call_other(armor, "query_armor_class");
         }
     }
@@ -299,7 +300,8 @@ int query_total_spell_failure() {
     for (i = 0; i < sizeof(slots); i++) {
         object armor;
         armor = worn_armor[slots[i]];
-        if (armor) {
+        // Check object is valid (not null, not destructed)
+        if (armor && objectp(armor)) {
             total = total + call_other(armor, "query_spell_failure");
         }
     }
@@ -320,7 +322,8 @@ int query_total_dodge_penalty() {
     for (i = 0; i < sizeof(slots); i++) {
         object armor;
         armor = worn_armor[slots[i]];
-        if (armor) {
+        // Check object is valid (not null, not destructed)
+        if (armor && objectp(armor)) {
             total = total + call_other(armor, "query_dodge_penalty");
         }
     }

@@ -149,13 +149,21 @@ int save_player() {
 // Note: restore_object restores all variables including stats, xp, gold
 int restore_player() {
     string path;
+    int result;
 
     if (player_name == "" || player_name == "Guest") {
         return 0;
     }
 
     path = "/secure/players/" + lower_case(player_name);
-    return restore_object(path);
+    result = restore_object(path);
+
+    // Clear equipment references - the saved objects no longer exist
+    // (equipment was left on corpse when player died, or is stale from logout)
+    wielded_weapon = 0;
+    worn_armor = ([]);
+
+    return result;
 }
 
 // Override die() for player death behavior
