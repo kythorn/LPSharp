@@ -33,7 +33,7 @@ void create() {
     // No conflicting guilds - healers can also be fighters/mages
     set_conflicting_guilds(({ }));
 
-    add_exit("south", "/world/rooms/town/square");
+    add_exit("northwest", "/world/rooms/town/square");
 }
 
 // Override on_join to also teach spells

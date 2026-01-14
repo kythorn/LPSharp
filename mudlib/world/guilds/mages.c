@@ -34,7 +34,7 @@ void create() {
     // Can't be both a Mage and a Healer (for game balance)
     set_conflicting_guilds(({ }));
 
-    add_exit("south", "/world/rooms/town/square");
+    add_exit("northeast", "/world/rooms/town/square");
 }
 
 // Override on_join to also teach spells

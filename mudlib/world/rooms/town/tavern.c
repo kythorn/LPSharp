@@ -19,7 +19,7 @@ void create() {
         "Drinking speeds healing but impairs combat ability!"
     );
 
-    add_exit("east", "/world/rooms/town/square");
+    add_exit("southeast", "/world/rooms/town/square");
     add_exit("up", "/world/rooms/town/tavern_rooms");
 }
 

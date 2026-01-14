@@ -27,7 +27,7 @@ void create() {
     // No conflicting guilds for now - fighters can also be in other guilds
     set_conflicting_guilds(({ }));
 
-    add_exit("south", "/world/rooms/town/square");
+    add_exit("southwest", "/world/rooms/town/square");
 }
 
 // Override can_join to add any special requirements

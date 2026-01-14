@@ -16,7 +16,7 @@ void create() {
     );
 
     add_exit("north", "/world/rooms/forest/dark_hollow");
-    add_exit("east", "/world/rooms/forest/stream_crossing");
+    add_exit("northwest", "/world/rooms/forest/stream_crossing");
 
     // Spawn the dire wolf boss
     add_spawn("/world/mobs/dire_wolf");

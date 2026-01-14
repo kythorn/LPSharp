@@ -16,7 +16,7 @@ void create() {
 
     add_exit("east", "/world/rooms/forest/winding_trail");
     add_exit("west", "/world/rooms/forest/dense_thicket");
-    add_exit("south", "/world/rooms/forest/ancient_grove");
+    add_exit("southeast", "/world/rooms/forest/ancient_grove");
 
     // No monsters here - peaceful rest spot
 }
