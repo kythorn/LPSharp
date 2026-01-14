@@ -8,6 +8,7 @@ int xp;
 int gold;
 int level;
 string *guilds;  // Array of guild paths this player belongs to
+string cwd;      // Current working directory for wizards
 
 void create() {
     ::create();
@@ -17,6 +18,7 @@ void create() {
     gold = 0;
     level = 1;
     guilds = ({});
+    cwd = "/";
 }
 
 string query_name() {
@@ -36,6 +38,52 @@ int query_level() { return level; }
 void set_xp(int val) { xp = val; }
 void set_gold(int val) { gold = val; }
 void set_level(int val) { level = val; }
+
+// Current working directory functions
+string query_cwd() { return cwd; }
+void set_cwd(string path) { cwd = path; }
+
+// Resolve a path relative to cwd
+// Handles: absolute paths (/foo), relative paths (foo, ./foo), parent refs (..)
+string resolve_path(string path) {
+    string *parts;
+    string *result;
+    int i;
+
+    if (!path || path == "") {
+        return cwd;
+    }
+
+    // Absolute path - use as-is
+    if (path[0] == '/') {
+        parts = explode(path, "/");
+    } else {
+        // Relative path - combine with cwd
+        parts = explode(cwd + "/" + path, "/");
+    }
+
+    // Process path components, handling . and ..
+    result = ({});
+    for (i = 0; i < sizeof(parts); i++) {
+        if (parts[i] == "" || parts[i] == ".") {
+            // Skip empty or current dir
+            continue;
+        } else if (parts[i] == "..") {
+            // Go up one level
+            if (sizeof(result) > 0) {
+                result = result[0..sizeof(result)-2];
+            }
+        } else {
+            result = result + ({ parts[i] });
+        }
+    }
+
+    if (sizeof(result) == 0) {
+        return "/";
+    }
+
+    return "/" + implode(result, "/");
+}
 
 void add_xp(int amount) {
     xp = xp + amount;

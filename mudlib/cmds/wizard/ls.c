@@ -1,30 +1,40 @@
 // ls.c - List directory contents
 // Usage: ls [path]
-// If no path given, lists current working directory or wizard home.
+// If no path given, lists current working directory.
+// Supports relative paths.
 
 void main(string args) {
+    object player;
     string path;
+    mixed *entries;
+    int i;
 
-    if (args == "" || args == 0) {
-        // Default to wizard home directory
-        path = homedir();
-        if (path == 0) {
+    player = this_player();
+    if (!player) {
+        write("No player object!");
+        return;
+    }
+
+    if (!args || args == "") {
+        // Default to current working directory
+        path = call_other(player, "query_cwd");
+        if (!path || path == "") {
             path = "/";
         }
     } else {
-        path = args;
+        // Resolve relative path
+        path = call_other(player, "resolve_path", args);
     }
 
-    mixed *entries = get_dir(path);
+    entries = get_dir(path);
 
-    if (sizeof(entries) == 0) {
+    if (!entries || sizeof(entries) == 0) {
         write("No files found or directory does not exist: " + path);
         return;
     }
 
     write("Contents of " + path + ":");
 
-    int i;
     for (i = 0; i < sizeof(entries); i++) {
         write("  " + entries[i]);
     }
