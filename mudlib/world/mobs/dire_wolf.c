@@ -24,6 +24,6 @@ void create() {
     // Excellent XP reward
     set_xp_value(50);
 
-    // Boss drops a trophy
-    add_drop("/world/items/misc/wolf_fang");
+    // Boss drops a powerful fang weapon
+    add_drop("/world/items/weapons/wolf_fang");
 }
