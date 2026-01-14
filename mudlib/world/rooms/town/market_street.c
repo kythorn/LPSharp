@@ -16,7 +16,7 @@ void create() {
     );
 
     add_exit("north", "/world/rooms/town/square");
-    add_exit("south", "/world/rooms/town/south_gate");
+    add_exit("south", "/world/rooms/town/market_street_south");
     add_exit("east", "/world/rooms/town/general_store");
     add_exit("west", "/world/rooms/town/blacksmith");
 }

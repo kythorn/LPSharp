@@ -16,5 +16,5 @@ void create() {
         "sweet scent of incense."
     );
 
-    add_exit("south", "/world/rooms/town/temple_road");
+    add_exit("east", "/world/rooms/town/temple_plaza");
 }

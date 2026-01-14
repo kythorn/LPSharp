@@ -15,6 +15,6 @@ void create() {
         "travelers and collect tolls from merchants."
     );
 
-    add_exit("north", "/world/rooms/town/market_street");
+    add_exit("north", "/world/rooms/town/south_road");
     add_exit("south", "/world/rooms/forest/edge");
 }

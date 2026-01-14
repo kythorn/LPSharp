@@ -15,5 +15,5 @@ void create() {
         "table serves as a workspace for preparing poultices and potions."
     );
 
-    add_exit("east", "/world/rooms/town/temple_road");
+    add_exit("east", "/world/rooms/town/temple_road_north");
 }

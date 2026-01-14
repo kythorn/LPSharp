@@ -15,6 +15,6 @@ void create() {
     );
 
     add_exit("south", "/world/rooms/town/square");
-    add_exit("north", "/world/rooms/town/temple");
-    add_exit("west", "/world/rooms/town/healer");
+    add_exit("north", "/world/rooms/town/temple_road_north");
+    add_exit("west", "/world/rooms/town/tavern");
 }
