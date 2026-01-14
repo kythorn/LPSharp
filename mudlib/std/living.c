@@ -150,6 +150,23 @@ void set_max_hp(int val) {
     }
 }
 
+// Get a description of health status based on HP percentage
+string query_health_desc() {
+    int pct;
+
+    if (max_hp <= 0) return "in perfect health";
+
+    pct = (hp * 100) / max_hp;
+
+    if (pct >= 100) return "in perfect health";
+    if (pct >= 90) return "slightly scratched";
+    if (pct >= 75) return "bruised";
+    if (pct >= 50) return "wounded";
+    if (pct >= 25) return "badly wounded";
+    if (pct >= 10) return "severely wounded";
+    return "near death";
+}
+
 // Mana getters/setters
 int query_mana() { return mana; }
 int query_max_mana() { return max_mana; }

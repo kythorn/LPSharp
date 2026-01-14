@@ -21,9 +21,6 @@ void create() {
     // Very aggressive
     set_aggressive(1);
 
-    // Excellent XP reward
-    set_xp_value(50);
-
     // Boss drops a powerful fang weapon
     add_drop("/world/items/weapons/wolf_fang");
 }

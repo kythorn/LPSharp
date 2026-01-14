@@ -20,9 +20,4 @@ void create() {
 
     // Non-aggressive - player initiates combat
     set_aggressive(0);
-
-    // Tiny XP reward
-    set_xp_value(3);
-
-    // No drops - just fur
 }

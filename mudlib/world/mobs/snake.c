@@ -21,9 +21,6 @@ void create() {
     // Aggressive! Will attack on sight
     set_aggressive(1);
 
-    // Moderate XP reward
-    set_xp_value(10);
-
     // Drops a venomous fang
     add_drop("/world/items/weapons/snake_fang");
 }

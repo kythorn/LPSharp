@@ -21,9 +21,6 @@ void create() {
     // Non-aggressive
     set_aggressive(0);
 
-    // Small XP reward
-    set_xp_value(5);
-
     // Drops a hardened shell
     add_drop("/world/items/armor/beetle_carapace");
 }

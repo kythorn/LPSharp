@@ -5,7 +5,6 @@ inherit "/std/living";
 
 string monster_name;
 int aggressive;
-int xp_value;
 string *drop_items;
 int drop_chance;  // Percentage chance to drop (default 100)
 
@@ -14,7 +13,6 @@ void create() {
     set_short("a monster");
     monster_name = "monster";
     aggressive = 0;
-    xp_value = 10;
     drop_items = ({});
     drop_chance = 100;
 }
@@ -77,14 +75,6 @@ int query_aggressive() {
 
 void set_aggressive(int val) {
     aggressive = val;
-}
-
-int query_xp_value() {
-    return xp_value;
-}
-
-void set_xp_value(int val) {
-    xp_value = val;
 }
 
 // Monsters don't advance skills - they're static
@@ -155,14 +145,6 @@ void die() {
 
     // Stop combat first
     stop_combat();
-
-    // Award XP to killer if it's a player
-    if (killer && call_other(killer, "is_living")) {
-        if (call_other(killer, "query_level")) {  // Players have levels, monsters don't
-            call_other(killer, "add_xp", xp_value);
-            tell_object(killer, "You gain " + xp_value + " experience points.\n");
-        }
-    }
 
     // Announce death
     if (room) {

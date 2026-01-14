@@ -20,7 +20,4 @@ void create() {
 
     // Non-aggressive
     set_aggressive(0);
-
-    // Tiny XP reward
-    set_xp_value(3);
 }

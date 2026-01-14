@@ -21,6 +21,15 @@ void look_at_object(object target) {
         write("You see nothing special.");
     }
 
+    // Show health status for living things
+    if (call_other(target, "is_living")) {
+        string health;
+        health = call_other(target, "query_health_desc");
+        if (health && health != "") {
+            write(capitalize(call_other(target, "query_name")) + " is " + health + ".");
+        }
+    }
+
     // Show contents if object has inventory (corpses, containers, etc.)
     contents = all_inventory(target);
     if (sizeof(contents) > 0) {
@@ -66,12 +75,18 @@ void look_at_room() {
         if (contents[i] != player) {
             if (call_other(contents[i], "is_living")) {
                 string name;
+                string health;
                 name = call_other(contents[i], "query_short");
                 if (!name || name == "") {
                     name = call_other(contents[i], "query_name");
                 }
+                health = call_other(contents[i], "query_health_desc");
                 if (name && name != "") {
-                    write(capitalize(name) + " is here.");
+                    if (health && health != "in perfect health") {
+                        write(capitalize(name) + " is here, " + health + ".");
+                    } else {
+                        write(capitalize(name) + " is here.");
+                    }
                 }
             }
         }
