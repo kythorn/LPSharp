@@ -967,10 +967,9 @@ int receive_damage(int amount, object from) {
 
     hp = hp - actual;
 
-    // Check for death
+    // Don't check for death here - let the attacker handle it after showing damage
     if (hp <= 0) {
         hp = 0;
-        die();
     } else {
         // Show HP status to the damaged creature
         int pct;
@@ -1065,6 +1064,12 @@ void do_attack() {
                     }
                 }
             }
+        }
+
+        // Check if target died (after showing damage message)
+        if (call_other(attacker, "query_hp") <= 0) {
+            call_other(attacker, "die");
+            stop_combat();
         }
     } else {
         // Miss! Defender dodged - they might learn from it

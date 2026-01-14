@@ -177,6 +177,19 @@ public class ObjectManager
         // Mark as destructed
         obj.IsDestructed = true;
 
+        // Remove from environment's contents list
+        obj.MoveTo(null);
+
+        // Destruct contents of this object (items in inventory, etc.)
+        var contents = obj.Contents.ToList();
+        foreach (var content in contents)
+        {
+            DestructObject(content);
+        }
+
+        // Remove living name registration
+        RemoveLivingName(obj);
+
         // Remove from all objects
         _allObjects.TryRemove(obj.ObjectName, out _);
 
