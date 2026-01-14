@@ -5,6 +5,9 @@ inherit "/std/object";
 
 void create() {
     ::create();
+    set_name("fang");
+    add_id("wolf fang");
+    add_id("dire wolf fang");
     set_short("a dire wolf fang");
     set_long(
         "This massive fang once belonged to a dire wolf, the apex predator of " +

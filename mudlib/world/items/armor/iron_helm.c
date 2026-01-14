@@ -5,14 +5,13 @@ inherit "/std/armor";
 
 void create() {
     ::create();
-
+    set_name("helm");
+    add_id("helmet");
+    add_id("iron helm");
+    add_id("iron helmet");
     set_short("an iron helm");
     set_mass(6);
     set_armor_class(2);
     set_slot("head");
-}
-
-int id(string str) {
-    if (str == "helm" || str == "helmet" || str == "iron helm" || str == "iron helmet") return 1;
-    return ::id(str);
+    set_weight_category("medium");
 }

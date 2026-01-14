@@ -23,4 +23,7 @@ void create() {
 
     // Moderate XP reward
     set_xp_value(12);
+
+    // Drops silk gloves
+    add_drop("/world/items/armor/spider_silk_gloves");
 }

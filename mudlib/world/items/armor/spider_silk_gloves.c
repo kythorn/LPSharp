@@ -1,18 +1,17 @@
-// Spider Silk Gloves - Tier 3 armor
-// Dropped by cave spiders
+// /world/items/armor/spider_silk_gloves.c
+// Delicate gloves woven from spider silk
 
 inherit "/std/armor";
 
 void create() {
     ::create();
-
+    set_name("gloves");
+    add_id("silk gloves");
+    add_id("spider gloves");
+    add_id("spider silk gloves");
     set_short("spider silk gloves");
     set_mass(1);
-    set_armor_class(2);
+    set_armor_class(1);
     set_slot("hands");
-}
-
-int id(string str) {
-    if (str == "gloves" || str == "silk gloves" || str == "spider gloves" || str == "spider silk gloves") return 1;
-    return ::id(str);
+    set_weight_category("none");
 }

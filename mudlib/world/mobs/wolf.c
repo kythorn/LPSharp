@@ -23,4 +23,7 @@ void create() {
 
     // Good XP reward
     set_xp_value(18);
+
+    // Drops a pelt
+    add_drop("/world/items/armor/wolf_pelt");
 }

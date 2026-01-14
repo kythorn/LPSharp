@@ -5,12 +5,9 @@ inherit "/std/object";
 
 void create() {
     ::create();
-
+    set_name("essence");
+    add_id("fire essence");
+    add_id("glowing essence");
     set_short("a glowing fire essence");
     set_mass(1);
-}
-
-int id(string str) {
-    if (str == "essence" || str == "fire essence" || str == "glowing essence") return 1;
-    return ::id(str);
 }

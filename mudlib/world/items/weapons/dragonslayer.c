@@ -5,14 +5,12 @@ inherit "/std/weapon";
 
 void create() {
     ::create();
-
+    set_name("dragonslayer");
+    add_id("sword");
+    add_id("legendary sword");
     set_short("the legendary Dragonslayer sword");
     set_mass(18);
     set_damage(50);
     set_weapon_type("blade");
-}
-
-int id(string str) {
-    if (str == "dragonslayer" || str == "sword" || str == "legendary sword") return 1;
-    return ::id(str);
+    set_skill_type("sword");
 }

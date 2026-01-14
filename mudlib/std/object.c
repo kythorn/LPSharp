@@ -1,14 +1,49 @@
 // /std/object.c
 // Base class for all objects in the MUD
 
+string name;        // Primary name (e.g., "sword", "goblin")
+string *ids;        // All identifiers that can be used to refer to this object
 string short_desc;
 string long_desc;
 int mass;
 
 void create() {
+    name = "";
+    ids = ({});
     short_desc = "something";
     long_desc = "";
     mass = 1;
+}
+
+// set_name() - Set the primary name of this object
+// This is the canonical identifier and is automatically added to the ids array
+void set_name(string str) {
+    if (!str || str == "") return;
+    name = lower_case(str);
+    // Add to ids if not already present
+    if (member(ids, name) < 0) {
+        ids = ({ name }) + ids;
+    }
+}
+
+// query_name() - Get the primary name
+string query_name() {
+    return name;
+}
+
+// add_id() - Add an additional identifier for this object
+// Players can use any id to refer to the object
+void add_id(string str) {
+    if (!str || str == "") return;
+    str = lower_case(str);
+    if (member(ids, str) < 0) {
+        ids = ids + ({ str });
+    }
+}
+
+// query_ids() - Get all identifiers for this object
+string *query_ids() {
+    return ids;
 }
 
 // init() is called when this object enters an environment, or when
@@ -43,18 +78,25 @@ void set_mass(int m) {
 
 // id() - Check if this object matches a given string
 // Used by present() and other search functions
-// Override in subclasses to add additional IDs
+// Checks ids array first, then falls back to short description matching
 int id(string str) {
     if (!str || str == "") return 0;
 
-    // Match against short description (case insensitive)
-    if (short_desc && lower_case(str) == lower_case(short_desc)) {
+    str = lower_case(str);
+
+    // First check the ids array (primary method)
+    if (sizeof(ids) > 0 && member(ids, str) >= 0) {
+        return 1;
+    }
+
+    // Fall back to matching against short description (case insensitive)
+    if (short_desc && str == lower_case(short_desc)) {
         return 1;
     }
 
     // Check if the string is contained in the short description
     // This allows "goblin" to match "a snarling goblin"
-    if (short_desc && member(lower_case(short_desc), lower_case(str)) >= 0) {
+    if (short_desc && member(lower_case(short_desc), str) >= 0) {
         return 1;
     }
 

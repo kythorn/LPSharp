@@ -23,4 +23,7 @@ void create() {
 
     // Moderate XP reward
     set_xp_value(10);
+
+    // Drops a venomous fang
+    add_drop("/world/items/weapons/snake_fang");
 }

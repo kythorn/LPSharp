@@ -5,14 +5,12 @@ inherit "/std/weapon";
 
 void create() {
     ::create();
-
+    set_name("club");
+    add_id("troll club");
+    add_id("massive club");
     set_short("a massive troll club");
     set_mass(25);
     set_damage(28);
     set_weapon_type("blunt");
-}
-
-int id(string str) {
-    if (str == "club" || str == "troll club" || str == "massive club") return 1;
-    return ::id(str);
+    set_skill_type("mace");
 }

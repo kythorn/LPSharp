@@ -5,14 +5,13 @@ inherit "/std/armor";
 
 void create() {
     ::create();
-
+    set_name("mail");
+    add_id("chainmail");
+    add_id("goblin mail");
+    add_id("goblin chainmail");
     set_short("crude goblin chainmail");
     set_mass(15);
     set_armor_class(4);
     set_slot("torso");
-}
-
-int id(string str) {
-    if (str == "mail" || str == "chainmail" || str == "goblin mail" || str == "goblin chainmail") return 1;
-    return ::id(str);
+    set_weight_category("medium");
 }

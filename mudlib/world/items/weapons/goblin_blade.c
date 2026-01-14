@@ -5,14 +5,12 @@ inherit "/std/weapon";
 
 void create() {
     ::create();
-
+    set_name("blade");
+    add_id("goblin blade");
+    add_id("jagged blade");
     set_short("a jagged goblin blade");
     set_mass(12);
     set_damage(18);
     set_weapon_type("blade");
-}
-
-int id(string str) {
-    if (str == "blade" || str == "goblin blade" || str == "jagged blade") return 1;
-    return ::id(str);
+    set_skill_type("sword");
 }

@@ -5,8 +5,11 @@ inherit "/std/armor";
 
 void create() {
     ::create();
+    set_name("gloves");
+    add_id("web gloves");
     set_short("a pair of web gloves");
     set_armor_class(1);
     set_slot("hands");
+    set_weight_category("none");
     set_mass(1);
 }

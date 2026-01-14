@@ -5,9 +5,12 @@ inherit "/std/weapon";
 
 void create() {
     ::create();
-    set_short("a iron sword");
+    set_name("sword");
+    add_id("iron sword");
+    set_short("an iron sword");
     set_damage(10);
     set_weapon_type("blade");
+    set_skill_type("sword");
     set_mass(15);
 }
 

@@ -5,14 +5,13 @@ inherit "/std/armor";
 
 void create() {
     ::create();
-
+    set_name("dragonscale");
+    add_id("armor");
+    add_id("dragonscale armor");
+    add_id("dragon armor");
     set_short("magnificent dragonscale armor");
     set_mass(22);
     set_armor_class(10);
     set_slot("torso");
-}
-
-int id(string str) {
-    if (str == "dragonscale" || str == "armor" || str == "dragonscale armor" || str == "dragon armor") return 1;
-    return ::id(str);
+    set_weight_category("heavy");
 }
