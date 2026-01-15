@@ -334,6 +334,12 @@ void die() {
     string *slots;
     int i;
 
+    // Prevent double-death
+    if (hp > 0) {
+        is_dying = 0;
+        return;
+    }
+
     // Remember where we died
     death_location = environment();
 

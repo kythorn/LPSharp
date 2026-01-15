@@ -49,13 +49,7 @@ void main(string args) {
         return;
     }
 
-    // Destroy all contents of the corpse - they're buried with it
-    corpse_contents = all_inventory(corpse);
-    for (i = 0; i < sizeof(corpse_contents); i++) {
-        destruct(corpse_contents[i]);
-    }
-
-    // Announce the burial
+    // Announce the burial before destroying
     string corpse_name;
     corpse_name = call_other(corpse, "query_corpse_name");
 
@@ -63,5 +57,6 @@ void main(string args) {
               corpse_name + ".\n", player);
     write("You dig a shallow grave and bury the remains of " + corpse_name + ".\n");
 
-    destruct(corpse);
+    // Let the corpse handle its own destruction (and its contents)
+    call_other(corpse, "bury");
 }

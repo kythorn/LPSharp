@@ -69,3 +69,19 @@ int id(string str) {
     if (corpse_name != "" && str == "corpse of " + lower_case(corpse_name)) return 1;
     return 0;
 }
+
+// Bury the corpse - destroy contents and self
+// Called by the bury command
+void bury() {
+    object *contents;
+    int i;
+
+    // Destroy all contents - they're buried with the corpse
+    contents = all_inventory(this_object());
+    for (i = 0; i < sizeof(contents); i++) {
+        destruct(contents[i]);
+    }
+
+    // Destruct self
+    destruct(this_object());
+}

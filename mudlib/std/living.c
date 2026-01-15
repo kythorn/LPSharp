@@ -24,6 +24,7 @@ int max_mana;
 // Combat state
 object attacker;
 int in_combat;
+int is_dying;  // Prevents double-death when damage triggers die()
 
 // Regeneration (HP per heartbeat when not in combat)
 int regen_rate;
@@ -68,6 +69,7 @@ void create() {
     // Combat state
     attacker = 0;
     in_combat = 0;
+    is_dying = 0;
 
     // Regeneration - 1 HP per heartbeat (2 seconds) when not in combat
     regen_rate = 1;
@@ -1024,6 +1026,7 @@ void stop_combat() {
 
 // Receive damage from an attacker
 // Returns actual damage taken
+// Automatically triggers death if HP reaches 0
 int receive_damage(int amount, object from) {
     int actual;
     int armor_value;
@@ -1039,9 +1042,16 @@ int receive_damage(int amount, object from) {
 
     hp = hp - actual;
 
-    // Don't check for death here - let the attacker handle it after showing damage
     if (hp <= 0) {
         hp = 0;
+        // Trigger death - this handles all cleanup
+        // We use call_out with 0 delay so the attacker's damage message
+        // can be shown first, then death occurs on next tick.
+        // is_dying flag prevents double-death if attacker also checks.
+        if (!is_dying) {
+            is_dying = 1;
+            call_out("die", 0);
+        }
     } else {
         // Show HP status to the damaged creature
         int pct;
@@ -1137,12 +1147,7 @@ void do_attack() {
                 }
             }
         }
-
-        // Check if target died (after showing damage message)
-        if (call_other(attacker, "query_hp") <= 0) {
-            call_other(attacker, "die");
-            stop_combat();
-        }
+        // Death is handled by receive_damage() - no need to check here
     } else {
         // Miss! Defender dodged - they might learn from it
         call_other(attacker, "try_dodge_advancement", difficulty);
@@ -1256,6 +1261,12 @@ void heart_beat() {
 
 // Virtual die function - override in subclasses
 void die() {
+    // Prevent double-death
+    if (hp > 0) {
+        is_dying = 0;
+        return;
+    }
+
     // Base implementation - stop combat
     stop_combat();
 

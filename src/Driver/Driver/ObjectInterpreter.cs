@@ -2169,10 +2169,16 @@ public class ObjectInterpreter
         }
 
         // Permission check: require Wizard+ access level
-        // Exception: players can destruct their own player object (for quit)
+        // Exceptions:
+        // 1. Players can destruct their own player object (for quit)
+        // 2. Objects can destruct themselves (corpse decay, etc.)
+        // 3. Objects can destruct their contents (corpse burying items)
         var context = ExecutionContext.Current;
-        bool isSelfDestruct = context?.PlayerObject != null && context.PlayerObject == obj;
-        if (!isSelfDestruct)
+        bool isPlayerSelfDestruct = context?.PlayerObject != null && context.PlayerObject == obj;
+        bool isObjectSelfDestruct = _currentObject == obj;
+        bool isDestructingOwnContent = obj.Environment == _currentObject;
+
+        if (!isPlayerSelfDestruct && !isObjectSelfDestruct && !isDestructingOwnContent)
         {
             RequireAccessLevel(AccessLevel.Wizard, "destruct");
         }

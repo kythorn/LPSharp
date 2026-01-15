@@ -73,8 +73,12 @@ int do_spell(object caster, string args) {
 
     tell_object(caster, "The fireball deals " + actual_damage + " damage!\n");
 
-    // Start combat if not already fighting
+    // Start combat with target if not already fighting them
+    // Death is handled by receive_damage()
     if (!call_other(caster, "query_in_combat")) {
+        call_other(caster, "start_combat", target);
+    } else if (call_other(caster, "query_attacker") != target) {
+        // Switch to new target if casting at something we're not fighting
         call_other(caster, "start_combat", target);
     }
 

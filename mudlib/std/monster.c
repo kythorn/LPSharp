@@ -140,6 +140,12 @@ void die() {
     object *inventory;
     int i;
 
+    // Prevent double-death
+    if (hp > 0) {
+        is_dying = 0;
+        return;
+    }
+
     room = environment(this_object());
     killer = query_attacker();
 
