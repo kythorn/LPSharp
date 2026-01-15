@@ -491,6 +491,10 @@ public class GameLoop
     /// </summary>
     private void ForceRemoveSession(PlayerSession session)
     {
+        // Capture player name before cleanup for logging
+        var playerName = session.AuthenticatedUsername ?? "Unknown";
+        var wasLinkdead = session.IsLinkdead;
+
         lock (_sessionLock)
         {
             // Remove from active sessions if present
@@ -520,6 +524,12 @@ public class GameLoop
             {
                 Logger.Warning($"Error destructing player object: {ex.Message}", LogCategory.Object);
             }
+        }
+
+        // Log the logout (unless it was a linkdead timeout, which logs separately)
+        if (!wasLinkdead && session.LoginState == LoginState.Playing)
+        {
+            Logger.Info($"Player {playerName} logged out", LogCategory.Player);
         }
     }
 
@@ -2246,21 +2256,55 @@ public class GameLoop
                 }
             }
 
-            // Load starting room
-            MudObject? startingRoom = null;
-            try
+            // Try to load saved location, fall back to starting room
+            MudObject? targetRoom = null;
+            string? savedLocation = null;
+
+            // Check for saved location
+            if (_interpreter != null && playerObject.FindFunction("query_saved_location") != null)
             {
-                startingRoom = _objectManager.LoadObject(StartingRoomPath);
-            }
-            catch (Exception ex)
-            {
-                Logger.Warning($"Could not load starting room: {ex.Message}", LogCategory.Object);
+                try
+                {
+                    _interpreter.ResetInstructionCount();
+                    var result = _interpreter.CallFunctionOnObject(playerObject, "query_saved_location", new List<object>());
+                    savedLocation = result as string;
+                }
+                catch
+                {
+                    // Ignore errors
+                }
             }
 
-            // Move player to starting room
-            if (startingRoom != null)
+            // Try to load saved location first
+            if (!string.IsNullOrEmpty(savedLocation))
             {
-                playerObject.MoveTo(startingRoom);
+                try
+                {
+                    targetRoom = _objectManager.LoadObject(savedLocation);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Debug($"Could not load saved location {savedLocation}: {ex.Message}", LogCategory.Object);
+                }
+            }
+
+            // Fall back to starting room if saved location failed
+            if (targetRoom == null)
+            {
+                try
+                {
+                    targetRoom = _objectManager.LoadObject(StartingRoomPath);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warning($"Could not load starting room: {ex.Message}", LogCategory.Object);
+                }
+            }
+
+            // Move player to target room
+            if (targetRoom != null)
+            {
+                playerObject.MoveTo(targetRoom);
             }
 
             // Show access level for non-player levels

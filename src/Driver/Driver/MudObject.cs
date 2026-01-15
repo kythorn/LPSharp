@@ -32,9 +32,28 @@ public class MudObject
 
     /// <summary>
     /// The compiled program this object executes.
-    /// Shared between blueprint and all its clones.
+    /// For blueprints: stored directly.
+    /// For clones: dynamically fetched from blueprint (allows hot-reload).
     /// </summary>
-    public LpcProgram Program { get; }
+    public LpcProgram Program => _program ?? Blueprint!.Program;
+
+    /// <summary>
+    /// Backing field for Program (only used by blueprints).
+    /// </summary>
+    private LpcProgram? _program;
+
+    /// <summary>
+    /// Update the program for this blueprint (used by hot-reload).
+    /// Only valid for blueprints.
+    /// </summary>
+    public void UpdateProgram(LpcProgram newProgram)
+    {
+        if (!IsBlueprint)
+        {
+            throw new InvalidOperationException("Cannot update program on a clone");
+        }
+        _program = newProgram;
+    }
 
     /// <summary>
     /// Instance variables for this object.
@@ -254,7 +273,7 @@ public class MudObject
         ObjectName = program.FilePath;
         IsBlueprint = true;
         CloneNumber = null;
-        Program = program;
+        _program = program;
         Blueprint = null;
         CreatedAt = DateTime.UtcNow;
 
@@ -276,7 +295,7 @@ public class MudObject
         ObjectName = $"{blueprint.FilePath}#{cloneNumber}";
         IsBlueprint = false;
         CloneNumber = cloneNumber;
-        Program = blueprint.Program;
+        _program = null;  // Clones dynamically get Program from Blueprint
         Blueprint = blueprint;
         CreatedAt = DateTime.UtcNow;
 

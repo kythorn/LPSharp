@@ -22,6 +22,7 @@ void create() {
         "sword",
         "axe",
         "mace",
+        "dagger",
         "shield_block",
         "parry"
     }));

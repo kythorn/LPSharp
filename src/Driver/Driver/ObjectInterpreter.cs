@@ -2370,6 +2370,10 @@ public class ObjectInterpreter
 
         try
         {
+            // Call init() on the moved object itself (so it can register actions)
+            Logger.Debug($"CallInitHooks: calling init on moved object {movedObject.ObjectName}", LogCategory.LPC);
+            CallInitIfExists(movedObject);
+
             // Call init() on the destination (e.g., room)
             Logger.Debug($"CallInitHooks: calling init on destination {destination.ObjectName}", LogCategory.LPC);
             CallInitIfExists(destination);

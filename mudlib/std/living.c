@@ -521,8 +521,8 @@ string *query_basic_skills() {
     return ({ "unarmed", "dodge", "haggling", "swimming" });
 }
 
-// Check if a skill is allowed for this living (guild membership or basic skill)
-int can_use_skill(string skill_name) {
+// Check if a skill can be advanced (requires current guild membership or basic skill)
+int can_advance_skill(string skill_name) {
     int i;
     string *basic;
 
@@ -530,7 +530,7 @@ int can_use_skill(string skill_name) {
         return 0;
     }
 
-    // Basic skills are always allowed
+    // Basic skills can always be advanced
     basic = query_basic_skills();
     for (i = 0; i < sizeof(basic); i++) {
         if (basic[i] == skill_name) {
@@ -543,11 +543,30 @@ int can_use_skill(string skill_name) {
         return 1;
     }
 
-    // Check if skill is in allowed list (from guild membership)
+    // Check if skill is in allowed list (from current guild membership)
     for (i = 0; i < sizeof(allowed_skills); i++) {
         if (allowed_skills[i] == skill_name) {
             return 1;
         }
+    }
+
+    return 0;
+}
+
+// Check if a skill can be used (guild membership, basic skill, OR already learned)
+int can_use_skill(string skill_name) {
+    if (!skill_name || skill_name == "") {
+        return 0;
+    }
+
+    // Can always use skills you can advance
+    if (can_advance_skill(skill_name)) {
+        return 1;
+    }
+
+    // Can also use skills you've already learned (even if you left the guild)
+    if (query_skill(skill_name) > 0) {
+        return 1;
     }
 
     return 0;
@@ -593,8 +612,8 @@ int advance_skill(string skill_name, int difficulty) {
         return 0;
     }
 
-    // Must have access to this skill
-    if (!can_use_skill(skill_name)) {
+    // Must be able to advance this skill (current guild membership or basic skill)
+    if (!can_advance_skill(skill_name)) {
         return 0;
     }
 

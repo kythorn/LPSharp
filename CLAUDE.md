@@ -30,24 +30,52 @@ LPMud Revival is a modern reimplementation of the classic LPMud architecture in 
 # Build the project
 dotnet build src/Driver/Driver
 
-# Run tests
+# Run C# unit tests (537 tests)
 dotnet test
 
 # Server mode
-dotnet run --project src/Driver/Driver -- --mudlib ./mudlib --port 4000
+dotnet run --project src/Driver/Driver -- --server --mudlib ./mudlib --port 4000
 
-# Interactive REPL
+# Interactive REPL (basic expression evaluation)
 dotnet run --project src/Driver/Driver -- --repl
 
 # Evaluate single expression
 dotnet run --project src/Driver/Driver -- --eval "5 + 3 * 2"
 
-# Run LPC file with specific function
-dotnet run --project src/Driver/Driver -- --mudlib ./mudlib --run test.c --call test_func
-
-# Run LPC test suite
-dotnet run --project src/Driver/Driver -- --mudlib ./mudlib --test ./lpc-tests/
+# Tokenize LPC file (check syntax)
+dotnet run --project src/Driver/Driver -- --tokenize mudlib/cmds/std/look.c
 ```
+
+## Testing
+
+### C# Unit Tests
+```bash
+dotnet test
+```
+This runs 537+ xUnit tests covering lexer, parser, interpreter, and object management.
+
+### LPC Syntax Validation
+```bash
+# Tokenize a file to check for syntax errors
+dotnet run --project src/Driver/Driver -- --tokenize <file.c>
+```
+
+### Integration Testing
+Start the server and manually test commands via telnet:
+```bash
+# Terminal 1: Start server
+dotnet run --project src/Driver/Driver -- --server --mudlib ./mudlib --port 4000
+
+# Terminal 2: Connect and test
+telnet localhost 4000
+```
+
+### Testing New LPC Code
+When adding new LPC files, always:
+1. Run `dotnet test` to ensure C# tests pass
+2. Tokenize the new file: `dotnet run ... -- --tokenize <file.c>`
+3. Start server and manually test the new functionality
+4. Check server logs for runtime errors
 
 ## Documentation
 
@@ -97,9 +125,12 @@ object.c → room.c
 
 ## Testing Strategy
 
-- **Unit tests** (xUnit): `LexerTests.cs`, `ParserTests.cs`, `InterpreterTests.cs`, `ObjectManagerTests.cs`
-- **Integration tests**: Programmatic connection testing
-- **LPC tests**: Files in `/lpc-tests/` with `run_tests()` function using `assert()` efun
+- **C# Unit tests** (xUnit): `LexerTests.cs`, `ParserTests.cs`, `InterpreterTests.cs`, `ObjectManagerTests.cs`
+  - Run with: `dotnet test`
+- **LPC syntax validation**: Tokenize files to catch syntax errors
+  - Run with: `dotnet run --project src/Driver/Driver -- --tokenize <file.c>`
+- **Integration tests**: Start server and test commands manually via telnet
+- **LPC test files**: Files in `/lpc-tests/` can be loaded to test specific functionality
 
 ## Development Guidelines
 

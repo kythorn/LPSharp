@@ -374,7 +374,8 @@ public class ObjectManager
     /// <summary>
     /// Update (hot-reload) an object and all objects that depend on it.
     /// This recompiles the blueprint from source and updates the inheritance chain.
-    /// Existing clones keep their old code (conservative strategy).
+    /// Existing clones automatically get the new code (they dynamically reference
+    /// their blueprint's program).
     /// Returns the number of objects successfully updated.
     /// </summary>
     public int UpdateObject(string path)
@@ -396,18 +397,6 @@ public class ObjectManager
                 // Get old blueprint if it exists
                 _blueprints.TryGetValue(objPath, out var oldBlueprint);
 
-                // Remove from blueprint cache (forces recompile)
-                _blueprints.TryRemove(objPath, out _);
-
-                // Remove from all objects
-                if (oldBlueprint != null)
-                {
-                    _allObjects.TryRemove(objPath, out _);
-
-                    // Don't destruct clones - they keep working with old code
-                    // This is the "conservative" strategy
-                }
-
                 // Remove inheritance tracking for this path (will be re-added on compile)
                 lock (_inheritanceLock)
                 {
@@ -417,13 +406,62 @@ public class ObjectManager
                     }
                 }
 
-                // Recompile by loading it fresh
-                var newBlueprint = LoadObject(objPath);
+                // Construct full file path
+                var fileName = objPath.TrimStart('/');
+                var fullPath = Path.Combine(MudlibPath, fileName + ".c");
 
-                if (newBlueprint != null)
+                if (!File.Exists(fullPath))
                 {
+                    Logger.Warning($"File not found for update: {fullPath}", LogCategory.Object);
+                    continue;
+                }
+
+                // Read and compile the new source
+                var sourceCode = File.ReadAllText(fullPath);
+                var newProgram = CompileProgram(objPath, sourceCode);
+
+                if (oldBlueprint != null)
+                {
+                    // Update the existing blueprint's program (clones will automatically use it)
+                    oldBlueprint.UpdateProgram(newProgram);
+
+                    // Add any new variables to the blueprint and all its clones
+                    var newVarNames = newProgram.GetAllVariableNames();
+                    foreach (var varName in newVarNames)
+                    {
+                        // Add to blueprint if missing
+                        if (!oldBlueprint.Variables.ContainsKey(varName))
+                        {
+                            oldBlueprint.Variables[varName] = 0;
+                        }
+
+                        // Add to all clones if missing
+                        foreach (var clone in oldBlueprint.Clones)
+                        {
+                            if (!clone.IsDestructed && !clone.Variables.ContainsKey(varName))
+                            {
+                                clone.Variables[varName] = 0;
+                            }
+                        }
+                    }
+
                     updated++;
-                    Logger.Debug($"Updated: {objPath}", LogCategory.Object);
+                    Logger.Debug($"Hot-reloaded: {objPath}", LogCategory.Object);
+                }
+                else
+                {
+                    // No existing blueprint - create a new one
+                    var newBlueprint = new MudObject(newProgram);
+                    _blueprints[objPath] = newBlueprint;
+                    _allObjects[newBlueprint.ObjectName] = newBlueprint;
+
+                    if (_interpreter != null)
+                    {
+                        CallCreate(newBlueprint);
+                    }
+
+                    updated++;
+                    Logger.Debug($"Loaded new: {objPath}", LogCategory.Object);
                 }
             }
             catch (Exception ex)

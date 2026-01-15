@@ -13,6 +13,11 @@ string cwd;      // Current working directory for wizards
 // Saved equipment paths (for persistence across logins)
 string saved_weapon_path;
 mapping saved_armor_paths;  // slot -> path
+string saved_location;      // Room path for login location
+
+// Chat preferences
+int chat_enabled;           // Legacy: 1 = receive chat messages, 0 = opted out
+mapping chat_subscriptions; // Channel subscriptions: channel_name -> 1/0
 
 void create() {
     ::create();
@@ -25,6 +30,9 @@ void create() {
     cwd = "/";
     saved_weapon_path = "";
     saved_armor_paths = ([]);
+    saved_location = "";
+    chat_enabled = 1;  // Legacy: chat on by default
+    chat_subscriptions = ([]);  // Empty = default subscriptions
 }
 
 string query_name() {
@@ -48,6 +56,45 @@ void set_level(int val) { level = val; }
 // Current working directory functions
 string query_cwd() { return cwd; }
 void set_cwd(string path) { cwd = path; }
+
+// Saved location for login
+string query_saved_location() { return saved_location; }
+void set_saved_location(string path) { saved_location = path; }
+
+// Chat preferences
+// Legacy single-channel support
+int query_chat_enabled() { return chat_enabled; }
+void set_chat_enabled(int val) { chat_enabled = val; }
+
+// Multi-channel subscription system
+mapping query_chat_subscriptions() { return chat_subscriptions; }
+
+// Set subscription for a specific channel
+// enabled: 1 = subscribed, 0 = unsubscribed
+void set_chat_subscription(string channel, int enabled) {
+    chat_subscriptions = chat_subscriptions + ([ channel: enabled ]);
+
+    // Keep legacy flag in sync for "chat" channel
+    if (channel == "chat") {
+        chat_enabled = enabled;
+    }
+}
+
+// Check if subscribed to a specific channel
+// Returns 1 if subscribed, 0 if not
+// Defaults to 1 (subscribed) if not explicitly set
+int query_chat_subscription(string channel) {
+    // Check if channel key exists in mapping (member returns index or -1)
+    if (member(chat_subscriptions, channel) != -1) {
+        return chat_subscriptions[channel];
+    }
+    // Legacy fallback for "chat" channel
+    if (channel == "chat") {
+        return chat_enabled;
+    }
+    // Default: subscribed
+    return 1;
+}
 
 // Resolve a path relative to cwd
 // Handles: absolute paths (/foo), relative paths (foo, ./foo), parent refs (..)
@@ -144,9 +191,22 @@ int save_player() {
     mapping armor;
     string *slots;
     int i;
+    object env;
+    string env_path;
 
     if (player_name == "" || player_name == "Guest") {
         return 0;
+    }
+
+    // Capture current location
+    env = environment();
+    if (env) {
+        env_path = file_name(env);
+        // Remove clone suffix if present (rooms are usually blueprints, but just in case)
+        if (member(env_path, "#") != -1) {
+            env_path = explode(env_path, "#")[0];
+        }
+        saved_location = env_path;
     }
 
     // Capture current equipment paths before saving
@@ -174,13 +234,41 @@ int save_player() {
                 if (member(piece_path, "#") != -1) {
                     piece_path = explode(piece_path, "#")[0];
                 }
-                saved_armor_paths[slots[i]] = piece_path;
+                saved_armor_paths = saved_armor_paths + ([ slots[i]: piece_path ]);
             }
         }
     }
 
     path = "/secure/players/" + lower_case(player_name);
     return save_object(path);
+}
+
+// Refresh allowed skills from all guilds the player belongs to
+// Called on login to pick up any guild changes
+void refresh_guild_skills() {
+    int i;
+    int j;
+    object guild;
+    string *guild_skills;
+
+    // Clear current allowed skills and rebuild from guilds
+    allowed_skills = ({});
+
+    if (!guilds) {
+        return;
+    }
+
+    for (i = 0; i < sizeof(guilds); i++) {
+        guild = load_object(guilds[i]);
+        if (guild) {
+            guild_skills = call_other(guild, "query_granted_skills");
+            if (guild_skills) {
+                for (j = 0; j < sizeof(guild_skills); j++) {
+                    add_allowed_skill(guild_skills[j]);
+                }
+            }
+        }
+    }
 }
 
 // Restore player data from file
@@ -202,6 +290,9 @@ int restore_player() {
     // Clear live equipment references first
     wielded_weapon = 0;
     worn_armor = ([]);
+
+    // Refresh skills from guilds (picks up any guild changes)
+    refresh_guild_skills();
 
     // Recreate saved equipment
     if (saved_weapon_path && saved_weapon_path != "") {
