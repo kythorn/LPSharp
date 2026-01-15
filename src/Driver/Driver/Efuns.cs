@@ -37,6 +37,7 @@ public class EfunRegistry
         Register("tell_object", TellObject);
         Register("environment", Environment);
         Register("tell_room", TellRoom);
+        Register("log_console", LogConsole);
         Register("all_inventory", AllInventory);
         Register("random", Random);
         Register("abs", Abs);
@@ -396,6 +397,44 @@ public class EfunRegistry
             }
         }
 
+        return 1;
+    }
+
+    /// <summary>
+    /// log_console(category, message) - Write a message to the server console log.
+    /// category: "player", "system", "network", "object", "lpc", "combat", or "general"
+    /// Returns 1 on success.
+    /// </summary>
+    private static object LogConsole(List<object> args)
+    {
+        if (args.Count != 2)
+        {
+            throw new EfunException("log_console() requires 2 arguments: category, message");
+        }
+
+        if (args[0] is not string categoryStr)
+        {
+            throw new EfunException("log_console() first argument must be a string category");
+        }
+
+        if (args[1] is not string message)
+        {
+            throw new EfunException("log_console() second argument must be a string message");
+        }
+
+        // Map string to LogCategory enum
+        var category = categoryStr.ToLower() switch
+        {
+            "player" => LogCategory.Player,
+            "system" => LogCategory.System,
+            "network" => LogCategory.Network,
+            "object" => LogCategory.Object,
+            "lpc" => LogCategory.LPC,
+            "combat" => LogCategory.Combat,
+            _ => LogCategory.General
+        };
+
+        Logger.Info(message, category);
         return 1;
     }
 

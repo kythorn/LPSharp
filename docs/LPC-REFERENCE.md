@@ -663,6 +663,7 @@ Efuns are functions provided by the driver, callable from any LPC code.
 | `tell_room(room, msg)` | Send message to all in room |
 | `tell_room(room, msg, exclude)` | Send to all except excluded objects |
 | `say(msg)` | Send to all in current room except speaker |
+| `log_console(category, msg)` | Write to server console log |
 
 ### Environment
 
@@ -772,8 +773,11 @@ int query_prevent_shadow() {
 |------|-------------|
 | `syslog(message)` | Log a message to the system log (info level) |
 | `syslog(level, message)` | Log a message with specified level |
+| `log_console(category, message)` | Log to server console with category |
 
 **Log levels:** `"debug"`, `"info"`, `"warning"`, `"error"`
+
+**Log categories:** `"player"`, `"system"`, `"network"`, `"object"`, `"lpc"`, `"combat"`, `"general"`
 
 ```c
 // Simple logging (info level)
@@ -783,6 +787,11 @@ syslog("Player entered room");
 syslog("debug", "Loading object: " + path);
 syslog("warning", "Combat function called with invalid target");
 syslog("error", "Critical error: database connection failed");
+
+// Log with category (for structured console output)
+log_console("player", player_name + " logged out");
+log_console("combat", player_name + " killed " + monster_name);
+log_console("system", "Guild " + guild_name + " created");
 ```
 
 **Server configuration:**
