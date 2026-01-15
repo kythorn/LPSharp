@@ -6,6 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **NEVER add Co-Authored-By trailers to commits. NEVER. The user is the sole author of all commits in this repository. This is non-negotiable.**
 
+## CRITICAL: Driver Changes Require Notification
+
+**Whenever you modify C# driver code (anything in `src/Driver/`), you MUST explicitly tell the user.** Driver changes require a server restart to take effect, unlike LPC mudlib changes which can be hot-reloaded. Always say something like:
+
+> "This change is in the C# driver and requires a server restart."
+
 ## CRITICAL: Development Workflow
 
 **Commit after every major change.** Do not batch unrelated features together. Each feature should be a complete unit:
