@@ -1,0 +1,20 @@
+CHAT
+====
+
+Usage: chat <message>     - Send a message to global chat
+       chat on            - Subscribe to chat
+       chat off           - Unsubscribe from chat
+       chat history [N]   - View last N messages (default 20)
+
+Global in-character chat channel. Messages are seen by all online players
+who have chat enabled. Chat history is saved, so you can catch up on
+messages you missed while offline.
+
+Examples:
+  chat Hello everyone!
+  chat off
+  chat history 50
+
+Alternative: Use 'history chat [N]' to view chat history.
+
+See also: ooc, channels, history

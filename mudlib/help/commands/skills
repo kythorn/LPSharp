@@ -1,0 +1,23 @@
+SKILLS (Player Command)
+=======================
+
+Usage: skills
+
+Display your character's skill levels and available skills.
+
+The display shows:
+  - Your current skills with progress bars and numeric values
+  - Basic skills (available to everyone)
+  - Guild skills (unlocked by joining guilds)
+
+Skills improve through use:
+  - Combat skills improve when you fight
+  - Magic skills improve when you cast spells
+  - Higher skills are harder to improve (logarithmic curve)
+
+Example output:
+  sword           [========            ] 40
+  unarmed         [====                ] 20
+  dodge           [==                  ] 10
+
+See also: score, attack, cast

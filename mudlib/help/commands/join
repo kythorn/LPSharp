@@ -1,0 +1,16 @@
+JOIN
+====
+
+Usage: join
+
+Join a guild when standing in a guild hall. Each guild grants access to
+different skills and abilities.
+
+To join a guild:
+  1. Go to the guild hall (e.g., /world/guilds/fighters)
+  2. Type 'join'
+
+You can be a member of multiple guilds simultaneously, though some guilds
+may have conflicts or requirements.
+
+See also: leave, guilds, skills

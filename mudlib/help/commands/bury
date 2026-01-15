@@ -1,0 +1,16 @@
+BURY
+====
+
+Usage: bury [corpse]
+
+Bury a corpse in the current room. All items inside the corpse are
+destroyed along with it.
+
+Examples:
+  bury              - Bury the first corpse in the room
+  bury wolf corpse  - Bury a specific corpse
+
+Note: If you want to loot a corpse before burying it, use 'get' to take
+items from it first. Once buried, all contents are lost forever.
+
+See also: get, look

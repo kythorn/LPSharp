@@ -12,6 +12,7 @@ ITEMS & INVENTORY
   get <item>         - Pick up an item from the room
   drop <item>        - Drop an item from your inventory
   inventory          - List items you're carrying
+  bury [corpse]      - Bury a corpse (destroys its contents)
 
 EQUIPMENT
 ---------
@@ -23,11 +24,28 @@ EQUIPMENT
 COMBAT
 ------
   attack <target>    - Start combat with a monster or player
+  consider <target>  - Evaluate how a fight would go
   hp                 - Show your health status
+
+SKILLS & MAGIC
+--------------
+  skills             - List your skills and levels
+  spells             - List spells you've learned
+  cast <spell> [tgt] - Cast a spell
+
+GUILDS
+------
+  join               - Join a guild (in guild hall)
+  leave              - Leave a guild (in guild hall)
+  guilds             - List your guild memberships
 
 COMMUNICATION
 -------------
   say <message>      - Speak to everyone in the room
+  chat <message>     - Global in-character chat
+  ooc <message>      - Out-of-character chat
+  channels           - List chat channels
+  history [ch] [N]   - View chat history
   who                - List players currently online
 
 INFORMATION
@@ -49,12 +67,16 @@ WIZARD COMMANDS (Wizard access required)
   goto <room>        - Teleport to a room
   load <path>        - Load or reload an object file
   ls [path]          - List directory contents
+  cd <path>          - Change working directory
+  pwd                - Print working directory
+  cat <file>         - Display file contents
 
 ADMIN COMMANDS (Admin access required)
 --------------------------------------
   promote <player> <level>  - Change a player's access level
   shutdown                  - Shut down the server
-  update <path>             - Hot-reload objects from a file
+  update <path>             - Hot-reload a specific file
+  reload                    - Hot-reload all changed files
 
 Type 'help <command>' for detailed information about any command.
 ===============================================================================

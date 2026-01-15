@@ -1,0 +1,19 @@
+OOC
+===
+
+Usage: ooc <message>     - Send an out-of-character message
+       ooc on            - Subscribe to OOC chat
+       ooc off           - Unsubscribe from OOC chat
+       ooc history [N]   - View last N messages (default 20)
+
+Out-of-character chat channel for discussions that aren't part of the
+game world (real-life topics, game mechanics questions, etc.).
+
+Examples:
+  ooc Anyone know how to join the mages guild?
+  ooc brb dinner
+  ooc history
+
+Alternative: Use 'history ooc [N]' to view OOC history.
+
+See also: chat, channels, history

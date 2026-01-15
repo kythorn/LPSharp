@@ -1,0 +1,23 @@
+CAST
+====
+
+Usage: cast <spell> [target]
+
+Cast a spell you have learned. Spells consume mana and require sufficient
+skill in the associated magic school.
+
+Examples:
+  cast fireball orc     - Cast fireball at an orc
+  cast heal             - Cast heal on yourself
+  cast magic missile wolf
+
+Requirements:
+  - Must know the spell (learned from a guild)
+  - Must have enough mana
+  - Must meet minimum skill requirement
+  - Heavy armor causes spell failure chance
+
+Spell failure from armor:
+  None/Robes: 0%    Light: 10%    Medium: 30%    Heavy: 60%
+
+See also: spells, skills, mana

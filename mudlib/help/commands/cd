@@ -1,0 +1,17 @@
+CD
+==
+
+Usage: cd <path>
+
+Change your current working directory. This affects relative paths used
+in other wizard commands like ls, cat, and clone.
+
+Examples:
+  cd /world/rooms
+  cd items
+  cd ..
+  cd /
+
+Wizard command.
+
+See also: pwd, ls, cat

@@ -1,0 +1,14 @@
+LEAVE
+=====
+
+Usage: leave
+
+Leave a guild when standing in its guild hall. You will lose the ability
+to advance skills granted by that guild, though you keep any skill points
+already earned.
+
+To leave a guild:
+  1. Go to the guild hall
+  2. Type 'leave'
+
+See also: join, guilds, skills

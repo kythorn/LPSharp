@@ -1,0 +1,36 @@
+CORPSES
+=======
+
+When a creature dies, it leaves behind a corpse containing all of its
+inventory and equipped items.
+
+LOOTING
+-------
+Use 'get <item> from corpse' to retrieve items from a corpse before it
+decays. Corpses can be searched like containers.
+
+DECAY TIMES
+-----------
+Corpses decay over time, dropping their contents to the floor:
+  Monster corpses: 5 minutes
+  Player corpses:  1 hour
+
+When a corpse decays while in a room, all remaining items drop to the
+floor. If a corpse is in someone's inventory (you picked it up), it
+won't decay until dropped.
+
+BURYING
+-------
+Use 'bury' or 'bury <corpse>' to bury a corpse. All items inside it are
+destroyed - be sure to loot anything valuable first!
+
+PLAYER DEATH
+------------
+When you die:
+  1. All your equipment and inventory go into your corpse
+  2. You are sent to the netherworld
+  3. Type 'resurrect' in the netherworld to return to the living
+  4. Your corpse remains for 1 hour - plenty of time to retrieve gear
+  5. Go back to where you died and loot your corpse
+
+See also: bury, death, resurrect

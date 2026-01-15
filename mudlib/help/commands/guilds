@@ -1,0 +1,13 @@
+GUILDS
+======
+
+Usage: guilds
+
+Display a list of guilds you currently belong to. Each guild grants access
+to different skills and abilities.
+
+Example output:
+  You are a member of the following guilds:
+    Fighters Guild (/world/guilds/fighters)
+
+See also: join, leave, skills

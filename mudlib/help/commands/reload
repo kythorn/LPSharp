@@ -1,0 +1,16 @@
+RELOAD
+======
+
+Usage: reload
+
+Hot-reload all LPC files that have changed since they were last loaded.
+This updates blueprints and all their clones with the new code without
+requiring a server restart.
+
+The reload checks file modification times and recompiles any .c files
+that are newer than their loaded blueprints. New variables added to
+objects are automatically initialized on existing clones.
+
+Admin command.
+
+See also: update, load

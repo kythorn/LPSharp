@@ -1,0 +1,39 @@
+MAGIC
+=====
+
+Magic in the game is organized into schools, each teaching different
+types of spells. You must join a guild that teaches magic to learn spells.
+
+MAGIC SCHOOLS
+-------------
+  Evocation     - Offensive magic (fireball, magic missile)
+  Abjuration    - Protective magic (heal, shield)
+  Conjuration   - Summoning magic (summon familiar)
+  Transmutation - Transformation magic
+  Divination    - Knowledge magic
+  Illusion      - Mind-affecting magic
+  Enchantment   - Charm and control magic
+  Necromancy    - Death magic
+
+MANA
+----
+Casting spells consumes mana. Your mana pool is:
+  10 + (INT * 5)
+
+Mana regenerates over time when not in combat:
+  1 + (WIS / 3) per tick
+
+SPELL FAILURE
+-------------
+Wearing armor can cause spells to fail (mana still consumed):
+  None/Robes: 0%
+  Light armor: 10%
+  Medium armor: 30%
+  Heavy armor: 60%
+
+CASTING
+-------
+Use 'cast <spell> [target]' to cast a spell. Your effectiveness depends
+on your skill in the spell's school and your INT stat.
+
+See also: cast, spells, skills, guilds

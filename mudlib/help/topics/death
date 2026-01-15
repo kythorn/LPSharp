@@ -12,7 +12,7 @@ When your HP reaches 0, several things happen:
 
 2. A CORPSE is created where you died
    - All your equipment and inventory is placed on the corpse
-   - The corpse will decay after 5 minutes
+   - Player corpses last 1 HOUR (monster corpses last 5 minutes)
    - Anyone can loot the corpse!
 
 3. Your HP is restored to full
@@ -31,21 +31,20 @@ RECOVERING YOUR ITEMS
 ---------------------
 After resurrection:
 1. Remember where you died
-2. Go back to that location quickly
+2. Go back to that location (you have 1 hour!)
 3. Look for your corpse
 4. Type: get all from corpse
 5. Re-equip your gear with 'wield' and 'wear'
 
-WARNING: Corpses decay after 5 minutes! If the corpse decays, your items
-will be scattered on the ground where anyone can take them.
+If a corpse decays, items fall to the ground where anyone can take them.
 
 AVOIDING DEATH
 --------------
   - Watch your HP with the 'hp' command during combat
   - Flee (move to another room) if your HP is low
-  - Fight monsters appropriate to your level
+  - Use 'consider <target>' before fighting to assess difficulty
+  - Fight monsters appropriate to your skill level
   - Equip good armor to reduce damage taken
-  - Visit the healer in town if you need healing
 
-See also: help combat, help resurrect, help hp
+See also: help combat, help resurrect, help corpses, help consider
 ===============================================================================

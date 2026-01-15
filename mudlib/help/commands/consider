@@ -1,0 +1,27 @@
+CONSIDER
+========
+
+Usage: consider <target>
+
+Evaluate how a fight against a target would go. This takes into account
+your stats, skills, equipment, HP, and the target's combat abilities.
+
+Examples:
+  consider wolf
+  consider orc
+
+Ratings (from easiest to hardest):
+  "is a complete pushover"
+  "looks like easy prey"
+  "should be a comfortable fight"
+  "looks like a fair challenge"
+  "is evenly matched with you"
+  "looks like a tough fight"
+  "would be very dangerous to fight"
+  "would probably kill you"
+  "would annihilate you"
+
+The rating is based on expected damage per round and how many rounds
+each side would need to defeat the other.
+
+See also: attack, combat, skills

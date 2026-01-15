@@ -1,0 +1,41 @@
+CHAT SYSTEM
+===========
+
+The game has a multi-channel chat system for communicating with other
+players. Chat history is saved, so you can catch up on messages even
+if you were offline.
+
+CHANNELS
+--------
+  chat  - Global in-character chat
+  ooc   - Out-of-character discussions
+
+CHANNEL COMMANDS
+----------------
+Each channel works the same way:
+  <channel> <message>     - Send a message
+  <channel> on            - Subscribe to channel
+  <channel> off           - Unsubscribe from channel
+  <channel> history [N]   - View last N messages (default 20)
+
+Examples:
+  chat Hello everyone!
+  ooc Anyone know where the mages guild is?
+  chat off
+  ooc history 50
+
+HISTORY COMMAND
+---------------
+The 'history' command can view history from any or all channels:
+  history              - All channels, last 20 messages
+  history 50           - All channels, last 50 messages
+  history chat         - Chat channel only
+  history ooc 30       - OOC channel, last 30 messages
+
+OTHER COMMANDS
+--------------
+  channels   - List all channels and subscription status
+
+Your subscription preferences are saved between sessions.
+
+See also: chat (command), ooc, channels, history

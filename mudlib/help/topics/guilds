@@ -1,0 +1,33 @@
+GUILDS
+======
+
+Guilds are organizations that teach specific skills and abilities. Joining
+a guild grants access to skills you cannot learn elsewhere.
+
+JOINING A GUILD
+---------------
+To join a guild, go to its guild hall and type 'join'. You can be a member
+of multiple guilds, though some may have conflicts or requirements.
+
+GUILD BENEFITS
+--------------
+Each guild grants access to specific skills. For example:
+  - Fighters Guild: sword, axe, mace, dagger, shield_block, parry
+  - Mages Guild: evocation, conjuration, transmutation
+
+You can only advance skills that your current guilds grant. However, you
+keep any skill points already earned even if you leave a guild.
+
+SKILL LEARNING
+--------------
+Skills improve through use with logarithmic diminishing returns:
+  - Early levels gained quickly
+  - Higher levels require more practice
+  - No hard cap, but progress slows dramatically
+
+AVAILABLE GUILDS
+----------------
+  Fighters Guild    /world/guilds/fighters
+  Mages Guild       /world/guilds/mages
+
+See also: join, leave, guilds (command), skills

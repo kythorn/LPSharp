@@ -1,0 +1,18 @@
+CHANNELS
+========
+
+Usage: channels
+
+Display all available chat channels and your subscription status.
+
+Example output:
+  === Available Channels ===
+    chat [ON] - [Chat]
+    ooc [ON] - [OOC]
+
+  Use '<channel> on/off' to toggle, '<channel> history' to view history.
+
+Each channel can be independently enabled or disabled. Your subscription
+preferences are saved between sessions.
+
+See also: chat, ooc, history

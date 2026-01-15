@@ -1,0 +1,19 @@
+SPELLS
+======
+
+Usage: spells
+
+Display a list of spells you have learned, along with their mana cost,
+required school, and minimum skill level.
+
+Spells are learned by joining guilds that teach magic. Each spell belongs
+to a magic school (evocation, abjuration, etc.) and scales with your skill
+in that school.
+
+Example output:
+  === Known Spells ===
+  Fireball       [Evocation 10]    Cost: 15 mana
+  Magic Missile  [Evocation 1]     Cost: 5 mana
+  Heal           [Abjuration 5]    Cost: 10 mana
+
+See also: cast, skills, guilds

@@ -1,0 +1,14 @@
+PWD
+===
+
+Usage: pwd
+
+Print your current working directory. This is the base path used for
+relative paths in other wizard commands.
+
+Example output:
+  /world/rooms/town
+
+Wizard command.
+
+See also: cd, ls, cat

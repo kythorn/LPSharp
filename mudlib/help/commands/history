@@ -1,0 +1,23 @@
+HISTORY
+=======
+
+Usage: history              - Last 20 messages from all channels
+       history [N]          - Last N messages from all channels
+       history [channel]    - Last 20 messages from specific channel
+       history [channel] N  - Last N messages from specific channel
+
+View recent chat history. Useful for catching up on messages you missed
+while offline or away. Arguments can be in any order.
+
+Examples:
+  history           - View all recent chat
+  history 50        - View last 50 messages
+  history chat      - View only global chat
+  history ooc 30    - View last 30 OOC messages
+  history 30 ooc    - Same as above (order doesn't matter)
+
+Maximum: 100 messages per query.
+
+Alternative: Each channel command also has history, e.g., 'chat history 50'
+
+See also: chat, ooc, channels

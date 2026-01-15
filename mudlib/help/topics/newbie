@@ -32,11 +32,18 @@ EXPLORATION TIPS
 - The wilderness (south from town) has monsters to fight
 - Hidden exits exist! Try examining things carefully
 
+JOINING A GUILD
+---------------
+Guilds grant skills you can't learn elsewhere. Visit a guild hall and 'join':
+- Fighters Guild (for combat skills)
+- Mages Guild (for magic)
+
+Type 'guilds' to see your memberships, 'skills' to see your skills.
+
 COMBAT BASICS
 -------------
-1. Find a monster (try the Forest Path south of town)
+1. Use 'consider <monster>' to see if you can win
 2. Type: attack <monster name>
-   Example: attack rat
 3. Combat is automatic - you'll trade blows until one of you dies
 4. Check your health with 'hp' during combat
 5. If you're losing, you can try to flee (go to an exit)
@@ -48,9 +55,10 @@ The easiest monster is the RAT in the Forest Path:
   - Go south again to South Gate
   - Go south to the Crossroads
   - Go south to the Forest Path
+  - Type: consider rat  (to see the difficulty)
   - Type: attack rat
 
-Rats give 5 XP when killed and might drop a Rat Tooth weapon.
+Rats give XP when killed and might drop items.
 
 GETTING EQUIPMENT
 -----------------
@@ -64,9 +72,17 @@ WHEN YOU DIE
 ------------
 Don't panic! When you die:
   - You'll be sent to the Netherworld
-  - Your items will be on your corpse (which stays in the room)
+  - Your items will be on your corpse (which stays for 1 hour)
   - Type: resurrect - This returns you to town with full health
-  - Go back to your corpse quickly to get your items!
+  - Go back to your corpse to get your items!
+  - Or use 'bury' to permanently dispose of corpses
+
+CHAT SYSTEM
+-----------
+Talk to other players even across the world:
+  chat <message>    - Global in-character chat
+  ooc <message>     - Out-of-character chat
+  history           - See what you missed while offline
 
 USEFUL COMMANDS
 ---------------
@@ -74,7 +90,9 @@ USEFUL COMMANDS
   score       - See your full stats
   hp          - Quick health check
   inventory   - See what you're carrying
+  skills      - See your skills
   who         - See who's online
+  chat <msg>  - Talk to everyone online
   say <msg>   - Talk to others in the room
   quit        - Save and exit the game
 
@@ -88,5 +106,5 @@ Once you've defeated some rats, try these progressively harder challenges:
 
 Aggressive monsters attack you on sight, so be prepared!
 
-See also: help combat, help death, help stats, help equipment
+See also: help combat, help death, help stats, help equipment, help guilds
 ===============================================================================
