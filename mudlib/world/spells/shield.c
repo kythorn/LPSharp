@@ -9,6 +9,7 @@ void create() {
     set_spell_school("abjuration");
     set_mana_cost(8);
     set_min_skill(5);
+    set_learn_skill(5);  // Requires abjuration 5 to learn at guild
     set_spell_description("Creates a magical shield that absorbs some damage.");
 }
 

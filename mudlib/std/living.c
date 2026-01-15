@@ -532,7 +532,7 @@ int can_advance_skill(string skill_name) {
         return 0;
     }
 
-    // Basic skills can always be advanced
+    // Basic skills can always be advanced by anyone
     basic = query_basic_skills();
     for (i = 0; i < sizeof(basic); i++) {
         if (basic[i] == skill_name) {
@@ -540,9 +540,14 @@ int can_advance_skill(string skill_name) {
         }
     }
 
-    // If allowed_skills is empty, allow all (for monsters/NPCs)
+    // For non-players (monsters/NPCs), allow all skills if allowed_skills is empty
+    // Players must join guilds to gain access to guild-gated skills
     if (sizeof(allowed_skills) == 0) {
-        return 1;
+        if (!call_other(this_object(), "is_player")) {
+            return 1;  // Monster/NPC with no restrictions
+        }
+        // Player with no guilds - can only use basic skills (checked above)
+        return 0;
     }
 
     // Check if skill is in allowed list (from current guild membership)

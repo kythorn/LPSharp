@@ -35,6 +35,11 @@ void create() {
     chat_subscriptions = ([]);  // Empty = default subscriptions
 }
 
+// Identify as a player (not a monster)
+int is_player() {
+    return 1;
+}
+
 string query_name() {
     return player_name;
 }

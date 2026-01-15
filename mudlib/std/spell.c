@@ -4,7 +4,8 @@
 string spell_name;          // Display name
 string spell_school;        // Required magic school (evocation, abjuration, etc.)
 int mana_cost;              // Mana required to cast
-int min_skill;              // Minimum school skill required
+int min_skill;              // Minimum school skill required to CAST
+int learn_skill;            // Minimum school skill required to LEARN (at guild trainer)
 string spell_description;   // Description of what the spell does
 
 void create() {
@@ -12,6 +13,7 @@ void create() {
     spell_school = "evocation";
     mana_cost = 10;
     min_skill = 0;
+    learn_skill = 0;  // Skill required to learn at guild (0 = novice)
     spell_description = "An unknown magical effect.";
 }
 
@@ -20,6 +22,7 @@ string query_spell_name() { return spell_name; }
 string query_spell_school() { return spell_school; }
 int query_mana_cost() { return mana_cost; }
 int query_min_skill() { return min_skill; }
+int query_learn_skill() { return learn_skill; }
 string query_spell_description() { return spell_description; }
 
 // Setters
@@ -27,6 +30,7 @@ void set_spell_name(string n) { spell_name = n; }
 void set_spell_school(string s) { spell_school = s; }
 void set_mana_cost(int c) { mana_cost = c; }
 void set_min_skill(int s) { min_skill = s; }
+void set_learn_skill(int s) { learn_skill = s; }
 void set_spell_description(string d) { spell_description = d; }
 
 // Calculate spell power based on caster's skill and INT

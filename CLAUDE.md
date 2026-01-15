@@ -12,6 +12,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > "This change is in the C# driver and requires a server restart."
 
+## CRITICAL: Test Player Naming
+
+**All test players must have "test" in the name** (e.g., "testuser", "testplayer", "skilltest"). Never delete a player account that does not clearly have "test" in the name. Real player accounts (like "jabartik", "vom", "crap") must not be modified or deleted without explicit permission.
+
 ## CRITICAL: Development Workflow
 
 **Commit after every major change.** Do not batch unrelated features together. Each feature should be a complete unit:

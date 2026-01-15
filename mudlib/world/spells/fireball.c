@@ -9,6 +9,7 @@ void create() {
     set_spell_school("evocation");
     set_mana_cost(15);
     set_min_skill(10);
+    set_learn_skill(10);  // Requires evocation 10 to learn at guild
     set_spell_description("Hurls a ball of fire at your target, dealing significant damage.");
 }
 

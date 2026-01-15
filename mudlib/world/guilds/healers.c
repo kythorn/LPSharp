@@ -3,9 +3,6 @@
 
 inherit "/std/guild";
 
-// Spells taught by this guild
-string *granted_spells;
-
 void create() {
     ::create();
 
@@ -17,7 +14,8 @@ void create() {
         "through stained glass windows depicting scenes of mercy. The scent of\n" +
         "healing herbs fills the air. A serene priestess in white robes tends to\n" +
         "a small altar.\n\n" +
-        "Type 'join' to become a member, or 'leave' to resign your membership."
+        "Type 'join' to become a member, or 'leave' to resign your membership.\n" +
+        "Type 'learn' to see available spells, or 'learn <spell>' to study a spell."
     );
 
     // Magic schools granted by this guild
@@ -26,11 +24,11 @@ void create() {
         "divination"
     }));
 
-    // Spells taught when joining
-    granted_spells = ({
+    // Spells this guild can teach (players must use 'learn' command)
+    set_taught_spells(({
         "/world/spells/heal",
         "/world/spells/shield"
-    });
+    }));
 
     // No conflicting guilds - healers can also be fighters/mages
     set_conflicting_guilds(({ }));
@@ -38,37 +36,22 @@ void create() {
     add_exit("west", "/world/rooms/town/temple_road_north");
 }
 
-// Override on_join to also teach spells
+// Override on_join to show helpful message
 void on_join(object player) {
-    int i;
-
     // Call parent to grant skills
     ::on_join(player);
 
-    // Teach spells
-    for (i = 0; i < sizeof(granted_spells); i++) {
-        call_other(player, "learn_spell", granted_spells[i]);
-    }
-
     tell_object(player, "\nThe priestess smiles warmly and places a hand on your shoulder.\n");
     tell_object(player, "\"Welcome, child. May you bring comfort to those in need.\"\n");
-    tell_object(player, "\"I have taught you the arts of protection and healing.\"\n");
-    tell_object(player, "\nYou have learned: Heal, Shield\n");
-    tell_object(player, "Type 'spells' to see your known spells.\n");
+    tell_object(player, "\"I can teach you the arts of healing. Type 'learn' to see available spells.\"\n");
 }
 
-// Override on_leave to remove spells
+// Override on_leave - players keep learned spells but can no longer learn new ones
 void on_leave(object player) {
-    int i;
-
-    // Call parent to remove skills
+    // Call parent to remove skill advancement ability
     ::on_leave(player);
 
-    // Remove spells
-    for (i = 0; i < sizeof(granted_spells); i++) {
-        call_other(player, "forget_spell", granted_spells[i]);
-    }
-
     tell_object(player, "The priestess nods sadly.\n");
-    tell_object(player, "\"Go with peace, but the sacred knowledge must remain here.\"\n");
+    tell_object(player, "\"Go with peace. You may keep the knowledge you have gained,\n");
+    tell_object(player, "but I can teach you no more.\"\n");
 }
