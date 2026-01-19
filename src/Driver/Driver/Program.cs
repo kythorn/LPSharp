@@ -297,6 +297,17 @@ int Server(string[] args)
 
     // Create and start telnet server
     using var server = new TelnetServer(port, gameLoop);
+
+    // Start console command handler on background thread
+    var consoleThread = new Thread(() => ConsoleCommandLoop(objectManager, server))
+    {
+        IsBackground = true,
+        Name = "ConsoleCommands"
+    };
+    consoleThread.Start();
+
+    Logger.Info("Console commands: reload, status, quit, help", LogCategory.System);
+
     try
     {
         server.Run();
@@ -308,6 +319,61 @@ int Server(string[] args)
     }
 
     return 0;
+}
+
+void ConsoleCommandLoop(ObjectManager objectManager, TelnetServer server)
+{
+    while (true)
+    {
+        var line = Console.ReadLine();
+        if (line == null) break;
+        if (string.IsNullOrWhiteSpace(line)) continue;
+
+        var parts = line.Trim().Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var cmd = parts[0].ToLowerInvariant();
+
+        switch (cmd)
+        {
+            case "reload":
+                if (parts.Length > 1)
+                {
+                    var path = parts[1].StartsWith("/") ? parts[1] : "/" + parts[1];
+                    try
+                    {
+                        int n = objectManager.UpdateObject(path);
+                        Console.WriteLine($"Reloaded {n} object(s).");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    var (ok, fail) = objectManager.ReloadAll();
+                    Console.WriteLine($"Reloaded {ok} objects ({fail} failed).");
+                }
+                break;
+
+            case "status":
+                var stats = objectManager.GetStats();
+                Console.WriteLine($"Connections: {server.ConnectionCount}  Blueprints: {stats.BlueprintCount}  Clones: {stats.CloneCount}");
+                break;
+
+            case "quit":
+            case "shutdown":
+                server.Stop();
+                return;
+
+            case "help":
+                Console.WriteLine("Commands: reload [path], status, quit, help");
+                break;
+
+            default:
+                Console.WriteLine($"Unknown: {cmd}. Type 'help' for commands.");
+                break;
+        }
+    }
 }
 
 int UnknownCommand(string cmd)

@@ -237,11 +237,6 @@ public class GameLoop
     }
 
     /// <summary>
-    /// Access to the object manager for admin operations.
-    /// </summary>
-    public ObjectManager ObjectManager => _objectManager;
-
-    /// <summary>
     /// The starting room path for new players.
     /// </summary>
     public string StartingRoomPath { get; set; } = "/world/rooms/town/square";
