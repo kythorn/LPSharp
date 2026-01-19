@@ -627,6 +627,43 @@ public class ObjectManager
         };
     }
 
+    /// <summary>
+    /// Reload all loaded LPC blueprints from disk.
+    /// This hot-reloads all mudlib code without restarting the server.
+    /// Returns (successful, failed) counts.
+    /// </summary>
+    public (int success, int failed) ReloadAll()
+    {
+        // Get all currently loaded blueprint paths
+        var paths = _blueprints.Keys.ToList();
+
+        int success = 0;
+        int failed = 0;
+
+        // Sort paths so that parent objects (less path depth) are reloaded first
+        // This ensures inheritance relationships are properly updated
+        paths.Sort((a, b) => a.Count(c => c == '/').CompareTo(b.Count(c => c == '/')));
+
+        foreach (var path in paths)
+        {
+            try
+            {
+                int updated = UpdateObject(path);
+                if (updated > 0)
+                {
+                    success++;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Failed to reload {path}: {ex.Message}", LogCategory.Object);
+                failed++;
+            }
+        }
+
+        return (success, failed);
+    }
+
     #region Living/Interactive Management
 
     /// <summary>

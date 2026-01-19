@@ -70,7 +70,7 @@ public class TelnetServer : IDisposable
         _running = true;
 
         Logger.Info($"LPMud Revival listening on port {_port}", LogCategory.Network);
-        Logger.Info("Press Ctrl+C to stop", LogCategory.Network);
+        Logger.Info("Console commands: reload, status, quit (or Ctrl+C)", LogCategory.System);
 
         // Handle Ctrl+C
         Console.CancelKeyPress += (_, e) =>
@@ -83,6 +83,9 @@ public class TelnetServer : IDisposable
         {
             try
             {
+                // Check for console input (non-blocking)
+                ProcessConsoleInput();
+
                 // Accept new connections (non-blocking check)
                 AcceptPendingConnections();
 
@@ -99,6 +102,103 @@ public class TelnetServer : IDisposable
         }
 
         Cleanup();
+    }
+
+    /// <summary>
+    /// Process console input commands (non-blocking).
+    /// </summary>
+    private void ProcessConsoleInput()
+    {
+        // Check if there's input available without blocking
+        if (!Console.KeyAvailable)
+        {
+            return;
+        }
+
+        // Read the line (this will block until Enter is pressed, but we know input is available)
+        var line = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(line))
+        {
+            return;
+        }
+
+        var parts = line.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var command = parts[0].ToLowerInvariant();
+
+        switch (command)
+        {
+            case "reload":
+                HandleReloadCommand(parts);
+                break;
+
+            case "status":
+                HandleStatusCommand();
+                break;
+
+            case "quit":
+            case "shutdown":
+                Stop();
+                break;
+
+            case "help":
+                Console.WriteLine("Console commands:");
+                Console.WriteLine("  reload [path]  - Reload all LPC or specific file (e.g., reload /std/living)");
+                Console.WriteLine("  status         - Show server status");
+                Console.WriteLine("  quit           - Shutdown the server");
+                Console.WriteLine("  help           - Show this help");
+                break;
+
+            default:
+                Console.WriteLine($"Unknown command: {command}. Type 'help' for available commands.");
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Handle the reload command.
+    /// </summary>
+    private void HandleReloadCommand(string[] parts)
+    {
+        if (parts.Length > 1)
+        {
+            // Reload specific path
+            var path = parts[1];
+            if (!path.StartsWith("/"))
+            {
+                path = "/" + path;
+            }
+
+            Console.WriteLine($"Reloading {path}...");
+            try
+            {
+                int updated = _gameLoop.ObjectManager.UpdateObject(path);
+                Console.WriteLine($"Reloaded {updated} object(s).");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error reloading {path}: {ex.Message}");
+            }
+        }
+        else
+        {
+            // Reload all
+            Console.WriteLine("Reloading all LPC objects...");
+            var (success, failed) = _gameLoop.ObjectManager.ReloadAll();
+            Console.WriteLine($"Reload complete: {success} succeeded, {failed} failed.");
+        }
+    }
+
+    /// <summary>
+    /// Handle the status command.
+    /// </summary>
+    private void HandleStatusCommand()
+    {
+        var stats = _gameLoop.ObjectManager.GetStats();
+        Console.WriteLine($"Server Status:");
+        Console.WriteLine($"  Connections: {ConnectionCount}");
+        Console.WriteLine($"  Blueprints:  {stats.BlueprintCount}");
+        Console.WriteLine($"  Clones:      {stats.CloneCount}");
+        Console.WriteLine($"  Total:       {stats.TotalObjectCount}");
     }
 
     /// <summary>
