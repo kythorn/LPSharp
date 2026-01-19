@@ -90,6 +90,11 @@ void create() {
 
     // Known spells - empty initially
     known_spells = ({});
+
+    // Heartbeat always runs on living objects (players, monsters)
+    // This is the traditional LPMud approach - heartbeat handles combat,
+    // regeneration, and other periodic effects
+    set_heart_beat(1);
 }
 
 // Identify as a living thing
@@ -195,12 +200,6 @@ int use_mana(int cost) {
         return 0;
     }
     mana = mana - cost;
-
-    // Start heartbeat so mana regenerates
-    if (mana < max_mana) {
-        set_heart_beat(1);
-    }
-
     return 1;
 }
 
@@ -235,12 +234,6 @@ int add_intoxication(int amount) {
     if (intoxication < 0) {
         intoxication = 0;
     }
-
-    // Start heartbeat for sobering up and boosted regen
-    if (intoxication > 0) {
-        set_heart_beat(1);
-    }
-
     return intoxication;
 }
 
@@ -968,9 +961,6 @@ void start_combat(object target) {
     attacker = target;
     in_combat = 1;
 
-    // Start heartbeat for combat rounds
-    set_heart_beat(1);
-
     // Make target fight back if they're not in combat,
     // or if their current opponent is not in the same room (stale combat)
     target_current_attacker = call_other(target, "query_attacker");
@@ -1028,10 +1018,6 @@ void stop_combat() {
         // No more attackers, end combat
         in_combat = 0;
         attacker = 0;
-        // Keep heartbeat running if we need to regenerate HP or mana
-        if (hp >= max_hp && mana >= max_mana) {
-            set_heart_beat(0);
-        }
     }
 }
 
@@ -1243,7 +1229,6 @@ void heart_beat() {
         // Notify player of healing (only when fully healed)
         if (hp >= max_hp) {
             tell_object(this_object(), "You are fully healed.\n");
-            hp_full = 1;
         }
     }
 
@@ -1260,13 +1245,7 @@ void heart_beat() {
         // Notify player when mana is full
         if (mana >= max_mana) {
             tell_object(this_object(), "Your mana is fully restored.\n");
-            mana_full = 1;
         }
-    }
-
-    // Disable heartbeat when all resources are full and sober
-    if (hp_full && mana_full && intoxication <= 0) {
-        set_heart_beat(0);
     }
 }
 
