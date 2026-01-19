@@ -77,7 +77,7 @@ int main(string args)
 
     // Check if setting or showing an alias
     // Find first space to separate alias name from command
-    int space = member(args, ' ');
+    int space = member(args, " ");
 
     if (space == -1)
     {
