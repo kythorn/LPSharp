@@ -195,6 +195,12 @@ int use_mana(int cost) {
         return 0;
     }
     mana = mana - cost;
+
+    // Start heartbeat so mana regenerates
+    if (mana < max_mana) {
+        set_heart_beat(1);
+    }
+
     return 1;
 }
 
@@ -1022,8 +1028,8 @@ void stop_combat() {
         // No more attackers, end combat
         in_combat = 0;
         attacker = 0;
-        // Keep heartbeat running if we need to regenerate
-        if (hp >= max_hp) {
+        // Keep heartbeat running if we need to regenerate HP or mana
+        if (hp >= max_hp && mana >= max_mana) {
             set_heart_beat(0);
         }
     }
